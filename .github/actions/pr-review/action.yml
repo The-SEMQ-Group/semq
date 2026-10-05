@@ -6,10 +6,9 @@ description: >
 # Mechanics live here; the review criteria live in the calling repo's
 # prompt file.
 #
-# Copied from The-SEMQ-Group/semq-infra at 468bb77 (.github/actions/pr-review).
 # A public repository cannot use an action stored in a private one, so this
-# repository keeps its own copy. The private repositories still use the
-# semq-infra copy; port fixes between the two.
+# repository keeps its own copy. The private repositories use another copy
+# of this action; port fixes between the two.
 
 inputs:
   role-arn:
