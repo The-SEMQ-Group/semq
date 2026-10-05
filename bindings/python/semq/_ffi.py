@@ -205,6 +205,9 @@ def _platform_lib_name() -> str:
 
 
 def _candidate_paths() -> Iterable[Path]:
+    # Every built-in candidate is an absolute path. A bare file name would
+    # let the dynamic loader search further, which on Windows and macOS can
+    # include the current directory, so a libsemq planted there would run.
     lib = _platform_lib_name()
     env = os.environ.get("SEMQ_LIBRARY_PATH")
     if env:
@@ -220,7 +223,6 @@ def _candidate_paths() -> Iterable[Path]:
     yield here / lib
     yield here.parent / "build" / lib
     yield here.parent.parent.parent / "build" / lib
-    yield Path(lib)
 
 
 _LIBSEMQ_PATH: Path | None = None

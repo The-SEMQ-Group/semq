@@ -56,3 +56,14 @@ def test_loader_rejects_incompatible_library_before_handles(monkeypatch, version
         Library.__getattr__ = symbol
     with pytest.raises(Native, match="incompatible SEMQ library"):
         _ffi._load()
+
+
+def test_loader_never_searches_by_bare_name(monkeypatch):
+    # A bare name lets the dynamic loader search the current directory on
+    # Windows and macOS. Only SEMQ_LIBRARY_PATH may be relative.
+    from semq import _ffi
+
+    monkeypatch.delenv("SEMQ_LIBRARY_PATH", raising=False)
+    candidates = list(_ffi._candidate_paths())
+    assert candidates
+    assert all(path.is_absolute() for path in candidates), candidates
