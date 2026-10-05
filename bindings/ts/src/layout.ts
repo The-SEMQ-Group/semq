@@ -1,3 +1,6 @@
+// Copyright (c) 2026 The SEMQ Group Inc.
+// Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
+
 // Generated from the wasm32 C compiler by tools/check_abi.py --write-layout.
 export const ABI = {
   "error": {

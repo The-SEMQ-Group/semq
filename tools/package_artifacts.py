@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 The SEMQ Group Inc.
+# Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
 """Build publication artifacts; no registry upload and no checkout mutation.
 
 Requires Python build tooling, Cargo, Go, npm and an already built TS package.
@@ -85,11 +87,10 @@ def go_artifacts(output: Path, version: str) -> dict[str, str]:
     (proxy / f"{version}.info").write_text(
         json.dumps({"Version": version, "Time": timestamp}), encoding="utf-8")
     (proxy / "list").write_text(version + "\n", encoding="utf-8")
-    # Every tracked file in the module, including its copy of the C core, as
-    # proxy.golang.org serves it, plus the license files at the module root.
+    # Every tracked file in the module, as proxy.golang.org serves it: its copy
+    # of the C core and of the license files included, nothing from outside.
     tracked = subprocess.check_output(["git", "ls-files", "-z", "--", "."], cwd=source, text=True)
     files = {name: source / name for name in tracked.split("\0") if name}
-    files.update({"LICENSE.md": ROOT / "LICENSE.md", "NOTICE": ROOT / "NOTICE"})
     with zipfile.ZipFile(proxy / f"{version}.zip", "w", zipfile.ZIP_DEFLATED) as archive:
         for name, path in sorted(files.items()):
             archive.write(path, f"{module}@{version}/{name}")

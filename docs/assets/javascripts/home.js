@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 The SEMQ Group Inc.
+ * Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
+ */
 /* A fixed, inspectable walkthrough. Values are produced by the SDK's
    quant(dim=4, bins=4) codec; this page does not encode vectors. */
 (() => {

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 The SEMQ Group Inc.
+# Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
 """Include TypeDoc output from this checkout in the MkDocs build.
 
 Generated HTML/assets are virtual MkDocs files, never checked-in reference

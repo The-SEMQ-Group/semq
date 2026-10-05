@@ -86,3 +86,9 @@ Errors from the input contract name the failing row and coordinate:
 var ie *semq.InvalidInputError
 if errors.As(err, &ie) && ie.Row != nil { fmt.Println("row", *ie.Row) }
 ```
+
+## License
+
+[PolyForm Noncommercial License 1.0.0](LICENSE.md). Production use by
+companies, and any other use the license does not permit, requires a separate
+license from The SEMQ Group Inc.; write to licensing@thesemqgroup.ai.

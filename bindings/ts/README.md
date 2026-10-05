@@ -88,3 +88,10 @@ expected values of `tests/unit/test_core.c`.
 
 - [Contributor guide](https://github.com/The-SEMQ-Group/semq/blob/main/CONTRIBUTING.md).
 - [CI workflow](https://github.com/The-SEMQ-Group/semq/blob/main/.github/workflows/test.yml).
+
+## License
+
+[PolyForm Noncommercial License 1.0.0](https://github.com/The-SEMQ-Group/semq/blob/main/LICENSE.md).
+Production use by companies, and any other use the license does not permit,
+requires a separate license from The SEMQ Group Inc.; write to
+licensing@thesemqgroup.ai.

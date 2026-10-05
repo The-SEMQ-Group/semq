@@ -1,3 +1,5 @@
+# Copyright (c) 2026 The SEMQ Group Inc.
+# Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
 """Public algebraic invariants across operators and ID kinds."""
 import io
 from concurrent.futures import ThreadPoolExecutor

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Copyright (c) 2026 The SEMQ Group Inc.
+# Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
 # Build the SEMQ WebAssembly module (scalar backend) and stage it into the TS
 # package. Requires the Emscripten toolchain (emcmake / emcc) on PATH.
 set -euo pipefail

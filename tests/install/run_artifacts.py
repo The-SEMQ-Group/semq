@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 The SEMQ Group Inc.
+# Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
 """Run only from a copied artifact bundle, on a host without the SDK checkout.
 
 CI deliberately runs this in a job without actions/checkout. Local callers can

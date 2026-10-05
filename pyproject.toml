@@ -15,7 +15,7 @@
 
 [build-system]
 requires = [
-    "scikit-build-core>=0.10",
+    "scikit-build-core>=0.11",  # 0.11 writes PEP 639 license metadata
     "setuptools-scm>=9",
 ]
 build-backend = "scikit_build_core.build"
@@ -31,7 +31,9 @@ readme = "README.md"
 # (tomllib). Decided pre-1.0.0, while the change is free of SemVer
 # consequences.
 requires-python = ">=3.11"
-license = { file = "LICENSE.md" }
+# PEP 639: an SPDX expression and the files that carry the terms and notice.
+license = "PolyForm-Noncommercial-1.0.0"
+license-files = ["LICENSE.md", "NOTICE"]
 authors = [
     { name = "The SEMQ Group Inc." },
 ]

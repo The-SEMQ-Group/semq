@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 The SEMQ Group Inc.
+# Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
 """Check the FFI mirrors against semq.h and layouts emitted by the C compiler.
 
 No parser runs in a consumer installation. The small declaration grammar is
@@ -57,7 +59,9 @@ def header() -> tuple[str, dict, dict, list[str]]:
 
 
 def c_probe(structs: dict, constants: list[str]) -> str:
-    body = ['/* Generated from semq.h by tools/check_abi.py; do not edit. */',
+    body = ['/*', ' * Copyright (c) 2026 The SEMQ Group Inc.',
+            ' * Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.', ' */', '',
+            '/* Generated from semq.h by tools/check_abi.py; do not edit. */',
             '#include "semq.h"', '#include <stdio.h>', 'int main(void) {']
     values = {"pointer.size": "sizeof(void*)"}
     for typ, fields in structs.items():
@@ -158,7 +162,9 @@ def rust_probe(structs: dict, constants: list[str]) -> str:
 def ts_layout(values: dict[str, int], structs: dict) -> str:
     obj = {typ.removeprefix("semq_").removesuffix("_t"): {key.split(".", 1)[1]: value for key, value in values.items() if key.startswith(typ + ".")} for typ in structs}
     obj["constants"] = {k: v for k, v in values.items() if k.startswith("SEMQ_") and k != "SEMQ_NONE"}
-    return '// Generated from the wasm32 C compiler by tools/check_abi.py --write-layout.\nexport const ABI = ' + json.dumps(obj, indent=2) + ' as const;\n'
+    header = ('// Copyright (c) 2026 The SEMQ Group Inc.\n'
+              '// Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.\n\n')
+    return header + '// Generated from the wasm32 C compiler by tools/check_abi.py --write-layout.\nexport const ABI = ' + json.dumps(obj, indent=2) + ' as const;\n'
 
 
 def main() -> None:

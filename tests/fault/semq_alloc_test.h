@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 The SEMQ Group Inc.
+ * Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
+ */
+
 #ifndef SEMQ_ALLOC_TEST_H
 #define SEMQ_ALLOC_TEST_H
 #include <stdint.h>

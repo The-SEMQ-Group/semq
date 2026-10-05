@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 The SEMQ Group Inc.
+ * Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
+ */
+
 /* Deterministic mutations of every reference image, using the libFuzzer
  * harness also on compilers without a libFuzzer runtime. */
 #include <stdint.h>
