@@ -73,24 +73,24 @@ because pull request CI does not run this workflow.
 ## Check the publishing credentials
 
 A rehearsal does not authenticate to the registries. Before the first release,
-and after changing a trusted publisher or the npm token, run the
-[credentials check](../.github/workflows/registry-credentials.yml): it
-authenticates to PyPI, crates.io and npm from the release environments the way
-the release does, and uploads nothing. The environments accept only `v*`
-tags, so allow `main` for the run and remove it afterwards:
+and after changing a trusted publisher or the npm token, run the release
+workflow with `check-credentials`. It does only the release's authentication
+step for PyPI, crates.io and npm, each from its publish environment, and
+uploads nothing. The trusted publishers name `release.yml`, so no other
+workflow can test them. The environments accept only `v*` tags, so allow
+`main` for the run and remove it afterwards:
 
 ```sh
 for env in pypi-release crates-release npm-release; do
   gh api -X POST "repos/The-SEMQ-Group/semq/environments/$env/deployment-branch-policies" \
     -f name=main -f type=branch
 done
-gh workflow run registry-credentials.yml --ref main
+gh workflow run release.yml --ref main -f check-credentials=true
 # after the run: delete each environment's "main" policy again
 ```
 
-The check cannot tell whether npm lets the token publish in the `@semq`
-scope, or whether both crates have a trusted publisher; a release candidate
-confirms those.
+The npm job proves the token is valid, not that it may publish in the
+`@semq` scope; a release candidate confirms that.
 
 ## Publish
 
