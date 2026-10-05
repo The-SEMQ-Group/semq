@@ -299,7 +299,7 @@ if(SEMQ_BUILD_TESTS)
     # Unity — single-file C test framework. Permissive (MIT) license.
     FetchContent_Declare(unity
         GIT_REPOSITORY https://github.com/ThrowTheSwitch/Unity.git
-        GIT_TAG        v2.6.0
+        GIT_TAG        860062d51b2e8a75d150337b63ca2a472840d13c # v2.6.0
     )
     FetchContent_MakeAvailable(unity)
 
@@ -375,7 +375,7 @@ if(SEMQ_BUILD_BENCHMARKS)
 
     FetchContent_Declare(googlebenchmark
         GIT_REPOSITORY https://github.com/google/benchmark.git
-        GIT_TAG        v1.8.4
+        GIT_TAG        a4cf155615c63e019ae549e31703bf367df5b471 # v1.8.4
     )
     FetchContent_MakeAvailable(googlebenchmark)
 

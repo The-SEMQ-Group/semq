@@ -640,8 +640,17 @@ jobs:
         with:
           node-version: "24"
           registry-url: https://registry.npmjs.org
+      # Checked against the tarball's sha512, as this job can publish. Bump
+      # the version and the hash together; the hash is the registry's
+      # dist.integrity for that version, in hex.
       - name: Require npm Trusted Publishing capable CLI
-        run: npm install --global npm@11.21.0
+        env:
+          NPM_VERSION: "11.21.0"
+          NPM_SHA512: 668bfc2a16a63677a22dd10bb63e5800bb4d9895b82f87c22d3ce37e9cd71b6c3a3121dc7f453181d94ae6e9680ae92c593fbb986514ef08bbf5c3ba46a8af3e
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/npm.tgz" "https://registry.npmjs.org/npm/-/npm-${NPM_VERSION}.tgz"
+          echo "${NPM_SHA512}  $RUNNER_TEMP/npm.tgz" | sha512sum --check --strict
+          npm install --global "$RUNNER_TEMP/npm.tgz"
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: release-payloads
