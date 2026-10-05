@@ -95,8 +95,6 @@ Changelog     = "https://github.com/The-SEMQ-Group/semq/blob/main/CHANGELOG.md"
 # Lint rules only; black formats the benchmarks (see benchmarks.yml).
 target-version = "py311"
 line-length = 88
-# A copy of the review action shared across repositories; edit it upstream.
-extend-exclude = [".github/actions/pr-review"]
 
 [tool.ruff.lint]
 select = [
