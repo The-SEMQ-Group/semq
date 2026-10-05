@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 The SEMQ Group Inc.
+ * Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
+ */
 /* Interactive view of the frozen quality.json results. The chart does not
    calculate benchmark metrics; it only displays the committed measurements. */
 (() => {

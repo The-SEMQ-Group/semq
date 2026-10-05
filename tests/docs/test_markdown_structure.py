@@ -1,3 +1,5 @@
+# Copyright (c) 2026 The SEMQ Group Inc.
+# Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
 """Catch broken repository links and Markdown without a discoverable entry point.
 
 MkDocs validates the published site's navigation and anchors. These checks also

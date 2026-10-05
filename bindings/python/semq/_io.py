@@ -1,3 +1,5 @@
+# Copyright (c) 2026 The SEMQ Group Inc.
+# Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
 """Stream protocols and complete writes, independent of native resources."""
 from __future__ import annotations
 

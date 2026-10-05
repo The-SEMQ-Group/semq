@@ -1,3 +1,5 @@
+# Copyright (c) 2026 The SEMQ Group Inc.
+# Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
 """Reproducibility matrix: the same real embeddings give the same state_id everywhere.
 
 The fixture in tests/reproducibility holds 1,000 real SciFact e5-small-v2

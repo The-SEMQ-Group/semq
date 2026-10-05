@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 The SEMQ Group Inc.
+ * Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
+ */
 /* A schematic morph: an irregular continuous surface folds into a discrete
    spherical lattice. It illustrates a mapping, not the codec's literal output. */
 (() => {

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 The SEMQ Group Inc.
+// Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
+
 import { strict as assert } from "node:assert";
 import { readFileSync, writeFileSync } from "node:fs";
 import { buildInfo, Codec, CodecConfig, Encoding, Floor, load } from "@semq/sdk";
