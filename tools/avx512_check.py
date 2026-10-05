@@ -5,13 +5,14 @@
 
 GitHub's Linux x86_64 runners have no AVX-512, so the AVX-512 kernels in the
 Linux wheels never run in CI there. This launches one instance from the
-semq-avx512-check launch template (see semq-infra), which runs
+semq-avx512-check launch template, which runs
 tools/remote_backends.sh against the given wheel and reports back through
 presigned S3 URLs. The instance has no IAM role and no inbound access, and
 terminates when it powers off.
 
 Needs AWS credentials for the semq-avx512-check role (the workflow assumes it
-through OIDC) and boto3.
+through OIDC) and boto3. The results bucket is semq-ci-avx512-<account>, for
+the account those credentials belong to; SEMQ_AVX512_BUCKET overrides it.
 
     python tools/avx512_check.py --wheel dist/semq-...-manylinux_x86_64.whl
 """
@@ -21,6 +22,7 @@ from __future__ import annotations
 import argparse
 import io
 import os
+import re
 import sys
 import tarfile
 import time
@@ -33,7 +35,6 @@ from botocore.exceptions import ClientError
 
 ROOT = Path(__file__).resolve().parents[1]
 REGION = "us-east-2"
-BUCKET = "semq-ci-avx512-127348475353"
 TEMPLATE = "semq-avx512-check"
 TAG = {"Key": "Purpose", "Value": "semq-avx512-check"}
 URL_SECONDS = 3600
@@ -68,10 +69,27 @@ def bundle(wheel: Path) -> bytes:
     return buffer.getvalue()
 
 
+def backends(value: str) -> str:
+    """A comma-separated backend list. It is pasted into the instance's shell."""
+    if not re.fullmatch(r"[a-z0-9]+(,[a-z0-9]+)*", value):
+        raise argparse.ArgumentTypeError(f"not a comma-separated list of backend names: {value!r}")
+    return value
+
+
+def results_bucket() -> str:
+    # Named after the account rather than written here, so the account id
+    # stays out of the repository. GetCallerIdentity needs no permission.
+    bucket = os.environ.get("SEMQ_AVX512_BUCKET")
+    if bucket:
+        return bucket
+    account = boto3.client("sts", region_name=REGION).get_caller_identity()["Account"]
+    return f"semq-ci-avx512-{account}"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--wheel", type=Path, required=True, help="the Linux x86_64 wheel to check")
-    parser.add_argument("--expect", default="scalar,avx2,avx512", help="backends that must be available")
+    parser.add_argument("--expect", type=backends, default="scalar,avx2,avx512", help="backends that must be available")
     parser.add_argument("--timeout", type=int, default=40 * 60, help="seconds to wait for a result")
     args = parser.parse_args()
 
@@ -83,11 +101,12 @@ def main() -> int:
     s3 = boto3.client("s3", region_name=REGION, endpoint_url=f"https://s3.{REGION}.amazonaws.com",
                       config=Config(signature_version="s3v4", s3={"addressing_style": "virtual"}))
     ec2 = boto3.client("ec2", region_name=REGION)
+    bucket = results_bucket()
 
-    s3.put_object(Bucket=BUCKET, Key=f"{prefix}/bundle.tar.gz", Body=bundle(args.wheel))
-    get_url = s3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": f"{prefix}/bundle.tar.gz"},
+    s3.put_object(Bucket=bucket, Key=f"{prefix}/bundle.tar.gz", Body=bundle(args.wheel))
+    get_url = s3.generate_presigned_url("get_object", Params={"Bucket": bucket, "Key": f"{prefix}/bundle.tar.gz"},
                                         ExpiresIn=URL_SECONDS)
-    put_url = s3.generate_presigned_url("put_object", Params={"Bucket": BUCKET, "Key": f"{prefix}/result.tar.gz"},
+    put_url = s3.generate_presigned_url("put_object", Params={"Bucket": bucket, "Key": f"{prefix}/result.tar.gz"},
                                         ExpiresIn=URL_SECONDS)
 
     instance = ec2.run_instances(
@@ -112,7 +131,7 @@ def main() -> int:
             print(f"error: {instance} was still running after {args.timeout} seconds", file=sys.stderr)
             return 1
         try:
-            result = s3.get_object(Bucket=BUCKET, Key=f"{prefix}/result.tar.gz")["Body"].read()
+            result = s3.get_object(Bucket=bucket, Key=f"{prefix}/result.tar.gz")["Body"].read()
         except ClientError as error:
             print(f"error: {instance} is {state} and uploaded no result ({error})", file=sys.stderr)
             return 1
