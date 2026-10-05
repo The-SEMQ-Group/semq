@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "suite": "codec_quality",
+  "seed": 20260921,
+  "k": [
+    10
+  ],
+  "query_batch_size": 8,
+  "methods": [
+    {
+      "id": "fp32",
+      "name": "fp32"
+    },
+    {
+      "id": "fp16",
+      "name": "fp16"
+    },
+    {
+      "id": "bf16",
+      "name": "bf16"
+    },
+    {
+      "id": "fp8_e4m3",
+      "name": "fp8_e4m3"
+    },
+    {
+      "id": "fp8_e5m2",
+      "name": "fp8_e5m2"
+    },
+    {
+      "id": "int4_block32",
+      "name": "int4_block32"
+    },
+    {
+      "id": "mxfp4",
+      "name": "mxfp4"
+    },
+    {
+      "id": "mxfp8",
+      "name": "mxfp8"
+    },
+    {
+      "id": "nvfp4",
+      "name": "nvfp4"
+    },
+    {
+      "id": "st_int8",
+      "name": "st_int8"
+    },
+    {
+      "id": "st_binary",
+      "name": "st_binary"
+    },
+    {
+      "id": "mrl256",
+      "name": "mrl256"
+    },
+    {
+      "id": "mrl256_int8",
+      "name": "mrl256_int8"
+    },
+    {
+      "id": "faiss_sq8",
+      "name": "faiss_sq",
+      "bits": 8
+    },
+    {
+      "id": "faiss_pq2",
+      "name": "faiss_pq",
+      "subquantizers": 384,
+      "bits": 4,
+      "seed": 20260921
+    },
+    {
+      "id": "rabitq2",
+      "name": "faiss_rabitq",
+      "bits": 2,
+      "seed": 20260921
+    },
+    {
+      "id": "rabitq4",
+      "name": "faiss_rabitq",
+      "bits": 4,
+      "seed": 20260921
+    },
+    {
+      "id": "turboquant_mse2",
+      "name": "faiss_turboquant_mse",
+      "bits": 2,
+      "seed": 20260921
+    },
+    {
+      "id": "turboquant_mse4",
+      "name": "faiss_turboquant_mse",
+      "bits": 4,
+      "seed": 20260921
+    },
+    {
+      "id": "semq_quant2",
+      "name": "semq_quant",
+      "bits": 2
+    },
+    {
+      "id": "semq_quant4",
+      "name": "semq_quant",
+      "bits": 3
+    },
+    {
+      "id": "semq_quant8",
+      "name": "semq_quant",
+      "bits": 4
+    },
+    {
+      "id": "semq_phase16",
+      "name": "semq_phase",
+      "sectors": 16
+    },
+    {
+      "id": "semq_orbit50",
+      "name": "semq_orbit",
+      "scale": 50
+    }
+  ],
+  "method_scoring": true,
+  "direction_scoring": true,
+  "uncertainty": {
+    "bootstrap_samples": 2000,
+    "confidence": 0.95,
+    "seed": 20260921
+  }
+}

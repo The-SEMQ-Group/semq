@@ -1,0 +1,65 @@
+---
+# Copyright (c) 2026 The SEMQ Group Inc. All rights reserved.
+# Style configuration for the SEMQ SDK. Based on Google with adjustments.
+
+BasedOnStyle: Google
+Language:     Cpp
+Standard:     c++17
+
+ColumnLimit: 100
+IndentWidth: 4
+TabWidth:    4
+UseTab:      Never
+
+AccessModifierOffset:    -4
+ContinuationIndentWidth: 4
+ConstructorInitializerIndentWidth: 4
+
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+
+AlignAfterOpenBracket:        Align
+AlignConsecutiveAssignments:  None
+AlignConsecutiveDeclarations: None
+AlignTrailingComments:        true
+
+BinPackArguments:  false
+BinPackParameters: false
+
+BraceWrapping:
+  AfterClass:      false
+  AfterControlStatement: false
+  AfterEnum:       false
+  AfterFunction:   false
+  AfterStruct:     false
+  AfterUnion:      false
+  BeforeCatch:     false
+  BeforeElse:      false
+  IndentBraces:    false
+BreakBeforeBraces: Attach
+
+PointerAlignment:    Left
+DerivePointerAlignment: false
+
+IncludeBlocks:   Preserve
+SortIncludes:    CaseSensitive
+
+NamespaceIndentation: None
+FixNamespaceComments: true
+
+SpacesBeforeTrailingComments: 2
+SpaceAfterCStyleCast: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeParens:      ControlStatements
+SpaceInEmptyParentheses: false
+SpacesInAngles:          false
+SpacesInContainerLiterals: false
+SpacesInParentheses:     false
+SpacesInSquareBrackets:  false
+
+ReflowComments: true
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 2

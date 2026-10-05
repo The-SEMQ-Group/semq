@@ -1,0 +1,67 @@
+/*
+ * Copyright (c) 2026 The SEMQ Group Inc.
+ * Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
+ */
+
+#if defined(__x86_64__) || defined(_M_X64)
+
+#include "semq_dispatch.h"
+#include "semq_bits.h"
+#include "semq_quant_packing.h"
+
+#include <immintrin.h>
+#include <math.h>
+#include <string.h>
+
+static semq_status_t quant_encode_avx512(const float* input, uint32_t dim,
+                                         uint32_t n_bins, float scale_max,
+                                         semq_code_t* output) {
+    if (n_bins < 2u || scale_max <= 0.0f) return SEMQ_ERR_INVALID_INPUT;
+
+    const uint32_t bits = semq_bits_per_symbol_quant(n_bins);
+    const uint32_t bytes = (uint32_t)(((uint64_t)dim * bits + 7u) / 8u);
+    memset(output, 0, bytes);
+
+    const __m512 zero = _mm512_setzero_ps();
+    const __m512i abs_mask = _mm512_set1_epi32(0x7fffffff);
+    const __m512 bins_f = _mm512_set1_ps((float)n_bins);
+    const __m512 max_f = _mm512_set1_ps(scale_max);
+    const __m512i last_bin = _mm512_set1_epi32((int)n_bins - 1);
+    const __m512i sign_value = _mm512_set1_epi32((int)n_bins);
+    uint64_t pos = 0u;
+    uint32_t i = 0u;
+    for (; i + 16u <= dim; i += 16u) {
+        const __m512 x = _mm512_loadu_ps(input + i);
+        const __m512 magnitude = _mm512_castsi512_ps(_mm512_and_si512(_mm512_castps_si512(x), abs_mask));
+        const __m512 product = _mm512_mul_ps(magnitude, bins_f);
+        const __m512 quotient = _mm512_div_ps(product, max_f);
+        const __m512i bin = _mm512_min_epi32(_mm512_cvttps_epi32(quotient), last_bin);
+        const __mmask16 negative = _mm512_cmp_ps_mask(x, zero, _CMP_LT_OQ);
+        const __m512i symbol = _mm512_mask_add_epi32(bin, (__mmask16)~negative, bin, sign_value);
+        uint32_t lanes[16];
+        _mm512_storeu_si512((void*)lanes, symbol);
+        for (uint32_t lane = 0u; lane < 16u; lane++) {
+            semqi_quant_pack_symbol(output, &pos, lanes[lane], bits);
+        }
+    }
+    for (; i < dim; i++) {
+        const float x = input[i];
+        const uint32_t bin = semq_quant_bin_of_magnitude(fabsf(x), scale_max, n_bins);
+        const uint32_t symbol = bin + ((x < 0.0f) ? 0u : n_bins);
+        semqi_quant_pack_symbol(output, &pos, symbol, bits);
+    }
+    return SEMQ_OK;
+}
+
+static semq_status_t quant_reconstruct_avx512(const semq_code_t* codes,
+                                              uint32_t dim, uint32_t n_bins,
+                                              float scale_max, double* output) {
+    return SEMQ_QUANT_SCALAR_BACKEND.reconstruct(codes, dim, n_bins, scale_max, output);
+}
+
+const semq_quant_backend_t SEMQ_QUANT_AVX512_BACKEND = {
+    .encode = quant_encode_avx512,
+    .reconstruct = quant_reconstruct_avx512,
+};
+
+#endif /* x86_64 */

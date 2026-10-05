@@ -1,0 +1,116 @@
+# Build the docs site and, once the SDK is launched, publish it to GitHub Pages.
+#
+# Publishing is gated behind the PUBLISH_DOCS repository variable: while the SDK
+# is private, pushes to main only build the site under --strict (validating
+# links and nav) and do NOT deploy, so nothing is exposed. To go live, re-enable
+# GitHub Pages for the repo and set the repository variable PUBLISH_DOCS to
+# "true"; then pushes to main deploy to https://the-semq-group.github.io/semq/.
+#
+# On pull requests the site always builds under --strict but never deploys — a
+# broken link or a missing nav page fails the build, which blocks the merge.
+
+name: docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+# A new push to a pull request cancels the run for its previous commit. Runs
+# on main and on tags are never cancelled.
+concurrency:
+  group: docs-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Only the deploy job can write to Pages.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build site
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: bindings/ts/package-lock.json
+
+      - name: Install TypeScript reference dependencies
+        run: npm ci --prefix bindings/ts
+
+      # .cache/plugin/privacy holds the fonts and scripts the privacy plugin
+      # downloads, so a build does not fetch them again.
+      - name: Cache dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/pip
+            .cache/plugin/privacy
+          key: docs-${{ hashFiles('mkdocs.yml', '.github/requirements/docs.txt') }}
+
+      # The C toolchain is needed to build the Python extension so mkdocstrings
+      # can import and introspect the SDK for the Python API reference page.
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake
+
+      - name: Install docs dependencies
+        run: |
+          python -m pip install --require-hashes -r .github/requirements/docs.txt
+          # Install the SDK so mkdocstrings can import + introspect it.
+          python -m pip install -e .
+
+      - name: Build site
+        run: mkdocs build --strict
+
+      # A private preview is available for every reviewed revision, even when
+      # Pages publication is intentionally disabled.
+      - name: Upload documentation preview
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sdk-docs-preview
+          path: site
+          retention-days: 14
+
+      - name: Upload artifact
+        if: github.ref == 'refs/heads/main' && vars.PUBLISH_DOCS == 'true'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    name: deploy site
+    needs: build
+    # Gated: only publishes once the SDK is launched (see the header comment).
+    if: github.ref == 'refs/heads/main' && vars.PUBLISH_DOCS == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    # One deployment at a time; a deployment in progress is never cancelled.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

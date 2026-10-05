@@ -1,0 +1,213 @@
+site_name: SEMQ SDK
+site_description: >-
+  Deterministic symbolic states for float32 vectors, with content-addressed
+  identities, diffs and rebuild gates, for Python, Rust, Go, and TypeScript/WebAssembly.
+site_url: https://the-semq-group.github.io/semq/
+site_author: The SEMQ Group Inc.
+copyright: Copyright &copy; 2026 The SEMQ Group Inc.
+
+repo_name: The-SEMQ-Group/semq
+repo_url: https://github.com/The-SEMQ-Group/semq
+edit_uri: edit/main/docs/
+hooks:
+  - tools/docs_api.py
+  - tools/docs_releases.py
+watch:
+  - CHANGELOG.md
+  - bindings/ts/src
+  - bindings/ts/typedoc.json
+
+
+# ---------------------------------------------------------------------
+# Theme
+# ---------------------------------------------------------------------
+
+theme:
+  name: material
+  language: en
+  logo: assets/images/semqgroup.png
+  favicon: assets/images/favicon.ico
+  font:
+    text: Geist
+    code: Geist Mono
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+  palette:
+    scheme: default
+    primary: white
+    accent: blue
+  features:
+    - navigation.path
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.tracking
+    - navigation.top
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - content.action.view
+    - content.tabs.link
+
+
+# ---------------------------------------------------------------------
+# Plugins
+# ---------------------------------------------------------------------
+
+plugins:
+  # Downloads the fonts and other external assets at build time and serves them
+  # from the site, so visitors' browsers make no requests to Google or a CDN.
+  - privacy
+  - search:
+      lang: en
+      # Find methods in qualified Python/Rust names; retain snake_case and versions.
+      separator: '[\s\-:]+|\.(?!\d)'
+  # Generate the Python reference from the installed binding and its docstrings.
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [bindings/python]
+          options:
+            show_root_heading: true
+            show_source: false
+            show_signature: true
+            show_signature_annotations: true
+            separate_signature: true
+            merge_init_into_class: true
+            docstring_style: google
+            docstring_section_style: table
+            show_docstring_examples: true
+            show_bases: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            heading_level: 2
+            members_order: source
+            filters:
+              - "!^_"       # hide private
+              - "!^ffi$"    # hide re-exported cffi symbols
+
+
+# ---------------------------------------------------------------------
+# Markdown extensions
+# ---------------------------------------------------------------------
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      permalink_title: Anchor link to this heading
+  - pymdownx.details
+  - pymdownx.highlight:
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+
+# ---------------------------------------------------------------------
+# Navigation
+# ---------------------------------------------------------------------
+
+nav:
+  - Home: index.md
+  - Get started:
+      - Installation: installation.md
+      - Quickstart: quickstart.md
+  - How-to guides:
+      - guides/index.md
+      - Gate a rebuild: guides/gate-a-rebuild.md
+      - Choose a configuration: guides/choosing-a-config.md
+  - Concepts:
+      - How SEMQ works: concepts.md
+      - Compatibility and migration: compatibility.md
+      - FAQ: faq.md
+  - Benchmarks:
+      - benchmarks/index.md
+      - Rebuild detection: benchmarks/rebuild.md
+      - Scale and portability: benchmarks/scale.md
+      - Retrieval quality in detail: guides/benchmark-results.md
+      - Methods and reproduction:
+          - Methodology: guides/benchmark-protocol.md
+          - Reproduce the results: guides/benchmark-datasets.md
+          - Cost scenarios: guides/cost-evaluation.md
+  - API reference:
+      - reference/index.md
+      - Python:
+          - Core API: reference/python.md
+          - Errors: reference/python-errors.md
+      - Rust:
+          - Core API: reference/rust.md
+          - Errors: reference/rust-errors.md
+      - Go:
+          - Core API: reference/go.md
+          - Errors: reference/go-errors.md
+      - TypeScript:
+          - Core API: reference/typescript.md
+          - Errors: reference/typescript-errors.md
+      - Command-line interface: reference/cli.md
+      - Core contracts: reference/contracts.md
+      - File format: reference/file-format.md
+  - Release history: releases.md
+  - Contribute: contributing.md
+
+# ---------------------------------------------------------------------
+# Build
+# ---------------------------------------------------------------------
+
+# The release runbook lives under docs/ for the repository, but it is
+# engineering-internal (it links to repo files by relative path) and is not
+# part of the published site. Keep it out of the build so the user-facing
+# docs stay a clean surface.
+exclude_docs: |
+  RELEASING.md
+  _build/
+
+# Make --strict enforce document, anchor, and navigation completeness.
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    anchors: warn
+    absolute_links: warn
+    unrecognized_links: warn
+
+
+# ---------------------------------------------------------------------
+# Extras
+# ---------------------------------------------------------------------
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/The-SEMQ-Group/semq
+
+extra_css:
+  - assets/stylesheets/extra.css
+extra_javascript:
+  - assets/javascripts/home.js
+  - assets/javascripts/home-geometry.js
+  - assets/javascripts/benchmarks.js
+  - assets/javascripts/benchmark-detail.js

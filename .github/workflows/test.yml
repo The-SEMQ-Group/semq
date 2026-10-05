@@ -1,0 +1,794 @@
+# PR / push validation: build the C library, run the C unit tests, build
+# a wheel via scikit-build-core, and run the Python tests against the
+# installed wheel. Designed to give fast feedback (≈ 4–6 minutes) without
+# the full release wheel matrix.
+#
+# The release wheel build (cp311..cp314 × linux x86_64/aarch64 ×
+# macos arm64 × windows amd64) is in .github/workflows/release.yml and runs
+# only on tag push.
+
+name: test
+
+on:
+  workflow_call:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # Weekly, so a new release of a tested dependency (the newest Python,
+  # numpy or cffi, a runner image) is caught here rather than in an
+  # unrelated pull request.
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+# Toolchains are pinned so every run, and every release, builds with the same
+# compilers: the WebAssembly module's bytes depend on the Emscripten version.
+# Bump them deliberately in a pull request; Dependabot does not track them.
+# The release workflow (release.yml) calls this one and declares the same
+# versions; tests/release checks that they match.
+env:
+  RUST_TOOLCHAIN: "1.99.0"
+  EMSDK_VERSION: "6.0.11"
+
+# A new push to a pull request cancels the run for its previous commit. Runs
+# on main and on tags are never cancelled.
+concurrency:
+  group: test-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # Static type gate. Runs the pragmatic mypy config in pyproject.toml
+  # (real-defect checks: attribute access, name resolution, argument
+  # types, None-safety) against the Python binding. Fast, no native
+  # build needed.
+  mypy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install mypy + typed deps
+        run: python -m pip install --require-hashes -r .github/requirements/lint.txt
+      - name: mypy
+        run: mypy
+
+  # Python lint with the rules in pyproject.toml. ruff is pinned in
+  # .github/requirements/lint.in because a new release can add findings.
+  ruff:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install ruff
+        run: python -m pip install --require-hashes -r .github/requirements/lint.txt
+      - name: ruff
+        run: ruff check --output-format=github .
+
+  # Static analysis of the C core with the checks in .clang-tidy. Each
+  # architecture compiles its own SIMD kernels (AVX2 and AVX-512 on x86_64,
+  # NEON and SVE on arm64), so both are analyzed. The version is pinned for
+  # the same reason as ruff's.
+  clang-tidy:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux-x86_64
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64
+    name: clang-tidy (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install clang-tidy and the build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake
+          python -m pip install --require-hashes -r .github/requirements/clang-tidy.txt
+      # Configuring is enough: clang-tidy reads the compile commands. The
+      # tests stay on so the fault-injection build of the core is analyzed too.
+      - name: Configure CMake
+        run: cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -B build
+      - name: clang-tidy
+        run: run-clang-tidy.py -p build -quiet "$PWD/src/"
+
+  # Execute Python examples in top-level pages and the published MkDocs site,
+  # including indented language tabs. Native jobs validate the other languages.
+  docs-snippets:
+    name: docs examples (python)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake
+
+      - name: Build + install Python wheel
+        run: pip install .
+
+      - name: Run documentation snippets
+        env:
+          PYTHONHASHSEED: "0"
+        run: |
+          pip install --require-hashes -r .github/requirements/test.txt
+          pytest tests/docs tests/release -q
+
+  test:
+    # bash everywhere, including Windows (Git Bash ships on the hosted
+    # Windows runner) — the multi-line steps below use backslash line
+    # continuations, which pwsh (Windows' default shell) does not
+    # interpret the same way.
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x86_64 — exercises the AVX2 / AVX-512 backends.
+          - os: ubuntu-24.04
+            platform: linux-x86_64
+            cmake_generator: "Ninja"
+            sanitizers: "ON"
+            backends: "scalar,avx2"
+          # Linux ARM64 — exercises the NEON backend and the C
+          # cross-arch bit-identity checks against the Linux x86_64
+          # runner above.
+          - os: ubuntu-24.04-arm
+            platform: linux-arm64
+            cmake_generator: "Ninja"
+            sanitizers: "ON"
+            backends: "scalar,neon"
+          # macOS ARM64 (Apple Silicon) — exercises the NEON backend
+          # under a different toolchain (Xcode Clang + system libc).
+          - os: macos-26
+            platform: macos-arm64
+            cmake_generator: "Ninja"
+            sanitizers: "ON"
+            backends: "scalar,neon"
+          # Windows x86_64 — exercises the AVX2 / AVX-512 backends
+          # under MSVC. Ninja + cl.exe rather than the Visual Studio
+          # generator: a VS-version-pinned generator string (e.g.
+          # "Visual Studio 17 2022") breaks whenever the runner image
+          # moves to a newer VS major (confirmed live — this runner
+          # already ships VS "18", not "17 2022").
+          # Ninja has no such version coupling; ilammy/msvc-dev-cmd
+          # below is what actually puts cl.exe/link.exe on PATH for
+          # it, defaulting to x64. Sanitizers stay off: the
+          # SEMQ_ENABLE_SANITIZERS option is unconditionally disabled
+          # for MSVC in CMakeLists.txt (no ASan/UBSan wiring for it
+          # yet), so passing ON here would be a no-op label, not a
+          # real signal.
+          - os: windows-2025-vs2026
+            platform: windows-x86_64
+            cmake_generator: "Ninja"
+            sanitizers: "OFF"
+            backends: "scalar,avx2"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    name: c and python (${{ matrix.platform }})
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Need full history so setuptools-scm can resolve the version
+          # from the latest tag.
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake
+
+      - name: Install build tools (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja cmake
+
+      # scikit-build-core (invoked by `pip install .` below) may pick
+      # Ninja over the Visual Studio generator even on Windows; Ninja
+      # needs cl.exe on PATH, which is not there by default outside a
+      # Developer Command Prompt. This sets it up for every later step
+      # in the job, covering both that path and the explicit
+      # Visual-Studio-generator CMake invocation below.
+      - name: Set up MSVC dev environment (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+
+      - name: Configure CMake (debug + sanitizers + tests)
+        run: |
+          cmake -G "${{ matrix.cmake_generator }}" \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -DSEMQ_BUILD_TESTS=ON \
+                -DSEMQ_ENABLE_SANITIZERS=${{ matrix.sanitizers }} \
+                -B build
+
+      - name: Build
+        # --config Debug is a no-op for Ninja (single-config — the
+        # build type is baked in at configure time via
+        # CMAKE_BUILD_TYPE above); kept so this step stays correct if
+        # a matrix entry ever switches to a multi-config generator.
+        run: cmake --build build --config Debug
+
+      - name: C unit tests (ctest)
+        run: ctest --test-dir build --output-on-failure -C Debug
+
+      # The conformance gate: regenerate every vector from this build, check
+      # the non-kernel vectors with the independent Python reference, and
+      # compare with the committed vectors. Runs on every architecture of the
+      # matrix so the kernel vectors are also cross-architecture identical.
+      - name: Conformance vectors
+        run: |
+          python tools/conformance.py \
+            "build/semq_vectors${{ runner.os == 'Windows' && '.exe' || '' }}"
+
+      - name: Build + install Python wheel
+        run: pip install .
+
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable branch
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+
+      - name: ABI signatures and native layouts
+        if: runner.os != 'Windows'
+        run: python tools/check_abi.py --probe "build/semq_abi${{ runner.os == 'Windows' && '.exe' || '' }}" --rust
+
+      - name: ABI signatures and native layouts (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: python tools/check_abi.py --probe build/semq_abi.exe --rust
+
+      - name: Python tests
+        env:
+          # The installed wheel ships libsemq next to the package; the
+          # binding's _candidate_paths() finds it without help. We still
+          # exclude the cross_platform suite — it has its own harness
+          # for AVX2/scalar parity that doesn't run as plain pytest.
+          PYTHONHASHSEED: "0"
+        run: |
+          pip install --require-hashes -r .github/requirements/test.txt
+          pytest tests/unit tests/property tests/integration tests/conformance \
+                 tests/reproducibility \
+                 --ignore=tests/integration/cross_platform \
+                 -q
+
+      # Run the Python surface and the conformance vectors against the
+      # SANITIZED shared library (built above with ASan + UBSan), not the
+      # Release wheel.
+      # The core picks its kernels from the CPU, and a forced backend the CPU
+      # lacks falls back to scalar. This runs the conformance vectors once per
+      # backend the runner really executes, fails if a required one is
+      # missing, and lists in the job summary which ones ran: AVX-512 and SVE
+      # run only on runners whose CPU has them.
+      - name: Conformance on every SIMD backend
+        env:
+          PYTHONHASHSEED: "0"
+        run: python tools/backends.py --run --expect "${{ matrix.backends }}"
+
+      # The ctest step already covers the C unit tests under sanitizers,
+      # but memory bugs reachable only through the Python API path would
+      # otherwise slip through, since the installed wheel is a Release
+      # build. Preloading the ASan runtime into the Python process and
+      # pointing the binding at build/libsemq.so closes that gap.
+      - name: Boundary tests under ASan/UBSan (Linux)
+        if: runner.os == 'Linux'
+        env:
+          SEMQ_LIBRARY_PATH: ${{ github.workspace }}/build/libsemq.so
+          # Python itself trips leak detection; we only care about the
+          # SDK's memory errors (OOB, use-after-free, UB), so disable
+          # leak reporting and halt the run on the first real error.
+          ASAN_OPTIONS: "detect_leaks=0:halt_on_error=1:abort_on_error=1"
+          UBSAN_OPTIONS: "halt_on_error=1:print_stacktrace=1"
+          PYTHONHASHSEED: "0"
+        run: |
+          ASAN_RT="$(gcc -print-file-name=libasan.so)"
+          echo "Preloading ASan runtime: $ASAN_RT"
+          LD_PRELOAD="$ASAN_RT" pytest \
+            tests/unit/test_python_core.py \
+            tests/conformance \
+            -q
+
+  # The Rust binding crate. Same four-platform matrix as the C/Python job,
+  # so the cross-arch guarantee covers Rust too (x86_64 and ARM64 link and
+  # link-check the same library). Builds the native library once in Release
+  # and points the crate at it via SEMQ_LIBRARY_PATH — the fast path, so the
+  # crate's own CMake fallback never runs here.
+  rust:
+    # No bash default here: on Windows the cargo steps must run in the default
+    # shell so rustc invokes MSVC's link.exe. Under Git bash, `/usr/bin/link`
+    # (a coreutils hard-link tool) shadows the MSVC linker and the build fails.
+    # Every step below is single-line or platform-guarded so it runs correctly
+    # in bash (Linux/macOS) and pwsh (Windows) alike.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04        # x86_64 (AVX2/AVX-512)
+            platform: linux-x86_64
+          - os: ubuntu-24.04-arm     # ARM64 (NEON) — cross-arch link check
+            platform: linux-arm64
+          - os: macos-26         # ARM64 + Apple toolchain
+            platform: macos-arm64
+          - os: windows-2025-vs2026       # MSVC link + import lib (phase risk)
+            platform: windows-x86_64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    name: rust (${{ matrix.platform }})
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install build tools (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake
+
+      - name: Install build tools (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ninja cmake
+
+      # Puts cl.exe / link.exe on PATH so the Ninja build finds the MSVC
+      # toolchain, and so rustc links against the import library it produces.
+      - name: Set up MSVC dev environment (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable branch
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: bindings/rust
+
+      # Release, not Debug: the crate links a production build of the library,
+      # and Release keeps the sanitizers (Debug-only) out of the picture.
+      - name: Configure the native library
+        run: cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DSEMQ_BUILD_TESTS=OFF -DSEMQ_BUILD_BENCHMARKS=OFF -B build-rust
+
+      - name: Build the native library
+        run: cmake --build build-rust --config Release
+
+      - name: rustfmt
+        working-directory: bindings/rust
+        run: cargo fmt --check
+
+      - name: clippy
+        working-directory: bindings/rust
+        env:
+          SEMQ_LIBRARY_PATH: ${{ github.workspace }}/build-rust
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      # Windows resolves the DLL at runtime from PATH (there is no rpath), so
+      # the test binaries need the build directory on it. Written with bash
+      # for the $GITHUB_PATH append; a plain echo does no linking, so Git
+      # bash is fine here.
+      - name: Add native library to PATH (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: echo "${{ github.workspace }}/build-rust" >> "$GITHUB_PATH"
+
+      # The test binaries load the shared library at runtime. A build-script
+      # rpath only reaches semq-sys's own tests, not the downstream semq crate,
+      # so point the loader at the build directory here (Windows uses PATH,
+      # added above).
+      - name: cargo test
+        working-directory: bindings/rust
+        env:
+          SEMQ_LIBRARY_PATH: ${{ github.workspace }}/build-rust
+          LD_LIBRARY_PATH: ${{ github.workspace }}/build-rust
+          DYLD_LIBRARY_PATH: ${{ github.workspace }}/build-rust
+        run: cargo test --all-features
+
+      - name: Run Rust documentation examples
+        if: matrix.os == 'ubuntu-24.04'
+        env:
+          SEMQ_LIBRARY_PATH: ${{ github.workspace }}/build-rust
+          LD_LIBRARY_PATH: ${{ github.workspace }}/build-rust
+        run: python tests/docs/run_native_snippets.py rust
+
+  # The Go binding. Same four-platform matrix as the C/Python/Rust jobs, so the
+  # cross-arch byte-identity guarantee covers Go too (x86_64 and ARM64 build and
+  # run the same parity fixtures). The module compiles its copy of the core
+  # (internal/core) with cgo, so nothing is built or configured first: this is
+  # what `go get` users run.
+  go:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04    # x86_64
+            platform: linux-x86_64
+            backends: "scalar avx2"
+          - os: ubuntu-24.04-arm # ARM64 — cross-arch fixture check
+            platform: linux-arm64
+            backends: "scalar neon"
+          - os: macos-26     # ARM64 + Apple toolchain
+            platform: macos-arm64
+            backends: "scalar neon"
+          - os: windows-2025-vs2026   # cgo via mingw gcc
+            platform: windows-x86_64
+            backends: "scalar avx2"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    name: go (${{ matrix.platform }})
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.21"
+
+      - name: gofmt
+        if: runner.os == 'Linux'
+        working-directory: bindings/go
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+
+      - name: go vet
+        working-directory: bindings/go
+        run: go vet ./...
+
+      - name: go test
+        working-directory: bindings/go
+        run: go test ./...
+
+      # Each kernel the runner's CPU has, forced in turn. TestInfo fails if
+      # the core fell back to another kernel instead of running the forced one.
+      - name: Conformance on every SIMD backend
+        working-directory: bindings/go
+        shell: bash
+        run: |
+          for backend in ${{ matrix.backends }}; do
+            echo "== $backend"
+            SEMQ_FORCE_BACKEND=$backend SEMQ_EXPECT_BACKEND=$backend \
+              go test -count=1 -run '^(TestConformance|TestInfo)$' .
+          done
+
+      # The job above runs the minimum Go in go.mod; this repeats the tests
+      # with the newest release, on Linux.
+      - name: Set up the newest Go
+        if: matrix.os == 'ubuntu-24.04'
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27"
+          cache: false
+      - name: go test (newest Go)
+        if: matrix.os == 'ubuntu-24.04'
+        working-directory: bindings/go
+        run: go version && go test ./...
+
+      - name: Run Go documentation examples
+        if: matrix.os == 'ubuntu-24.04'
+        run: python tests/docs/run_native_snippets.py go
+
+  # The oldest and newest Python the package supports. The oldest runs with
+  # the lowest numpy and cffi that pyproject.toml accepts, so the declared
+  # floors are tested, not assumed. The test job runs one Python on every
+  # platform; these run on Linux.
+  python-versions:
+    name: python (${{ matrix.support }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python: "3.11"
+            deps: lowest
+            support: oldest supported
+          - python: "3.14"
+            deps: newest
+            support: newest supported
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake
+      - name: Install the lowest supported numpy and cffi
+        if: matrix.deps == 'lowest'
+        run: python -m pip install "numpy==1.24.0" "cffi==1.16.0"
+      - name: Build and install the package
+        run: python -m pip install .
+      - name: Python tests
+        env:
+          PYTHONHASHSEED: "0"
+        run: |
+          python -m pip install --require-hashes -r .github/requirements/test.txt
+          python -m pip list | grep -E "^(numpy|cffi) "
+          pytest tests/unit tests/property tests/conformance tests/reproducibility -q
+
+  # The minimum Rust in rust-version (bindings/rust/*/Cargo.toml). The rust
+  # job builds with the pinned toolchain; this one proves the declared
+  # minimum still compiles and passes, with the newest compatible crates.
+  rust-minimum:
+    name: rust (minimum supported)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable branch
+        with:
+          toolchain: "1.77"
+      - name: Build the native library
+        run: |
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DSEMQ_BUILD_TESTS=OFF -DSEMQ_BUILD_BENCHMARKS=OFF -B build-rust
+          cmake --build build-rust --config Release
+      - name: cargo test
+        working-directory: bindings/rust
+        env:
+          SEMQ_LIBRARY_PATH: ${{ github.workspace }}/build-rust
+          LD_LIBRARY_PATH: ${{ github.workspace }}/build-rust
+        run: rustc --version && cargo test --all-features
+
+  # The TypeScript binding, compiled to WebAssembly via Emscripten. The wasm
+  # module is deterministic and architecture-independent, so a single build host
+  # is enough to hold the encoded output byte-identical to the native build;
+  # the shared parity fixtures are the cross-language check.
+  ts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    name: typescript
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake
+
+      - name: Set up Emscripten
+        uses: mymindstorm/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
+        with:
+          version: ${{ env.EMSDK_VERSION }}
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      - name: Install dependencies
+        working-directory: bindings/ts
+        run: npm ci
+
+      - name: Build the WebAssembly module
+        working-directory: bindings/ts
+        run: npm run build:wasm
+
+      - name: Typecheck
+        working-directory: bindings/ts
+        run: npm run typecheck
+
+      - name: Lint
+        working-directory: bindings/ts
+        run: npm run lint
+
+      - name: Test
+        working-directory: bindings/ts
+        run: npm test
+
+      # The steps above run the minimum Node in package.json engines; this
+      # repeats the tests on the newest LTS with the same WebAssembly build.
+      - name: Set up the newest Node LTS
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "26"
+      - name: Test (newest Node LTS)
+        working-directory: bindings/ts
+        run: node --version && npm test
+
+      - name: Build package for documentation examples
+        working-directory: bindings/ts
+        run: |
+          npm run build:ts
+          mkdir -p dist/wasm
+          cp src/wasm/semq.mjs src/wasm/semq.wasm dist/wasm/
+
+      # publint checks the package layout and exports; attw checks that the
+      # type declarations resolve under Node and bundlers.
+      - name: Check the npm package
+        working-directory: bindings/ts
+        run: npm run check:package
+
+      - name: Run TypeScript documentation examples
+        run: python tests/docs/run_native_snippets.py typescript
+
+  # The Google Benchmark suite in tests/bench is off by default, so nothing
+  # else here compiles it. Build it in Release against the public ABI and
+  # run it under a small filter: the numbers are not recorded, the point is
+  # that the target still builds and every registered benchmark still runs.
+  bench:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    name: c benchmark smoke
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake
+
+      - name: Configure CMake (release + benchmarks)
+        run: |
+          cmake -G Ninja -DCMAKE_BUILD_TYPE=Release \
+                -DSEMQ_BUILD_TESTS=OFF \
+                -DSEMQ_BUILD_BENCHMARKS=ON \
+                -DSEMQ_ENABLE_SANITIZERS=OFF \
+                -B build-bench
+
+      - name: Build bench_encode
+        run: cmake --build build-bench --target bench_encode
+
+      # One and one thousand rows of every operation, operator and backend
+      # the runner has, at the shortest run time; about ten seconds.
+      - name: Smoke-run bench_encode
+        run: |
+          ./build-bench/bench_encode \
+            --benchmark_min_time=0.01s \
+            --benchmark_filter='rows:(1|1000)(/|$)' \
+            --benchmark_format=json \
+            --benchmark_out=bench-smoke.json
+          python3 - <<'PY'
+          import json
+          report = json.load(open("bench-smoke.json"))
+          runs = report["benchmarks"]
+          failed = [b["name"] for b in runs if b.get("error_occurred")]
+          assert runs, "no benchmark ran"
+          assert not failed, f"benchmarks reported errors: {failed}"
+          print(f"{len(runs)} benchmarks ran, {sum(1 for b in runs if 'skipped' in b)} skipped")
+          PY
+
+  reader-fuzz:
+    name: fuzz file reader
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build instrumented reader and core
+        run: |
+          cmake -S . -B build-fuzz -G Ninja -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSEMQ_BUILD_TESTS=OFF \
+            -DSEMQ_BUILD_FUZZ=ON -DSEMQ_ENABLE_SANITIZERS=ON
+          cmake --build build-fuzz --target fuzz_load
+      - name: Seed and fuzz the reader
+        env:
+          ASAN_OPTIONS: detect_leaks=1:halt_on_error=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: |
+          mkdir -p fuzz-corpus fuzz-artifacts
+          python3 - <<'PYSEED'
+          from pathlib import Path
+          import hashlib
+          for path in Path('tests/conformance').rglob('*.semq'):
+              data = path.read_bytes()
+              (Path('fuzz-corpus') / hashlib.sha256(data).hexdigest()).write_bytes(data)
+          PYSEED
+          build-fuzz/fuzz_load fuzz-corpus -max_total_time=60 -timeout=5 \
+            -max_len=4194304 -rss_limit_mb=1024 -artifact_prefix=fuzz-artifacts/
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: reader-fuzz-failures
+          path: fuzz-artifacts/
+
+  package-artifacts:
+    name: package artifacts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable branch
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: mymindstorm/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
+        with:
+          version: ${{ env.EMSDK_VERSION }}
+      - name: Install packaging tools
+        run: |
+          python -m pip install --require-hashes -r .github/requirements/release.txt
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake
+          npm ci --prefix bindings/ts
+      - name: Build emitted TypeScript package
+        run: npm run build --prefix bindings/ts
+      - name: Build publication artifacts
+        run: python tools/package_artifacts.py "$RUNNER_TEMP/semq-artifacts"
+      # docs.rs builds the published crates without network access, with
+      # DOCS_RS set. Do the same with the packaged crates, so a crate that
+      # would publish without documentation fails here instead.
+      - name: Build the crates' documentation as docs.rs does
+        run: |
+          work="$RUNNER_TEMP/docsrs"
+          mkdir -p "$work/.cargo" && cd "$work"
+          for crate in "$RUNNER_TEMP"/semq-artifacts/*.crate; do tar -xzf "$crate"; done
+          version=$(python -c "import json, sys; print(json.load(open(sys.argv[1]))['rust_version'])" "$RUNNER_TEMP/semq-artifacts/artifacts.json")
+          printf '[workspace]\nresolver = "2"\nmembers = ["semq-sys-%s", "semq-%s"]\n\n[patch.crates-io]\nsemq-sys = { path = "semq-sys-%s" }\n' "$version" "$version" "$version" > Cargo.toml
+          cargo vendor --quiet vendor > /dev/null
+          printf '[source.crates-io]\nreplace-with = "vendored-sources"\n\n[source.vendored-sources]\ndirectory = "vendor"\n' > .cargo/config.toml
+          DOCS_RS=1 RUSTDOCFLAGS="-D warnings" cargo doc --offline --no-deps -p semq-sys -p semq
+
+      # Checks the metadata PyPI renders, including the README.
+      - name: Check the Python distributions
+        run: |
+          python -m twine check --strict "$RUNNER_TEMP"/semq-artifacts/*.whl "$RUNNER_TEMP"/semq-artifacts/semq-[0-9]*.tar.gz
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: consumer-artifacts
+          path: ${{ runner.temp }}/semq-artifacts/
+          if-no-files-found: error
+
+  external-consumers:
+    name: external consumers
+    needs: package-artifacts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # No checkout and no native library from another job. The only SDK files
+    # on this host are the exact wheel, .crate, Go module and npm payloads.
+    steps:
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.21"
+          cache: false
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable branch
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: consumer-artifacts
+          path: bundle
+      - name: Run consumers without the checkout
+        run: python bundle/run_artifacts.py "$RUNNER_TEMP/semq-consumers"

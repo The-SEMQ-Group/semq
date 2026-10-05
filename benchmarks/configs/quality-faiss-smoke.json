@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "suite": "codec_quality",
+  "seed": 20260921,
+  "k": [
+    10,
+    100
+  ],
+  "query_batch_size": 8,
+  "synthetic": {
+    "corpus_rows": 512,
+    "fit_rows": 1024,
+    "query_rows": 32,
+    "dim": 32
+  },
+  "methods": [
+    {
+      "id": "fp32",
+      "name": "fp32"
+    },
+    {
+      "id": "fp16",
+      "name": "fp16"
+    },
+    {
+      "id": "bf16",
+      "name": "bf16"
+    },
+    {
+      "id": "int8_row",
+      "name": "int8_symmetric_per_row"
+    },
+    {
+      "id": "uint8_dimension",
+      "name": "uint8_affine_per_dimension"
+    },
+    {
+      "id": "quant2",
+      "name": "semq_quant",
+      "bits": 2
+    },
+    {
+      "id": "pq2",
+      "name": "faiss_pq",
+      "subquantizers": 16,
+      "bits": 4,
+      "seed": 20260921
+    },
+    {
+      "id": "phase16",
+      "name": "semq_phase",
+      "sectors": 16
+    },
+    {
+      "id": "orbit50",
+      "name": "semq_orbit",
+      "scale": 50
+    },
+    {
+      "id": "binary_sign",
+      "name": "binary_sign"
+    },
+    {
+      "id": "sq4",
+      "name": "faiss_sq",
+      "bits": 4
+    },
+    {
+      "id": "sq8",
+      "name": "faiss_sq",
+      "bits": 8
+    },
+    {
+      "id": "opq2",
+      "name": "faiss_opq",
+      "subquantizers": 16,
+      "bits": 4,
+      "seed": 20260921,
+      "iterations": 20
+    },
+    {
+      "id": "rabitq1",
+      "name": "faiss_rabitq",
+      "bits": 1,
+      "seed": 20260921
+    },
+    {
+      "id": "rabitq2",
+      "name": "faiss_rabitq",
+      "bits": 2,
+      "seed": 20260921
+    },
+    {
+      "id": "rabitq4",
+      "name": "faiss_rabitq",
+      "bits": 4,
+      "seed": 20260921
+    },
+    {
+      "id": "turboquant_mse2",
+      "name": "faiss_turboquant_mse",
+      "bits": 2,
+      "seed": 20260921
+    },
+    {
+      "id": "turboquant_mse4",
+      "name": "faiss_turboquant_mse",
+      "bits": 4,
+      "seed": 20260921
+    },
+    {
+      "id": "quant4",
+      "name": "semq_quant",
+      "bits": 4
+    },
+    {
+      "id": "quant_default",
+      "name": "semq_quant"
+    }
+  ],
+  "method_scoring": true,
+  "direction_scoring": true
+}

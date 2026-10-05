@@ -1,0 +1,665 @@
+# Build, verify and publish the SDK from one version tag on main.
+#
+# Tags:
+#   vX.Y.Z        a release: PyPI, crates.io, npm and the Go module tag
+#   vX.Y.Z-rc.N   a release candidate: published as a pre-release, so no
+#                 installer picks it by default (pip --pre, npm tag "next",
+#                 an explicit cargo or Go version)
+#
+# While the repository is private, only release candidates run, and they go
+# to AWS CodeArtifact (Python and npm). A final release needs the public
+# repository, because the Go module must resolve through proxy.golang.org.
+#
+# Every tag runs the same pipeline: version checks, the test suite, the
+# package builds, and external consumers that install the packages without a
+# checkout. Publication starts only after all of them pass. Registries are
+# immutable and not transactional: if one publish fails, release a new
+# version instead of reusing this one.
+#
+# Prepare a version with `python tools/version.py set X.Y.Z[-rc.N]` in a pull
+# request; see docs/RELEASING.md.
+#
+# Rehearsal: run this workflow by hand on any branch to exercise the whole
+# pipeline at the declared version, without tag checks, attestations,
+# publication or a GitHub Release. Use it to test changes to this workflow.
+
+name: release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"
+  workflow_dispatch:
+
+# One release at a time per ref, and never cancelled: a half-published
+# release must finish or fail on its own.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+# Toolchains are pinned so every run, and every release, builds with the same
+# compilers: the WebAssembly module's bytes depend on the Emscripten version.
+# Bump them deliberately in a pull request; Dependabot does not track them.
+# The test suite this workflow calls (test.yml) declares the same versions;
+# tests/release checks that they match.
+env:
+  RUST_TOOLCHAIN: "1.99.0"
+  EMSDK_VERSION: "6.0.11"
+
+# Read-only by default. The jobs that sign, assume a role or publish request
+# id-token (OIDC: AWS, PyPI, crates.io, npm provenance, Sigstore) and, for
+# attestations, attestations: write; the jobs that push a tag or create the
+# GitHub Release request contents: write.
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      python_version: ${{ steps.version.outputs.python_version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      npm_tag: ${{ steps.version.outputs.npm_tag }}
+      public: ${{ steps.channels.outputs.public }}
+      codeartifact: ${{ steps.channels.outputs.codeartifact }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Resolve the version (a tag is checked against every declaration and the changelog)
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ]; then
+            python tools/version.py current --github-output "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python tools/version.py check "$TAG" --github-output "$GITHUB_OUTPUT"
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo 'The tag must point to a commit on main'; exit 1; }
+      - name: Choose the publication channels
+        id: channels
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+          RELEASE_PUBLISH_ENABLED: ${{ vars.RELEASE_PUBLISH_ENABLED }}
+          NPM_TRUSTED_PUBLISHING: ${{ vars.NPM_TRUSTED_PUBLISHING }}
+          CRATES_TRUSTED_PUBLISHING: ${{ vars.CRATES_TRUSTED_PUBLISHING }}
+          NPM_BOOTSTRAP_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+          CODEARTIFACT_DOMAIN: ${{ vars.CODEARTIFACT_DOMAIN }}
+          CODEARTIFACT_PUBLISH_ENABLED: ${{ vars.CODEARTIFACT_PUBLISH_ENABLED }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = workflow_dispatch ]; then
+            echo "Rehearsal: nothing is published."
+            echo "public=false" >> "$GITHUB_OUTPUT"
+            echo "codeartifact=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$REPOSITORY_PRIVATE" = true ]; then
+            test "$PRERELEASE" = true || { echo 'A final release needs the public repository. Tag vX.Y.Z-rc.N to publish a release candidate to CodeArtifact.'; exit 1; }
+            test -n "$CODEARTIFACT_DOMAIN" || { echo 'Configure the CodeArtifact variables to publish a private release candidate'; exit 1; }
+            echo "public=false" >> "$GITHUB_OUTPUT"
+            echo "codeartifact=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          test "$RELEASE_PUBLISH_ENABLED" = true || { echo 'Set RELEASE_PUBLISH_ENABLED=true after configuring all registries'; exit 1; }
+          test "$NPM_TRUSTED_PUBLISHING" = true || test -n "$NPM_BOOTSTRAP_TOKEN" || { echo 'Configure npm trusted publishing or NPM_PUBLISH_TOKEN'; exit 1; }
+          test "$CRATES_TRUSTED_PUBLISHING" = true || { echo 'Configure crates.io trusted publishing for semq and semq-sys, then set CRATES_TRUSTED_PUBLISHING=true'; exit 1; }
+          go_tag="bindings/go/v${VERSION}"
+          go_target="$(git ls-remote --tags origin "refs/tags/${go_tag}" | cut -f1)"
+          test -z "$go_target" || test "$go_target" = "$GITHUB_SHA" || { echo "Go tag ${go_tag} points to another commit"; exit 1; }
+          echo "public=true" >> "$GITHUB_OUTPUT"
+          if [ "$CODEARTIFACT_PUBLISH_ENABLED" = true ] && [ -n "$CODEARTIFACT_DOMAIN" ]; then
+            echo "codeartifact=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "codeartifact=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  test-suite:
+    name: test suite
+    needs: preflight
+    uses: ./.github/workflows/test.yml
+
+  build-wheels:
+    needs: preflight
+    name: wheel (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            archs: "x86_64"
+            platform: linux-x86_64
+          - os: ubuntu-24.04
+            archs: "aarch64"     # runs under QEMU on x86_64 runner — slower
+            platform: linux-arm64
+          - os: macos-26         # Apple Silicon, the image the tests run on
+            archs: "arm64"
+            platform: macos-arm64
+          # macOS Intel (x86_64) is intentionally excluded. GitHub deprecated
+          # the macos-13 hosted runner in 2024 and Apple stopped shipping
+          # Intel Macs in 2022; queue times for the runner are now in the
+          # multi-hour range and getting worse. Users still on Intel macOS
+          # can install from the sdist: `pip install --no-binary semq semq`.
+          # If demand materialises, restore via cross-compile from macos-26
+          # with CIBW_ARCHS=x86_64.
+          - os: windows-2025-vs2026
+            archs: "AMD64"
+            platform: windows-x86_64
+            # Windows ARM64 is not built: no ARM64 SIMD backend exists for
+            # Windows to verify byte identity against.
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up QEMU (Linux aarch64 emulation)
+        if: matrix.os == 'ubuntu-24.04' && matrix.archs == 'aarch64'
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm64
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@e090b81e30c4d855ea63bf4b6e59204c09a101ae # v4.2.1
+        env:
+          CIBW_ARCHS: ${{ matrix.archs }}
+          CIBW_ENVIRONMENT: SETUPTOOLS_SCM_PRETEND_VERSION_FOR_SEMQ=${{ needs.preflight.outputs.python_version }}
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: wheels-${{ matrix.platform }}
+          path: ./wheelhouse/*.whl
+
+  build-sdist:
+    needs: preflight
+    name: source distribution
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      - name: Build sdist
+        env:
+          SETUPTOOLS_SCM_PRETEND_VERSION_FOR_SEMQ: ${{ needs.preflight.outputs.python_version }}
+        run: |
+          python -m pip install --require-hashes -r .github/requirements/release.txt
+          python -m build --sdist
+
+      - name: Upload sdist
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sdist
+          path: ./dist/*.tar.gz
+
+  collect:
+    name: collect release artifacts
+    needs: [preflight, build-wheels, build-sdist]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # Needed so attest-build-provenance can request an OIDC token and
+    # write the signed attestation.
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+
+      # Only this workflow's wheels and sdist. The test suite it calls
+      # uploads artifacts to the same run, including development builds.
+      - name: Download the wheels
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: wheels-*
+          path: dist
+          merge-multiple: true
+      - name: Download the sdist
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: sdist
+          path: dist
+
+      - name: Show what was produced
+        run: ls -lh dist/
+
+      # Everything in dist/ is published: it must be this version's sdist and
+      # wheels, and nothing else.
+      - name: Check the release set
+        env:
+          PYTHON_VERSION: ${{ needs.preflight.outputs.python_version }}
+        run: |
+          shopt -s nullglob
+          wheels=(dist/semq-"$PYTHON_VERSION"-*.whl)
+          test -f "dist/semq-$PYTHON_VERSION.tar.gz" || { echo "missing the sdist for $PYTHON_VERSION"; exit 1; }
+          test "${#wheels[@]}" -gt 0 || { echo "no wheels for $PYTHON_VERSION"; exit 1; }
+          for path in dist/*; do
+            case "$(basename "$path")" in
+              "semq-$PYTHON_VERSION.tar.gz" | "semq-$PYTHON_VERSION-"*.whl) ;;
+              *) echo "unexpected file in the release set: $path"; exit 1 ;;
+            esac
+          done
+
+      # Checks the metadata PyPI renders, including the README.
+      - name: Check the Python distributions
+        run: |
+          python -m pip install --require-hashes -r .github/requirements/release.txt
+          python -m twine check --strict dist/*.whl dist/*.tar.gz
+
+      # --- Software Bill of Materials -----------------------------------
+      # Install the freshly-built wheel into a clean venv and emit a
+      # CycloneDX SBOM of the actual runtime dependency closure (exact
+      # versions + licenses). Shipped alongside the wheels so a
+      # compliance team can answer "am I exposed to CVE-X?" without
+      # installing anything.
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          python -m venv /tmp/sbomenv
+          # Install the published Linux x86_64 wheel, so the SBOM describes
+          # the shipped artifact and its real dependency versions. No sdist
+          # fallback: that would describe a different build. cyclonedx-py
+          # (installed above, from release.txt) runs outside that venv, so
+          # the SBOM lists only the SDK and its runtime dependencies.
+          /tmp/sbomenv/bin/pip install dist/*-manylinux*_x86_64*.whl
+          cyclonedx-py environment /tmp/sbomenv \
+            --output-format JSON \
+            --output-file dist/semq.sbom.cdx.json
+          echo "SBOM components:"
+          python -c "import json;d=json.load(open('dist/semq.sbom.cdx.json'));print(len(d.get('components',[])),'components')"
+
+      # --- Build provenance attestation ---------------------------------
+      # Sigstore keyless-signs a SLSA build-provenance statement binding
+      # every wheel + sdist to this exact workflow run. Registry-agnostic
+      # (works with CodeArtifact); consumers verify with
+      #   gh attestation verify <file> \
+      #     --repo The-SEMQ-Group/semq \
+      #     --signer-workflow The-SEMQ-Group/semq/.github/workflows/release.yml
+      # (--signer-workflow pins the attestation to this workflow file, so an
+      # attestation minted by any other workflow in the repo fails to verify.)
+      #
+      # Gated on repository visibility: GitHub's attestation store is not
+      # available to private repositories on this billing plan, so the step
+      # would fail with "Feature not available". It activates automatically
+      # the moment the repository goes public — no workflow change needed.
+      - name: Attest build provenance
+        if: ${{ !github.event.repository.private && github.event_name == 'push' }}
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: "dist/*.whl, dist/*.tar.gz"
+
+      # Run the exact command we tell consumers to run, so a release
+      # fails here if the attestation or the signer identity ever
+      # breaks. Same-run check only: this is a regression guard for
+      # the documented command, not an independent trust decision.
+      - name: Verify attestations (smoke test)
+        if: ${{ !github.event.repository.private && github.event_name == 'push' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for f in dist/*.whl dist/*.tar.gz; do
+            gh attestation verify "$f" \
+              --repo "${{ github.repository }}" \
+              --signer-workflow "${{ github.repository }}/.github/workflows/release.yml"
+          done
+
+      - name: Re-upload combined dist/ (wheels + sdist + SBOM) for downstream jobs
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-dist
+          path: dist/
+
+  # The Linux wheel's AVX-512 kernels on a real Intel CPU, before anything is
+  # published. A rehearsal skips it with a warning while the AWS role is not
+  # configured; a release tag requires it.
+  avx512:
+    name: AVX-512 gate
+    needs: [preflight, collect]
+    uses: ./.github/workflows/avx512.yml
+    with:
+      from-release: true
+      required: ${{ github.event_name == 'push' }}
+    secrets: inherit
+    permissions:
+      contents: read
+      id-token: write
+
+  package-artifacts:
+    name: package artifacts
+    needs: [preflight, test-suite]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable branch
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: mymindstorm/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
+        with:
+          version: ${{ env.EMSDK_VERSION }}
+      - name: Install packaging tools
+        run: |
+          python -m pip install --require-hashes -r .github/requirements/release.txt
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake
+          npm ci --prefix bindings/ts
+      - name: Build TypeScript package
+        run: npm run build --prefix bindings/ts
+      - name: Build publication payloads
+        env:
+          SETUPTOOLS_SCM_PRETEND_VERSION_FOR_SEMQ: ${{ needs.preflight.outputs.python_version }}
+        run: python tools/package_artifacts.py "$RUNNER_TEMP/semq-artifacts"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-payloads
+          path: ${{ runner.temp }}/semq-artifacts/
+          if-no-files-found: error
+
+  external-consumers:
+    name: external consumers
+    needs: package-artifacts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # No checkout: these are the publication payloads, not editable source.
+    steps:
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.21"
+          cache: false
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable branch
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-payloads
+          path: bundle
+      - name: Run all four consumers
+        run: python bundle/run_artifacts.py "$RUNNER_TEMP/semq-consumers"
+
+  publish-codeartifact:
+    # Release candidates from the private repository, and public releases
+    # when CODEARTIFACT_PUBLISH_ENABLED=true. Publishes the Python and npm
+    # packages that passed the external consumers.
+    name: publish to CodeArtifact
+    needs: [preflight, collect, external-consumers, avx512]
+    if: needs.preflight.outputs.codeartifact == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: codeartifact-release
+    permissions:
+      contents: read
+      id-token: write   # assumes the CodeArtifact role through OIDC
+    steps:
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: .github/requirements
+      - name: Install twine
+        run: python -m pip install --require-hashes -r .github/requirements/release.txt
+      - name: Download release artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-dist
+          path: dist
+      - name: Download consumer artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-payloads
+          path: bundle
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Upload wheels + sdist
+        env:
+          DOMAIN: ${{ vars.CODEARTIFACT_DOMAIN }}
+          REPO: ${{ vars.CODEARTIFACT_REPOSITORY }}
+          OWNER: ${{ vars.CODEARTIFACT_DOMAIN_OWNER }}
+        # Explicit globs: dist/ also carries the SBOM, which twine rejects.
+        run: |
+          aws codeartifact login --tool twine --domain "$DOMAIN" --domain-owner "$OWNER" --repository "$REPO"
+          twine upload --repository codeartifact dist/*.whl dist/*.tar.gz
+      - name: Upload the npm package
+        env:
+          DOMAIN: ${{ vars.CODEARTIFACT_DOMAIN }}
+          REPO: ${{ vars.CODEARTIFACT_REPOSITORY }}
+          OWNER: ${{ vars.CODEARTIFACT_DOMAIN_OWNER }}
+          VERSION: ${{ needs.preflight.outputs.version }}
+          NPM_TAG: ${{ needs.preflight.outputs.npm_tag }}
+        run: |
+          aws codeartifact login --tool npm --domain "$DOMAIN" --domain-owner "$OWNER" --repository "$REPO" --namespace @semq
+          npm publish "bundle/semq-sdk-${VERSION}.tgz" --tag "$NPM_TAG"
+
+  publish-pypi:
+    name: publish to PyPI
+    needs: [preflight, collect, external-consumers, avx512]
+    if: needs.preflight.outputs.public == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # PyPI trusts this workflow and the pypi-release environment via OIDC.
+    # A release candidate is a PEP 440 pre-release (X.Y.ZrcN): pip installs
+    # it only with --pre or an explicit version.
+    environment: pypi-release
+    permissions:
+      id-token: write
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-dist
+          path: dist
+      - name: Stage only wheels + sdist for upload
+        run: |
+          mkdir -p dist_pypi
+          cp dist/*.whl dist/*.tar.gz dist_pypi/
+          ls -lh dist_pypi/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: dist_pypi/
+
+  publish-crates:
+    name: publish semq-sys and semq to crates.io
+    needs: [preflight, collect, external-consumers, avx512]
+    if: needs.preflight.outputs.public == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: crates-release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable branch
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-payloads
+          path: bundle
+      - name: Repackage the verified sources and compare bytes
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          mkdir source
+          tar -xzf bundle/semq-rust-source.tar.gz -C source
+          cargo package --manifest-path source/rust/Cargo.toml --workspace --allow-dirty --no-verify
+          for crate in semq-sys semq; do
+            cmp "source/rust/target/package/${crate}-${VERSION}.crate" "bundle/${crate}-${VERSION}.crate"
+          done
+      - name: Authenticate with crates.io using OIDC
+        id: crates_auth
+        uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1.0.5
+      - name: Publish semq-sys, then semq
+        # semq depends on the exact semq-sys version, so semq-sys goes first.
+        # A rerun skips a crate version that is already on crates.io.
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.crates_auth.outputs.token }}
+        run: |
+          for crate in semq-sys semq; do
+            if curl -fsS -A "semq-release (github.com/The-SEMQ-Group/semq)" \
+                "https://crates.io/api/v1/crates/${crate}/${VERSION}" > /dev/null 2>&1; then
+              echo "${crate} ${VERSION} is already published"
+              continue
+            fi
+            cargo publish --manifest-path source/rust/Cargo.toml -p "$crate" --allow-dirty --no-verify
+          done
+
+  publish-npm:
+    name: publish @semq/sdk to npm
+    needs: [preflight, collect, external-consumers, avx512]
+    if: needs.preflight.outputs.public == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: npm-release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+      - name: Require npm Trusted Publishing capable CLI
+        run: npm install --global npm@11.21.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-payloads
+          path: bundle
+      - name: Publish tested tarball
+        # A release candidate goes to the "next" dist-tag, never "latest".
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+          NPM_TAG: ${{ needs.preflight.outputs.npm_tag }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        # --provenance signs a Sigstore attestation of this workflow run,
+        # which npm shows on the package page; it needs the public repository.
+        run: npm publish "bundle/semq-sdk-${VERSION}.tgz" --access public --tag "$NPM_TAG" --provenance
+
+  publish-go:
+    name: tag Go module
+    needs: [preflight, publish-pypi, publish-crates, publish-npm]
+    if: needs.preflight.outputs.public == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.21"
+          cache: false
+      - name: Tag the module at the exact release commit
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          tag="bindings/go/v${VERSION}"
+          target="$(git rev-parse HEAD)"
+          existing="$(git ls-remote --tags origin "refs/tags/${tag}" | cut -f1)"
+          if [ -n "$existing" ] && [ "$existing" != "$target" ]; then
+            echo "Go tag ${tag} already points to another commit" >&2
+            exit 1
+          fi
+          if [ -z "$existing" ]; then
+            git tag "$tag" "$target"
+            git push origin "refs/tags/${tag}"
+          fi
+      - name: Confirm the public Go proxy resolves the module version
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+          GOPROXY: https://proxy.golang.org
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if go list -m "github.com/The-SEMQ-Group/semq/bindings/go@v${VERSION}"; then
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+
+  github-release:
+    # Record the version as a GitHub Release once every selected channel has
+    # published. The notes are the version's section of CHANGELOG.md. The
+    # gates are listed too: a failed gate skips the publish jobs, and a
+    # skipped job alone would not stop this one.
+    name: create the GitHub Release
+    needs: [preflight, collect, external-consumers, avx512, publish-codeartifact, publish-pypi, publish-crates, publish-npm, publish-go]
+    if: >-
+      always()
+      && github.event_name == 'push'
+      && needs.preflight.result == 'success'
+      && !contains(needs.*.result, 'failure')
+      && !contains(needs.*.result, 'cancelled')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-dist
+          path: dist
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.preflight.outputs.version }}
+          PRERELEASE: ${{ needs.preflight.outputs.prerelease }}
+        run: |
+          python tools/version.py notes "$VERSION" > notes.md
+          flags=()
+          if [ "$PRERELEASE" = true ]; then flags+=(--prerelease --latest=false); fi
+          gh release create "$TAG" dist/* --verify-tag --title "SEMQ SDK ${VERSION}" \
+            --notes-file notes.md "${flags[@]}"

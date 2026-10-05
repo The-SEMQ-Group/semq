@@ -1,0 +1,113 @@
+# C / C++ build artefacts
+*.o
+*.obj
+*.lo
+*.la
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exp
+*.pdb
+*.ilk
+*.exe
+
+# Assembly
+*.s
+*.S.o
+
+# CMake
+build/
+build-*/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+CTestTestfile.cmake
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+_deps/
+
+# Ninja
+.ninja_deps
+.ninja_log
+
+# Coverage
+*.gcno
+*.gcda
+*.gcov
+coverage/
+*.lcov
+
+# Sanitizer / valgrind
+# NOTE: bare `core` (Unix core dump filename) was previously ignored too,
+# but it matched the `src/core/` source directory and dropped the entire
+# SIMD backend tree from commits, and `core.*` matched any core.md page.
+# Modern kernels write `core.<pid>`, so the numeric suffix is enough.
+*.log
+core.[0-9]*
+vgcore.[0-9]*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg
+*.egg-info/
+.eggs/
+*.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.cache/
+.hypothesis/
+dist/
+wheels/
+*.whl
+
+# Virtualenv
+.venv/
+.venv-*/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+.vs/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Local overrides
+.env
+.env.local
+local.config
+
+# Documentation builds
+docs/_build/
+site/
+
+# Assistant + IDE local state
+.claude/
+# scale suite benchmark results — committed only when publishing
+tests/scale/results/*.json
+
+site/
+
+# Local Claude Code contributor/instructions file — not part of the repo
+CLAUDE.md
+
+# Reproducible benchmark runs and external datasets remain local.
+/benchmarks/results/
+/benchmarks/data/

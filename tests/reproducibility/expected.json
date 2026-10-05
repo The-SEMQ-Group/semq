@@ -1,0 +1,67 @@
+{
+  "configs": {
+    "semq_orbit50": {
+      "config": {
+        "dim": 384,
+        "operator": "orbit",
+        "parameter": 50
+      },
+      "content_digest": "00da540a460457bf9a84174ae60faebe29abf0b99cfcb289302d6a1aeb7b80df",
+      "file_sha256": "283af8589ffda052f97b5d6d68d2de66c1a40ff6a15da411b4ce16a2ca024908",
+      "file_size": 400107,
+      "state_id": "1eef30a86ae76c1ee2aa9c7b206220bb055a1cf6359f75797dcffd4b9d53f94c"
+    },
+    "semq_phase16": {
+      "config": {
+        "dim": 384,
+        "operator": "phase",
+        "parameter": 16
+      },
+      "content_digest": "b39dec4ad14b51448e1e1601a8af5978d9dbf651cfdcbd0d935b90ff175a3c1e",
+      "file_sha256": "2f2f5907326ff7f4ccebb99c968955393e37fcd8757eb8bcacc8a3c667e3bb57",
+      "file_size": 112107,
+      "state_id": "7a16881c4d64e7332f28a764bc9c7dd85351cd065278ff7ce8884a75749c816f"
+    },
+    "semq_quant2": {
+      "config": {
+        "dim": 384,
+        "operator": "quant",
+        "parameter": 2
+      },
+      "content_digest": "8d28452b66b51a8524d30181ed6240a73a8ae0b5e26a8e87e2cbd46f552d0a79",
+      "file_sha256": "6859dd20f46448276f422d717eb77ef864ac42b7f5dfa6030e13fde5b0f46465",
+      "file_size": 112107,
+      "state_id": "ad47a8e23bb97a71837a4d6f2c92eba84eb0aedd7f8a284947859656a48019cf"
+    },
+    "semq_quant4": {
+      "config": {
+        "dim": 384,
+        "operator": "quant",
+        "parameter": 4
+      },
+      "content_digest": "c4b7485aacecd6d070033138feaf48add37defa1670d0f894f744c2449f55c9d",
+      "file_sha256": "c8307a151c38984e3cd5a621e5ee897d1e5a51fe741f183e4327747d398aa865",
+      "file_size": 160107,
+      "state_id": "dc1711764b7971438514c823eb48fbf695c8f83dd114e86b5994e224356b5388"
+    },
+    "semq_quant8": {
+      "config": {
+        "dim": 384,
+        "operator": "quant",
+        "parameter": 8
+      },
+      "content_digest": "f6911febd47a586b1044830b72730fb3d8f653b8012b835f0ea21e26ac63b4f5",
+      "file_sha256": "db02e67446edc15ef87f820016c247dbb489ebcff513e6875e53ac1b4c578117",
+      "file_size": 208107,
+      "state_id": "a6dff46503a7a93719adc0d6006c7b9a426ddd7102af8899228b5a172031f8b7"
+    }
+  },
+  "dim": 384,
+  "id_kind": "utf8",
+  "manifest": {
+    "encoder": "intfloat/e5-small-v2",
+    "encoder_revision": "ffb93f3bd4047442299a41ebb6fa998a38507c52"
+  },
+  "rows": 1000,
+  "vectors_sha256": "a1cea708bd4281777664a540aa0f0e30d4a7a57d30cdb6816c0e5427367a2488"
+}

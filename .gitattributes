@@ -1,0 +1,15 @@
+# Fixture and artifact files are binary: never apply text/EOL conversion, and
+# show them as "Binary files differ" in diffs rather than emitting raw bytes
+# (which are not valid UTF-8 and break tools that read the diff as text).
+*.bin binary
+*.f32 binary
+*.semq binary
+*.wasm binary
+
+# The conformance manifests are compared byte for byte with the generator's
+# output, which writes LF; a checkout must not convert their line endings.
+tests/conformance/**/*.json text eol=lf
+
+# The Go module's copy of the C core, written by tools/gen_go_core.py from
+# include/ and src/. Marked generated so reviews collapse it; edit src/ instead.
+bindings/go/internal/core/** linguist-generated=true

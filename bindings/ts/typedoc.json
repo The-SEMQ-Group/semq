@@ -1,0 +1,13 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "SEMQ TypeScript API",
+  "entryPoints": ["src/index.ts"],
+  "tsconfig": "tsconfig.json",
+  "readme": "none",
+  "excludeInternal": true,
+  "excludePrivate": true,
+  "treatWarningsAsErrors": true,
+  "navigationLinks": {
+    "SDK guide": "https://github.com/The-SEMQ-Group/semq/blob/main/docs/reference/typescript.md"
+  }
+}

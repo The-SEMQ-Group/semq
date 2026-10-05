@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "name": "Codec artifact storage illustration; serving costs unavailable",
+  "pricing": {
+    "kind": "illustrative",
+    "provider": "fictional provider",
+    "region": "fictional region",
+    "hardware": "not evaluated",
+    "currency": "USD",
+    "as_of": "2026-09-21",
+    "source": "Invented storage tariff for exercising report binding",
+    "storage_gb_month": "0.02"
+  },
+  "deployment": {"storage_copies": 1},
+  "excluded_costs": ["tax", "embedding generation", "engineering labor", "licensing"]
+}

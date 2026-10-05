@@ -1,0 +1,6 @@
+# Tools for the benchmark contract checks (benchmarks.yml). The SDK and the
+# benchmark libraries come from pyproject.toml and benchmarks/requirements-*.txt.
+pytest
+black
+mypy
+pyyaml

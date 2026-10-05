@@ -1,0 +1,503 @@
+{
+  "generated_utc": "2026-09-29T06:36:33.441684+00:00",
+  "hardware": {
+    "arch": "arm64",
+    "cpu_threads": 12,
+    "gpu": "Apple M4 Pro (MPS)",
+    "machine": "Apple M4 Pro",
+    "os": "macOS-26.6.2-arm64-arm-64bit"
+  },
+  "inputs": {},
+  "results": {
+    "dims": {
+      "1024": {
+        "bf16": {
+          "bytes_per_vector": 2048,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 204.8,
+          "x_smaller_than_fp32": 2.0
+        },
+        "binary": {
+          "bytes_per_vector": 128,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 12.8,
+          "x_smaller_than_fp32": 32.0
+        },
+        "faiss_pq": {
+          "bytes_per_vector": 256,
+          "fixed_bytes": 1048576,
+          "gb_100m_vectors": 25.601049,
+          "x_smaller_than_fp32": 16.0
+        },
+        "fp16": {
+          "bytes_per_vector": 2048,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 204.8,
+          "x_smaller_than_fp32": 2.0
+        },
+        "fp32": {
+          "bytes_per_vector": 4096,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 409.6,
+          "x_smaller_than_fp32": 1.0
+        },
+        "fp8_e4m3": {
+          "bytes_per_vector": 1024,
+          "fixed_bytes": 4,
+          "gb_100m_vectors": 102.4,
+          "x_smaller_than_fp32": 4.0
+        },
+        "fp8_e5m2": {
+          "bytes_per_vector": 1024,
+          "fixed_bytes": 4,
+          "gb_100m_vectors": 102.4,
+          "x_smaller_than_fp32": 4.0
+        },
+        "int4_block32": {
+          "bytes_per_vector": 576,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 57.6,
+          "x_smaller_than_fp32": 7.1111
+        },
+        "int8": {
+          "bytes_per_vector": 1028,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 102.8,
+          "x_smaller_than_fp32": 3.9844
+        },
+        "matryoshka256_fp32": {
+          "bytes_per_vector": 1024,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 102.4,
+          "x_smaller_than_fp32": 4.0
+        },
+        "matryoshka256_int8": {
+          "bytes_per_vector": 260,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 26.0,
+          "x_smaller_than_fp32": 15.7538
+        },
+        "mxfp4": {
+          "bytes_per_vector": 544,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 54.4,
+          "x_smaller_than_fp32": 7.5294
+        },
+        "mxfp8": {
+          "bytes_per_vector": 1056,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 105.6,
+          "x_smaller_than_fp32": 3.8788
+        },
+        "nvfp4": {
+          "bytes_per_vector": 576,
+          "fixed_bytes": 4,
+          "gb_100m_vectors": 57.6,
+          "x_smaller_than_fp32": 7.1111
+        },
+        "semq_orbit50": {
+          "bytes_per_vector": 1024,
+          "file_bytes_1m_rows": 1032000096,
+          "file_bytes_per_row_1m_rows": 1032.000096,
+          "file_fixed_bytes": 96,
+          "file_gb_100m_rows": 103.2,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 102.4,
+          "x_smaller_than_fp32": 4.0
+        },
+        "semq_phase16": {
+          "bytes_per_vector": 256,
+          "file_bytes_1m_rows": 264000096,
+          "file_bytes_per_row_1m_rows": 264.000096,
+          "file_fixed_bytes": 96,
+          "file_gb_100m_rows": 26.4,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 25.6,
+          "x_smaller_than_fp32": 16.0
+        },
+        "semq_quant2": {
+          "bytes_per_vector": 256,
+          "file_bytes_1m_rows": 264000096,
+          "file_bytes_per_row_1m_rows": 264.000096,
+          "file_fixed_bytes": 96,
+          "file_gb_100m_rows": 26.4,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 25.6,
+          "x_smaller_than_fp32": 16.0
+        },
+        "semq_quant4": {
+          "bytes_per_vector": 384,
+          "file_bytes_1m_rows": 392000096,
+          "file_bytes_per_row_1m_rows": 392.000096,
+          "file_fixed_bytes": 96,
+          "file_gb_100m_rows": 39.2,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 38.4,
+          "x_smaller_than_fp32": 10.6667
+        },
+        "semq_quant8": {
+          "bytes_per_vector": 512,
+          "file_bytes_1m_rows": 520000096,
+          "file_bytes_per_row_1m_rows": 520.000096,
+          "file_fixed_bytes": 96,
+          "file_gb_100m_rows": 52.0,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 51.2,
+          "x_smaller_than_fp32": 8.0
+        }
+      },
+      "384": {
+        "bf16": {
+          "bytes_per_vector": 768,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 76.8,
+          "x_smaller_than_fp32": 2.0
+        },
+        "binary": {
+          "bytes_per_vector": 48,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 4.8,
+          "x_smaller_than_fp32": 32.0
+        },
+        "faiss_pq": {
+          "bytes_per_vector": 96,
+          "fixed_bytes": 393216,
+          "gb_100m_vectors": 9.600393,
+          "x_smaller_than_fp32": 16.0
+        },
+        "fp16": {
+          "bytes_per_vector": 768,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 76.8,
+          "x_smaller_than_fp32": 2.0
+        },
+        "fp32": {
+          "bytes_per_vector": 1536,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 153.6,
+          "x_smaller_than_fp32": 1.0
+        },
+        "fp8_e4m3": {
+          "bytes_per_vector": 384,
+          "fixed_bytes": 4,
+          "gb_100m_vectors": 38.4,
+          "x_smaller_than_fp32": 4.0
+        },
+        "fp8_e5m2": {
+          "bytes_per_vector": 384,
+          "fixed_bytes": 4,
+          "gb_100m_vectors": 38.4,
+          "x_smaller_than_fp32": 4.0
+        },
+        "int4_block32": {
+          "bytes_per_vector": 216,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 21.6,
+          "x_smaller_than_fp32": 7.1111
+        },
+        "int8": {
+          "bytes_per_vector": 388,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 38.8,
+          "x_smaller_than_fp32": 3.9588
+        },
+        "mxfp4": {
+          "bytes_per_vector": 204,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 20.4,
+          "x_smaller_than_fp32": 7.5294
+        },
+        "mxfp8": {
+          "bytes_per_vector": 396,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 39.6,
+          "x_smaller_than_fp32": 3.8788
+        },
+        "nvfp4": {
+          "bytes_per_vector": 216,
+          "fixed_bytes": 4,
+          "gb_100m_vectors": 21.6,
+          "x_smaller_than_fp32": 7.1111
+        },
+        "semq_orbit50": {
+          "bytes_per_vector": 384,
+          "file_bytes_1m_rows": 392000096,
+          "file_bytes_per_row_1m_rows": 392.000096,
+          "file_fixed_bytes": 96,
+          "file_gb_100m_rows": 39.2,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 38.4,
+          "x_smaller_than_fp32": 4.0
+        },
+        "semq_phase16": {
+          "bytes_per_vector": 96,
+          "file_bytes_1m_rows": 104000096,
+          "file_bytes_per_row_1m_rows": 104.000096,
+          "file_fixed_bytes": 96,
+          "file_gb_100m_rows": 10.4,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 9.6,
+          "x_smaller_than_fp32": 16.0
+        },
+        "semq_quant2": {
+          "bytes_per_vector": 96,
+          "file_bytes_1m_rows": 104000096,
+          "file_bytes_per_row_1m_rows": 104.000096,
+          "file_fixed_bytes": 96,
+          "file_gb_100m_rows": 10.4,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 9.6,
+          "x_smaller_than_fp32": 16.0
+        },
+        "semq_quant4": {
+          "bytes_per_vector": 144,
+          "file_bytes_1m_rows": 152000096,
+          "file_bytes_per_row_1m_rows": 152.000096,
+          "file_fixed_bytes": 96,
+          "file_gb_100m_rows": 15.2,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 14.4,
+          "x_smaller_than_fp32": 10.6667
+        },
+        "semq_quant8": {
+          "bytes_per_vector": 192,
+          "file_bytes_1m_rows": 200000096,
+          "file_bytes_per_row_1m_rows": 200.000096,
+          "file_fixed_bytes": 96,
+          "file_gb_100m_rows": 20.0,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 19.2,
+          "x_smaller_than_fp32": 8.0
+        }
+      },
+      "768": {
+        "bf16": {
+          "bytes_per_vector": 1536,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 153.6,
+          "x_smaller_than_fp32": 2.0
+        },
+        "binary": {
+          "bytes_per_vector": 96,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 9.6,
+          "x_smaller_than_fp32": 32.0
+        },
+        "faiss_pq": {
+          "bytes_per_vector": 192,
+          "fixed_bytes": 786432,
+          "gb_100m_vectors": 19.200786,
+          "x_smaller_than_fp32": 16.0
+        },
+        "fp16": {
+          "bytes_per_vector": 1536,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 153.6,
+          "x_smaller_than_fp32": 2.0
+        },
+        "fp32": {
+          "bytes_per_vector": 3072,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 307.2,
+          "x_smaller_than_fp32": 1.0
+        },
+        "fp8_e4m3": {
+          "bytes_per_vector": 768,
+          "fixed_bytes": 4,
+          "gb_100m_vectors": 76.8,
+          "x_smaller_than_fp32": 4.0
+        },
+        "fp8_e5m2": {
+          "bytes_per_vector": 768,
+          "fixed_bytes": 4,
+          "gb_100m_vectors": 76.8,
+          "x_smaller_than_fp32": 4.0
+        },
+        "int4_block32": {
+          "bytes_per_vector": 432,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 43.2,
+          "x_smaller_than_fp32": 7.1111
+        },
+        "int8": {
+          "bytes_per_vector": 772,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 77.2,
+          "x_smaller_than_fp32": 3.9793
+        },
+        "matryoshka256_fp32": {
+          "bytes_per_vector": 1024,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 102.4,
+          "x_smaller_than_fp32": 3.0
+        },
+        "matryoshka256_int8": {
+          "bytes_per_vector": 260,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 26.0,
+          "x_smaller_than_fp32": 11.8154
+        },
+        "mxfp4": {
+          "bytes_per_vector": 408,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 40.8,
+          "x_smaller_than_fp32": 7.5294
+        },
+        "mxfp8": {
+          "bytes_per_vector": 792,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 79.2,
+          "x_smaller_than_fp32": 3.8788
+        },
+        "nvfp4": {
+          "bytes_per_vector": 432,
+          "fixed_bytes": 4,
+          "gb_100m_vectors": 43.2,
+          "x_smaller_than_fp32": 7.1111
+        },
+        "semq_orbit50": {
+          "bytes_per_vector": 768,
+          "file_bytes_1m_rows": 776000096,
+          "file_bytes_per_row_1m_rows": 776.000096,
+          "file_fixed_bytes": 96,
+          "file_gb_100m_rows": 77.6,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 76.8,
+          "x_smaller_than_fp32": 4.0
+        },
+        "semq_phase16": {
+          "bytes_per_vector": 192,
+          "file_bytes_1m_rows": 200000096,
+          "file_bytes_per_row_1m_rows": 200.000096,
+          "file_fixed_bytes": 96,
+          "file_gb_100m_rows": 20.0,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 19.2,
+          "x_smaller_than_fp32": 16.0
+        },
+        "semq_quant2": {
+          "bytes_per_vector": 192,
+          "file_bytes_1m_rows": 200000096,
+          "file_bytes_per_row_1m_rows": 200.000096,
+          "file_fixed_bytes": 96,
+          "file_gb_100m_rows": 20.0,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 19.2,
+          "x_smaller_than_fp32": 16.0
+        },
+        "semq_quant4": {
+          "bytes_per_vector": 288,
+          "file_bytes_1m_rows": 296000096,
+          "file_bytes_per_row_1m_rows": 296.000096,
+          "file_fixed_bytes": 96,
+          "file_gb_100m_rows": 29.6,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 28.8,
+          "x_smaller_than_fp32": 10.6667
+        },
+        "semq_quant8": {
+          "bytes_per_vector": 384,
+          "file_bytes_1m_rows": 392000096,
+          "file_bytes_per_row_1m_rows": 392.000096,
+          "file_fixed_bytes": 96,
+          "file_gb_100m_rows": 39.2,
+          "fixed_bytes": 0,
+          "gb_100m_vectors": 38.4,
+          "x_smaller_than_fp32": 8.0
+        }
+      }
+    },
+    "file_rows": 1000000,
+    "formats": {
+      "bf16": {
+        "definition": "bfloat16 per value",
+        "label": "BF16"
+      },
+      "binary": {
+        "definition": "1 sign bit per value, packed 8 per byte",
+        "label": "binary (packed)"
+      },
+      "faiss_pq": {
+        "definition": "M = dim/4 subquantizers of 8 bits each (one byte per 4 dimensions); fixed cost is the trained codebook of 256 centroids per subquantizer in FP32",
+        "label": "FAISS PQ (same bytes as semq_quant2)"
+      },
+      "fp16": {
+        "definition": "16-bit IEEE float per value",
+        "label": "FP16"
+      },
+      "fp32": {
+        "definition": "32-bit IEEE float per value",
+        "label": "FP32"
+      },
+      "fp8_e4m3": {
+        "definition": "1 byte per value plus one FP32 scale per tensor",
+        "label": "FP8 E4M3"
+      },
+      "fp8_e5m2": {
+        "definition": "1 byte per value plus one FP32 scale per tensor",
+        "label": "FP8 E5M2"
+      },
+      "int4_block32": {
+        "definition": "4 bits per value plus one FP16 scale per block of 32",
+        "label": "INT4 (block 32)"
+      },
+      "int8": {
+        "definition": "8-bit signed level per value plus one FP32 scale per row (per-row absmax, as benchmarks/codecs.py)",
+        "label": "int8"
+      },
+      "matryoshka256_fp32": {
+        "definition": "first 256 dimensions kept, 32-bit float per value (needs a Matryoshka-trained model)",
+        "label": "Matryoshka 256 dims, FP32"
+      },
+      "matryoshka256_int8": {
+        "definition": "first 256 dimensions kept, int8 per value plus one FP32 scale per row (needs a Matryoshka-trained model)",
+        "label": "Matryoshka 256 dims, int8"
+      },
+      "mxfp4": {
+        "definition": "4-bit E2M1 per value plus one E8M0 scale byte per block of 32",
+        "label": "MXFP4"
+      },
+      "mxfp8": {
+        "definition": "8-bit float per value plus one E8M0 scale byte per block of 32",
+        "label": "MXFP8"
+      },
+      "nvfp4": {
+        "definition": "4-bit E2M1 per value plus one E4M3 scale byte per block of 16 and one FP32 scale per tensor",
+        "label": "NVFP4"
+      },
+      "semq_orbit50": {
+        "definition": "CodecConfig.orbit(dim, 50); size from CodecConfig.bytes_per_vector",
+        "label": "semq_orbit50"
+      },
+      "semq_phase16": {
+        "definition": "CodecConfig.phase(dim, 16); size from CodecConfig.bytes_per_vector",
+        "label": "semq_phase16"
+      },
+      "semq_quant2": {
+        "definition": "CodecConfig.quant(dim, 2); size from CodecConfig.bytes_per_vector",
+        "label": "semq_quant2"
+      },
+      "semq_quant4": {
+        "definition": "CodecConfig.quant(dim, 4); size from CodecConfig.bytes_per_vector",
+        "label": "semq_quant4"
+      },
+      "semq_quant8": {
+        "definition": "CodecConfig.quant(dim, 8); size from CodecConfig.bytes_per_vector",
+        "label": "semq_quant8"
+      }
+    },
+    "units": {
+      "bytes_per_vector": "payload bytes of one vector, excluding its id",
+      "file_bytes_1m_rows": "size of a .semq file with 1,000,000 rows, u64 ids (8 bytes each) and an empty manifest; a manifest adds its own bytes once",
+      "file_bytes_per_row_1m_rows": "file_bytes_1m_rows / 1,000,000: bytes_per_vector + 8-byte id + amortized header and footer",
+      "file_gb_100m_rows": "decimal GB of a .semq file with 100,000,000 rows",
+      "fixed_bytes": "bytes shared by the whole corpus (per-tensor scales, trained codebooks); counted once in gb_100m_vectors",
+      "gb_100m_vectors": "decimal GB (10^9 bytes) for 100,000,000 vectors: payload only, no ids and no container",
+      "x_smaller_than_fp32": "FP32 payload bytes / this payload bytes"
+    },
+    "vectors_at_scale": 100000000
+  },
+  "schema": "semq-bench/size/1",
+  "sdk_commit": "c606294b99b09894f9642a9f22bfa97bc9863098",
+  "working_tree_dirty": false
+}

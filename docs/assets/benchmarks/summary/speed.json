@@ -1,0 +1,1309 @@
+{
+  "generated_utc": "2026-10-02T22:08:18.933937+00:00",
+  "hardware": {
+    "arch": "arm64",
+    "cpu_threads": 12,
+    "gpu": "Apple M4 Pro (MPS)",
+    "machine": "Apple M4 Pro",
+    "os": "macOS-26.6.2-arm64-arm-64bit"
+  },
+  "inputs": {
+    "native_library": {
+      "sha256": "6084e1f6a79ce8e85e97d988ff27502e8d0e0a5af43e9ee87cf6a2f833c0bbd5",
+      "source": "build/libsemq.1.0.0.dylib"
+    }
+  },
+  "results": {
+    "c_microbenchmark": {
+      "binary_sha256": "cc9e7f613300e204c6209bb365400322b300104cd076a17410d19ce7f89229b7",
+      "command": "build-bench/bench_encode --benchmark_format=json '--benchmark_filter=^(encode|decode)/[a-z]+/[a-z0-9]+/dim:768/rows:100000(/|$)' --benchmark_repetitions=5 --benchmark_report_aggregates_only=true",
+      "context": {
+        "library_build_type": "release",
+        "semq_build_id": "1.0.0+c755a7754198.scalar+neon+sve.AppleClang-17.0.0.17000013.Darwin-arm64.Release",
+        "semq_core_version": "1.0.0"
+      },
+      "note": "the C suite has one parameter per operator (quant bins 4, phase sectors 16, orbit scale 50) and its own seeded inputs",
+      "results": {
+        "768": {
+          "semq_orbit50": {
+            "neon": {
+              "decode": {
+                "aggregate": "median",
+                "items_per_second": 2253321.18417661,
+                "rows": 100000
+              },
+              "encode": {
+                "aggregate": "median",
+                "items_per_second": 621228.5438357738,
+                "rows": 100000
+              }
+            },
+            "scalar": {
+              "decode": {
+                "aggregate": "median",
+                "items_per_second": 1761372.2263891741,
+                "rows": 100000
+              },
+              "encode": {
+                "aggregate": "median",
+                "items_per_second": 107421.40475860452,
+                "rows": 100000
+              }
+            }
+          },
+          "semq_phase16": {
+            "neon": {
+              "decode": {
+                "aggregate": "median",
+                "items_per_second": 6474345.0480612265,
+                "rows": 100000
+              },
+              "encode": {
+                "aggregate": "median",
+                "items_per_second": 692871.2898041565,
+                "rows": 100000
+              }
+            },
+            "scalar": {
+              "decode": {
+                "aggregate": "median",
+                "items_per_second": 6447176.136852048,
+                "rows": 100000
+              },
+              "encode": {
+                "aggregate": "median",
+                "items_per_second": 691384.7070196808,
+                "rows": 100000
+              }
+            }
+          },
+          "semq_quant4": {
+            "neon": {
+              "decode": {
+                "aggregate": "median",
+                "items_per_second": 901359.7011091326,
+                "rows": 100000
+              },
+              "encode": {
+                "aggregate": "median",
+                "items_per_second": 803651.5246441414,
+                "rows": 100000
+              }
+            },
+            "scalar": {
+              "decode": {
+                "aggregate": "median",
+                "items_per_second": 892928.896072008,
+                "rows": 100000
+              },
+              "encode": {
+                "aggregate": "median",
+                "items_per_second": 688161.3478290722,
+                "rows": 100000
+              }
+            }
+          }
+        }
+      },
+      "status": "ok"
+    },
+    "default_backend": "neon",
+    "embedding": {
+      "reason": "no embedding throughput file; pass --embedding",
+      "status": "not_run"
+    },
+    "method": {
+      "backends": "forced with SEMQ_FORCE_BACKEND before creating the Codec; reported only when codec.backend confirms the kernel; all reported row bytes and content digests must equal scalar for the same input",
+      "decode": "Codec.decode(encoding)",
+      "encode": "Codec.encode(ids=np.arange(rows, dtype=np.uint64), vectors)",
+      "inputs": "random unit-norm float32 rows from numpy default_rng(seed, dim)",
+      "rows": 100000,
+      "runs": 5,
+      "seed": 20260928,
+      "statistic": "median wall-clock seconds after one warm-up, single process"
+    },
+    "numpy": "2.4.6",
+    "numpy_baselines": {
+      "definitions": {
+        "binary": "np.packbits(vectors > 0, axis=1); decode np.unpackbits to +-1 float32",
+        "fp16": "vectors.astype(np.float16); decode .astype(np.float32)",
+        "int8": "per-row absmax/127, np.rint, clip to [-127, 127], int8; decode codes.astype(np.float32) * scale"
+      },
+      "dims": {
+        "1024": {
+          "binary": {
+            "decode": {
+              "median_seconds": 0.044870875077322125,
+              "runs_seconds": [
+                0.045185792027041316,
+                0.04494908289052546,
+                0.04479608288966119,
+                0.044230957981199026,
+                0.044870875077322125
+              ],
+              "seconds_per_vector": 4.4870875077322124e-07,
+              "vectors_per_second": 2228617.111381906
+            },
+            "encode": {
+              "median_seconds": 0.020612208172678947,
+              "runs_seconds": [
+                0.020612208172678947,
+                0.020621208008378744,
+                0.02031966601498425,
+                0.02077875006943941,
+                0.02042691712267697
+              ],
+              "seconds_per_vector": 2.0612208172678947e-07,
+              "vectors_per_second": 4851493.792525728
+            }
+          },
+          "fp16": {
+            "decode": {
+              "median_seconds": 0.005510708084329963,
+              "runs_seconds": [
+                0.005644083023071289,
+                0.005510708084329963,
+                0.005354749970138073,
+                0.005433416925370693,
+                0.005621833959594369
+              ],
+              "seconds_per_vector": 5.510708084329963e-08,
+              "vectors_per_second": 18146488.34046502
+            },
+            "encode": {
+              "median_seconds": 0.005964166950434446,
+              "runs_seconds": [
+                0.005964166950434446,
+                0.005908540915697813,
+                0.005850624991580844,
+                0.006310584023594856,
+                0.006081375060603023
+              ],
+              "seconds_per_vector": 5.964166950434446e-08,
+              "vectors_per_second": 16766800.934825562
+            }
+          },
+          "int8": {
+            "decode": {
+              "median_seconds": 0.03895325004123151,
+              "runs_seconds": [
+                0.03895325004123151,
+                0.03860487509518862,
+                0.03869791608303785,
+                0.039206207962706685,
+                0.038964416133239865
+              ],
+              "seconds_per_vector": 3.8953250041231514e-07,
+              "vectors_per_second": 2567179.885995425
+            },
+            "encode": {
+              "median_seconds": 0.08933520899154246,
+              "runs_seconds": [
+                0.08885429101064801,
+                0.08933520899154246,
+                0.08884695800952613,
+                0.09532745787873864,
+                0.1057069581001997
+              ],
+              "seconds_per_vector": 8.933520899154246e-07,
+              "vectors_per_second": 1119379.482388262
+            }
+          }
+        },
+        "384": {
+          "binary": {
+            "decode": {
+              "median_seconds": 0.016250374959781766,
+              "runs_seconds": [
+                0.016279499977827072,
+                0.01621141587384045,
+                0.016217750031501055,
+                0.01626233384013176,
+                0.016250374959781766
+              ],
+              "seconds_per_vector": 1.6250374959781767e-07,
+              "vectors_per_second": 6153704.160518826
+            },
+            "encode": {
+              "median_seconds": 0.007716333959251642,
+              "runs_seconds": [
+                0.009590167086571455,
+                0.007761624874547124,
+                0.0076790000312030315,
+                0.007663083029910922,
+                0.007716333959251642
+              ],
+              "seconds_per_vector": 7.716333959251642e-08,
+              "vectors_per_second": 12959522.038325354
+            }
+          },
+          "fp16": {
+            "decode": {
+              "median_seconds": 0.001979249995201826,
+              "runs_seconds": [
+                0.002067083027213812,
+                0.0019494581501930952,
+                0.0020077091176062822,
+                0.001979249995201826,
+                0.0019498749170452356
+              ],
+              "seconds_per_vector": 1.979249995201826e-08,
+              "vectors_per_second": 50524188.577705614
+            },
+            "encode": {
+              "median_seconds": 0.00223687500692904,
+              "runs_seconds": [
+                0.0021465420722961426,
+                0.00223687500692904,
+                0.0022347921039909124,
+                0.0023471249733120203,
+                0.0023304170463234186
+              ],
+              "seconds_per_vector": 2.23687500692904e-08,
+              "vectors_per_second": 44705224.78468207
+            }
+          },
+          "int8": {
+            "decode": {
+              "median_seconds": 0.01522758393548429,
+              "runs_seconds": [
+                0.015123958000913262,
+                0.01522758393548429,
+                0.015305500011891127,
+                0.015029000118374825,
+                0.024054375011473894
+              ],
+              "seconds_per_vector": 1.522758393548429e-07,
+              "vectors_per_second": 6567029.965073685
+            },
+            "encode": {
+              "median_seconds": 0.03416237514466047,
+              "runs_seconds": [
+                0.034151958068832755,
+                0.034324165899306536,
+                0.03433608403429389,
+                0.034129291074350476,
+                0.03416237514466047
+              ],
+              "seconds_per_vector": 3.4162375144660475e-07,
+              "vectors_per_second": 2927196.9403927657
+            }
+          }
+        },
+        "768": {
+          "binary": {
+            "decode": {
+              "median_seconds": 0.03267933311872184,
+              "runs_seconds": [
+                0.03225549985654652,
+                0.0321813749615103,
+                0.03287266590632498,
+                0.03278699982911348,
+                0.03267933311872184
+              ],
+              "seconds_per_vector": 3.267933311872184e-07,
+              "vectors_per_second": 3060037.9645663714
+            },
+            "encode": {
+              "median_seconds": 0.015299791004508734,
+              "runs_seconds": [
+                0.015385374892503023,
+                0.015252707991749048,
+                0.015482791932299733,
+                0.015299791004508734,
+                0.015270540956407785
+              ],
+              "seconds_per_vector": 1.5299791004508735e-07,
+              "vectors_per_second": 6536036.9936119225
+            }
+          },
+          "fp16": {
+            "decode": {
+              "median_seconds": 0.003993958001956344,
+              "runs_seconds": [
+                0.003914874978363514,
+                0.003993958001956344,
+                0.003897374961525202,
+                0.004660707898437977,
+                0.00414470792748034
+              ],
+              "seconds_per_vector": 3.9939580019563434e-08,
+              "vectors_per_second": 25037819.61428173
+            },
+            "encode": {
+              "median_seconds": 0.004362958949059248,
+              "runs_seconds": [
+                0.004328582901507616,
+                0.004362958949059248,
+                0.0043714591301977634,
+                0.004475750029087067,
+                0.00434954185038805
+              ],
+              "seconds_per_vector": 4.362958949059248e-08,
+              "vectors_per_second": 22920224.821634468
+            }
+          },
+          "int8": {
+            "decode": {
+              "median_seconds": 0.030201457906514406,
+              "runs_seconds": [
+                0.03043641708791256,
+                0.03024283400736749,
+                0.03018408315256238,
+                0.030201457906514406,
+                0.030110750114545226
+              ],
+              "seconds_per_vector": 3.0201457906514406e-07,
+              "vectors_per_second": 3311098.434702722
+            },
+            "encode": {
+              "median_seconds": 0.06792883295565844,
+              "runs_seconds": [
+                0.0670972908847034,
+                0.06792883295565844,
+                0.06773412507027388,
+                0.10196287487633526,
+                0.06968291685916483
+              ],
+              "seconds_per_vector": 6.792883295565843e-07,
+              "vectors_per_second": 1472128.9274213868
+            }
+          }
+        }
+      }
+    },
+    "overhead": {
+      "command": ".venv-data/bin/python -m benchmarks.speed embed --output EMBED.json",
+      "reason": "no embedding throughput file; pass --embedding",
+      "status": "not_run"
+    },
+    "python": "3.11.15",
+    "semq": {
+      "1024": {
+        "semq_orbit50": {
+          "backends": {
+            "neon": {
+              "content_digest": "22957d636c25fea529d0dee2eafde17ea0b5c99547da033b98ec55908cd81757",
+              "decode": {
+                "median_seconds": 0.060750499833375216,
+                "runs_seconds": [
+                  0.08668174990452826,
+                  0.06192883406765759,
+                  0.060750499833375216,
+                  0.06026550009846687,
+                  0.059617417166009545
+                ],
+                "seconds_per_vector": 6.075049983337522e-07,
+                "vectors_per_second": 1646076.9915354971
+              },
+              "default": true,
+              "encode": {
+                "median_seconds": 0.21483333292417228,
+                "runs_seconds": [
+                  0.21552558313123882,
+                  0.21305041713640094,
+                  0.21431070799008012,
+                  0.21621316694654524,
+                  0.21483333292417228
+                ],
+                "seconds_per_vector": 2.148333329241723e-06,
+                "vectors_per_second": 465477.1149284179
+              }
+            },
+            "scalar": {
+              "content_digest": "22957d636c25fea529d0dee2eafde17ea0b5c99547da033b98ec55908cd81757",
+              "decode": {
+                "median_seconds": 0.07589391712099314,
+                "runs_seconds": [
+                  0.10049024992622435,
+                  0.07579595921561122,
+                  0.07599816704168916,
+                  0.07589391712099314,
+                  0.0758494168985635
+                ],
+                "seconds_per_vector": 7.589391712099313e-07,
+                "vectors_per_second": 1317628.6558061824
+              },
+              "default": false,
+              "encode": {
+                "median_seconds": 1.2859038750175387,
+                "runs_seconds": [
+                  1.2806361659895629,
+                  1.280246458016336,
+                  1.2886439168360084,
+                  1.3020709578413516,
+                  1.2859038750175387
+                ],
+                "seconds_per_vector": 1.2859038750175386e-05,
+                "vectors_per_second": 77766.31048618318
+              }
+            }
+          },
+          "default_backend": "neon"
+        },
+        "semq_phase16": {
+          "backends": {
+            "neon": {
+              "content_digest": "1c2e03f80701af47d96c4c8b65838b6ac8671f97c08338994701bf60203e701f",
+              "decode": {
+                "median_seconds": 0.020546375075355172,
+                "runs_seconds": [
+                  0.0207504581194371,
+                  0.020537500036880374,
+                  0.020578499883413315,
+                  0.020546375075355172,
+                  0.020498333033174276
+                ],
+                "seconds_per_vector": 2.0546375075355173e-07,
+                "vectors_per_second": 4867038.571682035
+              },
+              "default": true,
+              "encode": {
+                "median_seconds": 0.1916774578858167,
+                "runs_seconds": [
+                  0.191492916084826,
+                  0.19155283318832517,
+                  0.20005762507207692,
+                  0.1920435840729624,
+                  0.1916774578858167
+                ],
+                "seconds_per_vector": 1.916774578858167e-06,
+                "vectors_per_second": 521709.7571252773
+              }
+            },
+            "scalar": {
+              "content_digest": "1c2e03f80701af47d96c4c8b65838b6ac8671f97c08338994701bf60203e701f",
+              "decode": {
+                "median_seconds": 0.020569832995533943,
+                "runs_seconds": [
+                  0.02041908400133252,
+                  0.020569832995533943,
+                  0.020487792091444135,
+                  0.021167707862332463,
+                  0.02057274989783764
+                ],
+                "seconds_per_vector": 2.0569832995533942e-07,
+                "vectors_per_second": 4861488.181343606
+              },
+              "default": false,
+              "encode": {
+                "median_seconds": 0.1916993330232799,
+                "runs_seconds": [
+                  0.1904927920550108,
+                  0.1916993330232799,
+                  0.19209529203362763,
+                  0.19196870806626976,
+                  0.19018987496383488
+                ],
+                "seconds_per_vector": 1.916993330232799e-06,
+                "vectors_per_second": 521650.2239361262
+              }
+            }
+          },
+          "default_backend": "neon"
+        },
+        "semq_quant2": {
+          "backends": {
+            "neon": {
+              "content_digest": "1d27cb4a4d59f24f7d39a1b3deda4eeaa0433d7d7537965340d3cc77009bb610",
+              "decode": {
+                "median_seconds": 0.11675399984233081,
+                "runs_seconds": [
+                  0.12312016682699323,
+                  0.11678000004030764,
+                  0.11643633292987943,
+                  0.11675399984233081,
+                  0.11645770887844265
+                ],
+                "seconds_per_vector": 1.1675399984233082e-06,
+                "vectors_per_second": 856501.7055950454
+              },
+              "default": true,
+              "encode": {
+                "median_seconds": 0.1507384590804577,
+                "runs_seconds": [
+                  0.1507384590804577,
+                  0.15894908411428332,
+                  0.15751204104162753,
+                  0.1505944998934865,
+                  0.15059137507341802
+                ],
+                "seconds_per_vector": 1.5073845908045769e-06,
+                "vectors_per_second": 663400.7048368745
+              }
+            },
+            "scalar": {
+              "content_digest": "1d27cb4a4d59f24f7d39a1b3deda4eeaa0433d7d7537965340d3cc77009bb610",
+              "decode": {
+                "median_seconds": 0.1164687080308795,
+                "runs_seconds": [
+                  0.11672104196622968,
+                  0.1162746250629425,
+                  0.11657120892778039,
+                  0.1164687080308795,
+                  0.11639737500809133
+                ],
+                "seconds_per_vector": 1.164687080308795e-06,
+                "vectors_per_second": 858599.7191064133
+              },
+              "default": false,
+              "encode": {
+                "median_seconds": 0.2491327919997275,
+                "runs_seconds": [
+                  0.24782174988649786,
+                  0.2507746659684926,
+                  0.2491327919997275,
+                  0.24770791712217033,
+                  0.2491892499383539
+                ],
+                "seconds_per_vector": 2.491327919997275e-06,
+                "vectors_per_second": 401392.362672632
+              }
+            }
+          },
+          "default_backend": "neon"
+        },
+        "semq_quant4": {
+          "backends": {
+            "neon": {
+              "content_digest": "62f1ec877179d4e5ed46677fd72dfc1bd0dc4ca4223e7bf08f014dbe2cfd0cb3",
+              "decode": {
+                "median_seconds": 0.14975837501697242,
+                "runs_seconds": [
+                  0.15135574992746115,
+                  0.14930075011216104,
+                  0.15035924990661442,
+                  0.14975837501697242,
+                  0.14959362498484552
+                ],
+                "seconds_per_vector": 1.4975837501697242e-06,
+                "vectors_per_second": 667742.288126903
+              },
+              "default": true,
+              "encode": {
+                "median_seconds": 0.16752858296968043,
+                "runs_seconds": [
+                  0.16848433413542807,
+                  0.16629891702905297,
+                  0.1684798328205943,
+                  0.16670091706328094,
+                  0.16752858296968043
+                ],
+                "seconds_per_vector": 1.6752858296968043e-06,
+                "vectors_per_second": 596913.0653847776
+              }
+            },
+            "scalar": {
+              "content_digest": "62f1ec877179d4e5ed46677fd72dfc1bd0dc4ca4223e7bf08f014dbe2cfd0cb3",
+              "decode": {
+                "median_seconds": 0.14965575002133846,
+                "runs_seconds": [
+                  0.14952745800837874,
+                  0.14976874995045364,
+                  0.14979216689243913,
+                  0.14963091583922505,
+                  0.14965575002133846
+                ],
+                "seconds_per_vector": 1.4965575002133845e-06,
+                "vectors_per_second": 668200.1859984774
+              },
+              "default": false,
+              "encode": {
+                "median_seconds": 0.22567520895972848,
+                "runs_seconds": [
+                  0.22679062490351498,
+                  0.2284888750873506,
+                  0.22567520895972848,
+                  0.22547433385625482,
+                  0.2256629578769207
+                ],
+                "seconds_per_vector": 2.2567520895972847e-06,
+                "vectors_per_second": 443114.6888528855
+              }
+            }
+          },
+          "default_backend": "neon"
+        },
+        "semq_quant8": {
+          "backends": {
+            "neon": {
+              "content_digest": "7c46a60c125a48e528c9db0dd5a863fd3e815ff0a000cc0e21100b0bc2bd4058",
+              "decode": {
+                "median_seconds": 0.19043841701932251,
+                "runs_seconds": [
+                  0.19706191681325436,
+                  0.19043841701932251,
+                  0.2984840418212116,
+                  0.19002387509681284,
+                  0.18612704216502607
+                ],
+                "seconds_per_vector": 1.904384170193225e-06,
+                "vectors_per_second": 525104.1337413221
+              },
+              "default": true,
+              "encode": {
+                "median_seconds": 0.16637449990957975,
+                "runs_seconds": [
+                  0.16446087486110628,
+                  0.17009070795029402,
+                  0.16637449990957975,
+                  0.1743333749473095,
+                  0.16622924990952015
+                ],
+                "seconds_per_vector": 1.6637449990957974e-06,
+                "vectors_per_second": 601053.647369924
+              }
+            },
+            "scalar": {
+              "content_digest": "7c46a60c125a48e528c9db0dd5a863fd3e815ff0a000cc0e21100b0bc2bd4058",
+              "decode": {
+                "median_seconds": 0.18562600016593933,
+                "runs_seconds": [
+                  0.1928232500795275,
+                  0.19049141695722938,
+                  0.18562600016593933,
+                  0.18560954206623137,
+                  0.18505095783621073
+                ],
+                "seconds_per_vector": 1.8562600016593933e-06,
+                "vectors_per_second": 538717.6360564013
+              },
+              "default": false,
+              "encode": {
+                "median_seconds": 0.2417264578398317,
+                "runs_seconds": [
+                  0.2402182079385966,
+                  0.23963099997490644,
+                  0.24910200014710426,
+                  0.2417264578398317,
+                  0.24681679182685912
+                ],
+                "seconds_per_vector": 2.417264578398317e-06,
+                "vectors_per_second": 413690.75149506447
+              }
+            }
+          },
+          "default_backend": "neon"
+        }
+      },
+      "384": {
+        "semq_orbit50": {
+          "backends": {
+            "neon": {
+              "content_digest": "4863de988d5d2934a1aa0a6ddb0cf3be99425363996c3c2932f43462d8a2cf66",
+              "decode": {
+                "median_seconds": 0.021415250143036246,
+                "runs_seconds": [
+                  0.021452250191941857,
+                  0.021460624877363443,
+                  0.021391832968220115,
+                  0.021403750171884894,
+                  0.021415250143036246
+                ],
+                "seconds_per_vector": 2.1415250143036247e-07,
+                "vectors_per_second": 4669569.551234858
+              },
+              "default": true,
+              "encode": {
+                "median_seconds": 0.08183262497186661,
+                "runs_seconds": [
+                  0.08183262497186661,
+                  0.08169274986721575,
+                  0.08203262486495078,
+                  0.08197679091244936,
+                  0.08141945814713836
+                ],
+                "seconds_per_vector": 8.18326249718666e-07,
+                "vectors_per_second": 1222006.504549734
+              }
+            },
+            "scalar": {
+              "content_digest": "4863de988d5d2934a1aa0a6ddb0cf3be99425363996c3c2932f43462d8a2cf66",
+              "decode": {
+                "median_seconds": 0.02823470812290907,
+                "runs_seconds": [
+                  0.02962341718375683,
+                  0.028838708996772766,
+                  0.02800754108466208,
+                  0.02799991681240499,
+                  0.02823470812290907
+                ],
+                "seconds_per_vector": 2.823470812290907e-07,
+                "vectors_per_second": 3541740.1718724347
+              },
+              "default": false,
+              "encode": {
+                "median_seconds": 0.4653077498078346,
+                "runs_seconds": [
+                  0.4640670409426093,
+                  0.4667580828536302,
+                  0.46630129194818437,
+                  0.465265000006184,
+                  0.4653077498078346
+                ],
+                "seconds_per_vector": 4.653077498078346e-06,
+                "vectors_per_second": 214911.5290714555
+              }
+            }
+          },
+          "default_backend": "neon"
+        },
+        "semq_phase16": {
+          "backends": {
+            "neon": {
+              "content_digest": "206a99dcf982ea8b6d30aff12c5d228a681851aea23f3d7785384ccd0546147c",
+              "decode": {
+                "median_seconds": 0.008335334016010165,
+                "runs_seconds": [
+                  0.008247917052358389,
+                  0.007867041043937206,
+                  0.008335334016010165,
+                  0.008905750000849366,
+                  0.008982041850686073
+                ],
+                "seconds_per_vector": 8.335334016010165e-08,
+                "vectors_per_second": 11997119.708451292
+              },
+              "default": true,
+              "encode": {
+                "median_seconds": 0.07310899998992682,
+                "runs_seconds": [
+                  0.0729219161439687,
+                  0.0732004998717457,
+                  0.07286241697147489,
+                  0.07320866687223315,
+                  0.07310899998992682
+                ],
+                "seconds_per_vector": 7.310899998992681e-07,
+                "vectors_per_second": 1367820.6515446568
+              }
+            },
+            "scalar": {
+              "content_digest": "206a99dcf982ea8b6d30aff12c5d228a681851aea23f3d7785384ccd0546147c",
+              "decode": {
+                "median_seconds": 0.007842541206628084,
+                "runs_seconds": [
+                  0.00783983408473432,
+                  0.007855125004425645,
+                  0.007857084041461349,
+                  0.007838416146114469,
+                  0.007842541206628084
+                ],
+                "seconds_per_vector": 7.842541206628085e-08,
+                "vectors_per_second": 12750969.024617366
+              },
+              "default": false,
+              "encode": {
+                "median_seconds": 0.07290875003673136,
+                "runs_seconds": [
+                  0.07325379201211035,
+                  0.07286662491969764,
+                  0.07290875003673136,
+                  0.07290445803664625,
+                  0.07298562489449978
+                ],
+                "seconds_per_vector": 7.290875003673136e-07,
+                "vectors_per_second": 1371577.484864575
+              }
+            }
+          },
+          "default_backend": "neon"
+        },
+        "semq_quant2": {
+          "backends": {
+            "neon": {
+              "content_digest": "f4a97f75e079a03505d5e249f3c875107a3358d0e0e8374d4ccb47f7d136042f",
+              "decode": {
+                "median_seconds": 0.04337333305738866,
+                "runs_seconds": [
+                  0.04292495897971094,
+                  0.043139667017385364,
+                  0.04388591693714261,
+                  0.043575040996074677,
+                  0.04337333305738866
+                ],
+                "seconds_per_vector": 4.3373333057388665e-07,
+                "vectors_per_second": 2305564.109350018
+              },
+              "default": true,
+              "encode": {
+                "median_seconds": 0.057896374957636,
+                "runs_seconds": [
+                  0.05783666600473225,
+                  0.057896374957636,
+                  0.05778737482614815,
+                  0.058030499843880534,
+                  0.05808124993927777
+                ],
+                "seconds_per_vector": 5.7896374957636e-07,
+                "vectors_per_second": 1727223.8559525034
+              }
+            },
+            "scalar": {
+              "content_digest": "f4a97f75e079a03505d5e249f3c875107a3358d0e0e8374d4ccb47f7d136042f",
+              "decode": {
+                "median_seconds": 0.04296358302235603,
+                "runs_seconds": [
+                  0.04296358302235603,
+                  0.04312687483616173,
+                  0.04286070796661079,
+                  0.04295299993827939,
+                  0.043015250004827976
+                ],
+                "seconds_per_vector": 4.2963583022356036e-07,
+                "vectors_per_second": 2327552.614686842
+              },
+              "default": false,
+              "encode": {
+                "median_seconds": 0.09341554087586701,
+                "runs_seconds": [
+                  0.0934495001565665,
+                  0.093192582949996,
+                  0.09341554087586701,
+                  0.09340120805427432,
+                  0.09346962487325072
+                ],
+                "seconds_per_vector": 9.341554087586701e-07,
+                "vectors_per_second": 1070485.6928771904
+              }
+            }
+          },
+          "default_backend": "neon"
+        },
+        "semq_quant4": {
+          "backends": {
+            "neon": {
+              "content_digest": "2e9ed634a8f74c99db26b178530a096329038cfef604758c4f6f2a334a0b1631",
+              "decode": {
+                "median_seconds": 0.055572833167389035,
+                "runs_seconds": [
+                  0.05562787503004074,
+                  0.05552687495946884,
+                  0.05556287500075996,
+                  0.055572833167389035,
+                  0.055601832922548056
+                ],
+                "seconds_per_vector": 5.557283316738903e-07,
+                "vectors_per_second": 1799440.379416925
+              },
+              "default": true,
+              "encode": {
+                "median_seconds": 0.06336362520232797,
+                "runs_seconds": [
+                  0.06306075002066791,
+                  0.06320141698233783,
+                  0.06447191699407995,
+                  0.06338516599498689,
+                  0.06336362520232797
+                ],
+                "seconds_per_vector": 6.336362520232797e-07,
+                "vectors_per_second": 1578192.530504489
+              }
+            },
+            "scalar": {
+              "content_digest": "2e9ed634a8f74c99db26b178530a096329038cfef604758c4f6f2a334a0b1631",
+              "decode": {
+                "median_seconds": 0.05549691617488861,
+                "runs_seconds": [
+                  0.0554858329705894,
+                  0.05549691617488861,
+                  0.055516083957627416,
+                  0.055900041945278645,
+                  0.05549279204569757
+                ],
+                "seconds_per_vector": 5.549691617488861e-07,
+                "vectors_per_second": 1801901.9234306258
+              },
+              "default": false,
+              "encode": {
+                "median_seconds": 0.08601020788773894,
+                "runs_seconds": [
+                  0.08654737495817244,
+                  0.08580204215832055,
+                  0.08601020788773894,
+                  0.08578475005924702,
+                  0.08607304212637246
+                ],
+                "seconds_per_vector": 8.601020788773894e-07,
+                "vectors_per_second": 1162652.6950210447
+              }
+            }
+          },
+          "default_backend": "neon"
+        },
+        "semq_quant8": {
+          "backends": {
+            "neon": {
+              "content_digest": "5b8d0f143b9f21240049ce727da8a5025881c48a6cdd34088de278ef672af4d5",
+              "decode": {
+                "median_seconds": 0.06913541699759662,
+                "runs_seconds": [
+                  0.0749639580026269,
+                  0.06913541699759662,
+                  0.06914479215629399,
+                  0.06886895792558789,
+                  0.0691127919126302
+                ],
+                "seconds_per_vector": 6.913541699759662e-07,
+                "vectors_per_second": 1446436.6361379775
+              },
+              "default": true,
+              "encode": {
+                "median_seconds": 0.06310291704721749,
+                "runs_seconds": [
+                  0.06310291704721749,
+                  0.06376137491315603,
+                  0.06306387484073639,
+                  0.06307420786470175,
+                  0.06310570915229619
+                ],
+                "seconds_per_vector": 6.310291704721749e-07,
+                "vectors_per_second": 1584712.7942623293
+              }
+            },
+            "scalar": {
+              "content_digest": "5b8d0f143b9f21240049ce727da8a5025881c48a6cdd34088de278ef672af4d5",
+              "decode": {
+                "median_seconds": 0.06889258301816881,
+                "runs_seconds": [
+                  0.0687546671833843,
+                  0.06874412507750094,
+                  0.06985512492246926,
+                  0.07080154190771282,
+                  0.06889258301816881
+                ],
+                "seconds_per_vector": 6.889258301816881e-07,
+                "vectors_per_second": 1451535.0654456858
+              },
+              "default": false,
+              "encode": {
+                "median_seconds": 0.09099283395335078,
+                "runs_seconds": [
+                  0.0913227500859648,
+                  0.09090729197487235,
+                  0.09099283395335078,
+                  0.09114504093304276,
+                  0.0909082090947777
+                ],
+                "seconds_per_vector": 9.099283395335078e-07,
+                "vectors_per_second": 1098987.6417220603
+              }
+            }
+          },
+          "default_backend": "neon"
+        }
+      },
+      "768": {
+        "semq_orbit50": {
+          "backends": {
+            "neon": {
+              "content_digest": "069419be51b4c9b213181ed3b0e08cfa120d5674ac6d98caab5fec8a60f07331",
+              "decode": {
+                "median_seconds": 0.04310925002209842,
+                "runs_seconds": [
+                  0.04287362494505942,
+                  0.0476235409732908,
+                  0.04310925002209842,
+                  0.0430412080604583,
+                  0.043425500160083175
+                ],
+                "seconds_per_vector": 4.310925002209842e-07,
+                "vectors_per_second": 2319687.768837049
+              },
+              "default": true,
+              "encode": {
+                "median_seconds": 0.16161283291876316,
+                "runs_seconds": [
+                  0.16161283291876316,
+                  0.16083924984559417,
+                  0.16097395797260106,
+                  0.162132749799639,
+                  0.16337554180063307
+                ],
+                "seconds_per_vector": 1.6161283291876316e-06,
+                "vectors_per_second": 618762.7442324851
+              }
+            },
+            "scalar": {
+              "content_digest": "069419be51b4c9b213181ed3b0e08cfa120d5674ac6d98caab5fec8a60f07331",
+              "decode": {
+                "median_seconds": 0.056213875068351626,
+                "runs_seconds": [
+                  0.059354625176638365,
+                  0.05610775016248226,
+                  0.05607525003142655,
+                  0.05628679180517793,
+                  0.056213875068351626
+                ],
+                "seconds_per_vector": 5.621387506835162e-07,
+                "vectors_per_second": 1778920.237724368
+              },
+              "default": false,
+              "encode": {
+                "median_seconds": 0.9535971670411527,
+                "runs_seconds": [
+                  0.9535971670411527,
+                  0.9516501668840647,
+                  0.9517716669943184,
+                  0.9607856250368059,
+                  0.9572089998982847
+                ],
+                "seconds_per_vector": 9.535971670411526e-06,
+                "vectors_per_second": 104866.08334867723
+              }
+            }
+          },
+          "default_backend": "neon"
+        },
+        "semq_phase16": {
+          "backends": {
+            "neon": {
+              "content_digest": "4c7c8286da1b22714ecf2186a158de9d4868ea909f116d1bb38d514c1bcf6d11",
+              "decode": {
+                "median_seconds": 0.015447875019162893,
+                "runs_seconds": [
+                  0.019266166957095265,
+                  0.015392916975542903,
+                  0.015447875019162893,
+                  0.015466291923075914,
+                  0.015407167142257094
+                ],
+                "seconds_per_vector": 1.5447875019162893e-07,
+                "vectors_per_second": 6473382.25328411
+              },
+              "default": true,
+              "encode": {
+                "median_seconds": 0.14457895793020725,
+                "runs_seconds": [
+                  0.14471199992112815,
+                  0.14457895793020725,
+                  0.14433233300223947,
+                  0.1441616672091186,
+                  0.14480966702103615
+                ],
+                "seconds_per_vector": 1.4457895793020725e-06,
+                "vectors_per_second": 691663.5825268093
+              }
+            },
+            "scalar": {
+              "content_digest": "4c7c8286da1b22714ecf2186a158de9d4868ea909f116d1bb38d514c1bcf6d11",
+              "decode": {
+                "median_seconds": 0.015421499963849783,
+                "runs_seconds": [
+                  0.015421499963849783,
+                  0.015416875015944242,
+                  0.015523707959800959,
+                  0.015427500009536743,
+                  0.015388874802738428
+                ],
+                "seconds_per_vector": 1.5421499963849783e-07,
+                "vectors_per_second": 6484453.537879869
+              },
+              "default": false,
+              "encode": {
+                "median_seconds": 0.14385020779445767,
+                "runs_seconds": [
+                  0.14384558401070535,
+                  0.14385020779445767,
+                  0.14405587501823902,
+                  0.1440031249076128,
+                  0.1434695420321077
+                ],
+                "seconds_per_vector": 1.4385020779445767e-06,
+                "vectors_per_second": 695167.5741955574
+              }
+            }
+          },
+          "default_backend": "neon"
+        },
+        "semq_quant2": {
+          "backends": {
+            "neon": {
+              "content_digest": "8fb2496f50c8b1ed215597d14bec9b28084ea25d5315ae925cfe0170f8697d58",
+              "decode": {
+                "median_seconds": 0.08577254205010831,
+                "runs_seconds": [
+                  0.08577254205010831,
+                  0.08590508392080665,
+                  0.08567329100333154,
+                  0.08623949997127056,
+                  0.08575045899488032
+                ],
+                "seconds_per_vector": 8.577254205010831e-07,
+                "vectors_per_second": 1165874.2717638006
+              },
+              "default": true,
+              "encode": {
+                "median_seconds": 0.1141638751141727,
+                "runs_seconds": [
+                  0.1172701669856906,
+                  0.11416437500156462,
+                  0.1141638751141727,
+                  0.11387616605497897,
+                  0.11386933410540223
+                ],
+                "seconds_per_vector": 1.141638751141727e-06,
+                "vectors_per_second": 875933.8267029941
+              }
+            },
+            "scalar": {
+              "content_digest": "8fb2496f50c8b1ed215597d14bec9b28084ea25d5315ae925cfe0170f8697d58",
+              "decode": {
+                "median_seconds": 0.08573070797137916,
+                "runs_seconds": [
+                  0.08570399996824563,
+                  0.08573070797137916,
+                  0.08561254106462002,
+                  0.08574808295816183,
+                  0.08645141706801951
+                ],
+                "seconds_per_vector": 8.573070797137916e-07,
+                "vectors_per_second": 1166443.184318326
+              },
+              "default": false,
+              "encode": {
+                "median_seconds": 0.1855820829514414,
+                "runs_seconds": [
+                  0.18643100000917912,
+                  0.1855820829514414,
+                  0.18543208297342062,
+                  0.1883046249859035,
+                  0.1854016249999404
+                ],
+                "seconds_per_vector": 1.855820829514414e-06,
+                "vectors_per_second": 538845.1213049784
+              }
+            }
+          },
+          "default_backend": "neon"
+        },
+        "semq_quant4": {
+          "backends": {
+            "neon": {
+              "content_digest": "32a22285c84ee09ae69b4605731174e5688aab8f2461f827caec4d1cea3a6c81",
+              "decode": {
+                "median_seconds": 0.11082291603088379,
+                "runs_seconds": [
+                  0.11190087487921119,
+                  0.11096637486480176,
+                  0.11073845811188221,
+                  0.11056812503375113,
+                  0.11082291603088379
+                ],
+                "seconds_per_vector": 1.1082291603088379e-06,
+                "vectors_per_second": 902340.4507072554
+              },
+              "default": true,
+              "encode": {
+                "median_seconds": 0.12530170800164342,
+                "runs_seconds": [
+                  0.12799924984574318,
+                  0.13644104194827378,
+                  0.12530170800164342,
+                  0.12439541681669652,
+                  0.1243614589329809
+                ],
+                "seconds_per_vector": 1.2530170800164342e-06,
+                "vectors_per_second": 798073.7181865744
+              }
+            },
+            "scalar": {
+              "content_digest": "32a22285c84ee09ae69b4605731174e5688aab8f2461f827caec4d1cea3a6c81",
+              "decode": {
+                "median_seconds": 0.11125524993985891,
+                "runs_seconds": [
+                  0.1147600831463933,
+                  0.11088983318768442,
+                  0.11099874996580184,
+                  0.11125524993985891,
+                  0.11293933307752013
+                ],
+                "seconds_per_vector": 1.112552499398589e-06,
+                "vectors_per_second": 898833.9880954549
+              },
+              "default": false,
+              "encode": {
+                "median_seconds": 0.16965091694146395,
+                "runs_seconds": [
+                  0.16947575006633997,
+                  0.17033729190006852,
+                  0.16965091694146395,
+                  0.1700795409269631,
+                  0.16929300012998283
+                ],
+                "seconds_per_vector": 1.6965091694146395e-06,
+                "vectors_per_second": 589445.6794153599
+              }
+            }
+          },
+          "default_backend": "neon"
+        },
+        "semq_quant8": {
+          "backends": {
+            "neon": {
+              "content_digest": "a5fc4b5fb00ab1d40cf622df779486d76da9694fd37cc5543f6fd7343e4e3f2e",
+              "decode": {
+                "median_seconds": 0.1403488339856267,
+                "runs_seconds": [
+                  0.14318970777094364,
+                  0.13749675010330975,
+                  0.1403488339856267,
+                  0.14049729192629457,
+                  0.1382112498395145
+                ],
+                "seconds_per_vector": 1.403488339856267e-06,
+                "vectors_per_second": 712510.3726208451
+              },
+              "default": true,
+              "encode": {
+                "median_seconds": 0.1257470001000911,
+                "runs_seconds": [
+                  0.1257470001000911,
+                  0.1358307080809027,
+                  0.1245213330257684,
+                  0.12472912506200373,
+                  0.12753112497739494
+                ],
+                "seconds_per_vector": 1.257470001000911e-06,
+                "vectors_per_second": 795247.5997073711
+              }
+            },
+            "scalar": {
+              "content_digest": "a5fc4b5fb00ab1d40cf622df779486d76da9694fd37cc5543f6fd7343e4e3f2e",
+              "decode": {
+                "median_seconds": 0.13438841607421637,
+                "runs_seconds": [
+                  0.1342539160978049,
+                  0.13438841607421637,
+                  0.13405724987387657,
+                  0.1347884580027312,
+                  0.15153625002130866
+                ],
+                "seconds_per_vector": 1.3438841607421636e-06,
+                "vectors_per_second": 744111.7539831315
+              },
+              "default": false,
+              "encode": {
+                "median_seconds": 0.18013695790432394,
+                "runs_seconds": [
+                  0.18036704207770526,
+                  0.17989783291704953,
+                  0.18014408298768103,
+                  0.18013695790432394,
+                  0.18007025006227195
+                ],
+                "seconds_per_vector": 1.8013695790432394e-06,
+                "vectors_per_second": 555133.167359876
+              }
+            }
+          },
+          "default_backend": "neon"
+        }
+      }
+    },
+    "semq_version": "1.0.0a2.dev28+gc755a7754"
+  },
+  "schema": "semq-bench/speed/1",
+  "sdk_commit": "c755a7754198fa1d4d0d70e459effec4e7795b17",
+  "working_tree_dirty": false
+}

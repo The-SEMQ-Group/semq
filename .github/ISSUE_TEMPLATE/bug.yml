@@ -1,0 +1,92 @@
+name: Bug report
+description: Something in SEMQ is not behaving as documented.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. The more we know about
+        your environment and what you did, the faster we can reproduce
+        and fix the issue.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear, concise description of the unexpected behavior.
+      placeholder: |
+        Codec.encode on a float32 array of shape (N, dim) returned an
+        Encoding with N - 1 rows instead of N.
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-expected
+    attributes:
+      label: What did you expect?
+      description: The behavior the SDK's documentation or your reasonable assumption led you to expect.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: |
+        The smallest snippet that triggers the issue, in any of the SDK's
+        languages. If a full example is too large to inline, link a gist.
+      render: python
+      placeholder: |
+        import numpy as np
+        from semq import Codec, CodecConfig
+
+        codec = Codec(CodecConfig.quant(64, 4))
+        vectors = np.random.default_rng(0).standard_normal((5, 64)).astype(np.float32)
+        vectors /= np.linalg.norm(vectors, axis=1, keepdims=True)
+        encoding = codec.encode(vectors, ids=range(5))
+        assert len(encoding.rows) == 5  # fails: 4
+    validations:
+      required: true
+
+  - type: input
+    id: semq-version
+    attributes:
+      label: SEMQ version
+      description: In Python, the output of `python -c "import semq; print(semq.__version__)"`; otherwise the crate, module or npm package version.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS (Apple Silicon)
+        - Linux x86_64
+        - Linux aarch64
+        - Windows
+        - Other (describe in additional context)
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Language and version
+      placeholder: "Python 3.11.7"
+    validations:
+      required: true
+
+  - type: input
+    id: backend
+    attributes:
+      label: Active SIMD backend (from `Codec(...).backend`)
+      placeholder: "neon"
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Logs, screenshots, links to related issues, anything else useful.

@@ -1,0 +1,56 @@
+name: Feature request
+description: Propose a new capability for SEMQ.
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a feature. Please describe the use case
+        first — the better we understand the problem, the better we can
+        evaluate whether the proposed shape fits the rest of the SDK.
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: What are you trying to do? Describe the workflow, not the API change.
+      placeholder: |
+        I want to keep a long-running embedding cache warm across
+        process restarts so my retrieval service does not have to
+        re-encode the corpus on every redeploy.
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-workaround
+    attributes:
+      label: What you do today (workaround)
+      description: How you handle the use case currently without this feature, and where that falls short.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API or behavior
+      description: Concrete sketch of the function signature, file format change, or new module. Pseudocode is fine.
+      render: python
+      placeholder: |
+        # New helpers on Encoding
+        encoding.save_shards("./cache/", rows_per_shard=100_000)  # one .semq per shard
+        encoding = Encoding.load_shards("./cache/")
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other API shapes you thought about and why this one is preferable.
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Links to prior art, related issues, benchmarks, anything else useful.

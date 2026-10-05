@@ -1,0 +1,117 @@
+/*
+ * Copyright (c) 2026 The SEMQ Group Inc.
+ * Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
+ */
+
+/*
+ * semq_scalar.c — scalar reference implementation.
+ *
+ * The scalar backend is the correctness ground truth for every SIMD
+ * backend. All other backends must produce bit-identical output for
+ * any valid input.
+ */
+
+#include "semq_dispatch.h"
+
+#include <stdint.h>
+#include <math.h>
+
+/* -------------------------------------------------------------------------- */
+/*  SEMQ orbit operator                                                   */
+/*                                                                            */
+/*  Forward map  φ : float × scale → code in {0, 1, ..., 29}.                 */
+/*  Inverse map  φ⁻¹: code × scale → double, recovering one representative    */
+/*               of the equivalence class addressed by the code.              */
+/*  The public orbit rule is documented in contracts.md.                                   */
+/* -------------------------------------------------------------------------- */
+
+static int64_t scaled_round(float x, uint32_t scale) {
+    if (!isfinite(x)) {
+        return 0;
+    }
+    /* Round-to-nearest, ties-to-even, written out so the result does not
+     * depend on the process rounding mode. floor() is mode-independent and
+     * y - f is exact for |y| < 2^52, which every admitted input satisfies.
+     * Under FE_TONEAREST this equals the SIMD paths' FCVTNS / VCVTPD2DQ. */
+    const double p = (double)x * (double)scale;
+    const double f = floor(p);
+    const double r = p - f;
+    double y;
+    if (r > 0.5) {
+        y = f + 1.0;
+    } else if (r < 0.5) {
+        y = f;
+    } else {
+        y = (fmod(f, 2.0) == 0.0) ? f : f + 1.0;
+    }
+    if (y >= 9.2233720368547748e18) {  /* ≥ INT64_MAX */
+        return INT64_MAX;
+    }
+    if (y <= -9.2233720368547758e18) { /* ≤ INT64_MIN */
+        return INT64_MIN;
+    }
+    return (int64_t)y;
+}
+
+static uint8_t reduce(uint64_t a) {
+    if (a == 0u) return 0u;
+    return (uint8_t)(1u + (uint32_t)((a - 1u) % 9u));
+}
+
+static semq_code_t SEMQ_OPERATOR_IMPL(float x, uint32_t scale) {
+    int64_t v = scaled_round(x, scale);
+
+    unsigned int s = (v > 0) ? 2u : ((v < 0) ? 0u : 1u);
+
+    uint64_t a;
+    if (v == INT64_MIN) {
+        a = (uint64_t)INT64_MAX + 1u;
+    } else {
+        a = (v < 0) ? (uint64_t)(-v) : (uint64_t)v;
+    }
+
+    return (semq_code_t)(s * 10u + (unsigned int)reduce(a));
+}
+
+static double SEMQ_OPERATOR_INVERSE(semq_code_t code, uint32_t scale) {
+    int          sign = (int)(code / 10u) - 1;
+    unsigned int g    = (unsigned int)(code % 10u);
+    return ((double)g * (double)sign) / (double)scale;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Backend entry points                                                      */
+/* -------------------------------------------------------------------------- */
+
+static semq_status_t scalar_encode(
+    const float* input,
+    uint32_t     dim,
+    uint32_t     scale,
+    semq_code_t* output) {
+
+    for (uint32_t i = 0; i < dim; ++i) {
+        output[i] = SEMQ_OPERATOR_IMPL(input[i], scale);
+    }
+    return SEMQ_OK;
+}
+
+static semq_status_t scalar_reconstruct(
+    const semq_code_t* codes,
+    uint32_t           dim,
+    uint32_t           scale,
+    double*            output) {
+
+    for (uint32_t i = 0; i < dim; ++i) {
+        output[i] = SEMQ_OPERATOR_INVERSE(codes[i], scale);
+    }
+    return SEMQ_OK;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Backend descriptor                                                        */
+/* -------------------------------------------------------------------------- */
+
+const semq_backend_t SEMQ_SCALAR_BACKEND = {
+    .encode       = scalar_encode,
+    .reconstruct  = scalar_reconstruct
+};

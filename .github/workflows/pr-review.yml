@@ -1,0 +1,60 @@
+# Automated PR review via Amazon Bedrock. Advisory only: posts a
+# comment, never approves or merges.
+#
+# Mechanics live in the local composite action .github/actions/pr-review;
+# review criteria live in .github/pr-review-prompt.md.
+#
+# Trigger is `pull_request`, NOT `pull_request_target` — the latter
+# exposes repository secrets to fork code.
+
+name: pr-review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: advisory review
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: write   # posts the review comment
+      id-token: write        # OIDC federation to AWS; no static keys
+    # Skipped for Dependabot PRs: workflows triggered by dependabot[bot]
+    # receive Dependabot secrets, not repository secrets, so
+    # AWS_PR_REVIEW_ROLE_ARN resolves empty and the OIDC role assumption
+    # fails before the review starts. There is also nothing for the
+    # model to read — a Dependabot diff is a lockfile bump, which the
+    # action withholds from the prompt as machine-written anyway.
+    if: >
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0        # script diffs base...head; needs a merge base
+
+      - uses: ./.github/actions/pr-review
+        with:
+          role-arn: ${{ secrets.AWS_PR_REVIEW_ROLE_ARN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-number: ${{ github.event.pull_request.number }}
+          base-sha: ${{ github.event.pull_request.base.sha }}
+          head-sha: ${{ github.event.pull_request.head.sha }}
+          pr-body: ${{ github.event.pull_request.body }}
+          prompt-path: .github/pr-review-prompt.md
+          # Review gates: an edit to one always gets flagged.
+          tripwire-paths: |
+            .github/workflows/
+            .github/actions/
+            .github/pr-review-prompt.md

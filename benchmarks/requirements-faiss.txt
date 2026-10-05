@@ -1,0 +1,2 @@
+# Optional competitor backend; keep it outside SDK runtime dependencies.
+faiss-cpu==1.15.1

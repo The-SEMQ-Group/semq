@@ -1,0 +1,240 @@
+# Copyright (c) 2026 The SEMQ Group Inc.
+# Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
+
+# Modern Python packaging for the SEMQ SDK.
+#
+# `pip install .` from the repository root triggers a scikit-build-core
+# build: CMake compiles libsemq + selects the host SIMD backend, the
+# shared library lands inside the wheel under semq/libsemq.{so,dylib,dll},
+# and the cffi binding (which already looks next to its module first)
+# picks it up at runtime without any environment variable.
+#
+# Version is single-sourced from git tags via setuptools-scm: tag
+# `v1.0.0` → wheel `semq-1.0.0-...whl` and `v1.0.0-rc.1` → `1.0.0rc1`,
+# exposed at runtime as `semq.__version__`.
+
+[build-system]
+requires = [
+    "scikit-build-core>=0.10",
+    "setuptools-scm>=9",
+]
+build-backend = "scikit_build_core.build"
+
+
+[project]
+name = "semq"
+description = "SEMQ SDK — symbolic quantization of continuous embeddings."
+readme = "README.md"
+# 3.11 floor: Python 3.10 reaches end of life in October 2026, before the
+# first public release, and 1.0.0 should not promise support for a Python
+# without security fixes. The development tools already need 3.11
+# (tomllib). Decided pre-1.0.0, while the change is free of SemVer
+# consequences.
+requires-python = ">=3.11"
+license = { file = "LICENSE.md" }
+authors = [
+    { name = "The SEMQ Group Inc." },
+]
+keywords = [
+    "embeddings",
+    "vector-quantization",
+    "semantic-search",
+    "retrieval",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: C",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "cffi>=1.16",
+    "numpy>=1.24",
+]
+dynamic = ["version"]
+
+
+[project.optional-dependencies]
+# Developer tooling: tests + linting + type checking.
+dev = [
+    "pytest>=8",
+    "pytest-cov>=5",
+    "hypothesis>=6.100",
+    "build>=1.2",
+    "mypy>=1.8",
+]
+
+
+[project.scripts]
+semq = "semq.cli:main"
+
+
+[project.urls]
+Homepage      = "https://github.com/The-SEMQ-Group/semq"
+Source        = "https://github.com/The-SEMQ-Group/semq"
+Issues        = "https://github.com/The-SEMQ-Group/semq/issues"
+Documentation = "https://the-semq-group.github.io/semq/"
+Changelog     = "https://github.com/The-SEMQ-Group/semq/blob/main/CHANGELOG.md"
+
+
+# ---------------------------------------------------------------------------
+# scikit-build-core: how to build the C library and assemble the wheel
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+# Lint rules only; black formats the benchmarks (see benchmarks.yml).
+target-version = "py311"
+line-length = 88
+# A copy of the review action shared across repositories; edit it upstream.
+extend-exclude = [".github/actions/pr-review"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",  # pycodestyle
+    "F",       # pyflakes: undefined names, unused imports and variables
+    "I",       # import order
+    "B",       # bugbear: likely bugs such as mutable defaults and unbound closures
+    "UP",      # syntax the minimum Python supports
+    "C4",      # comprehensions
+    "PIE",
+    "SIM",
+    "PERF",
+    "RUF",
+]
+ignore = [
+    "E501",    # line length is the formatter's call
+    "RUF001",  # en dashes and multiplication signs in rendered text are deliberate
+    "RUF002",
+    "RUF003",
+    "RUF005",  # style preferences, not defects
+    "PERF401",
+    "SIM105",
+]
+
+# Codes of rules not enabled here stay valid in noqa comments.
+external = ["S"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["semq"]
+
+
+[tool.mypy]
+# mypy checks against 3.11, which is also the SDK's minimum runtime.
+python_version = "3.11"
+mypy_path = "bindings/python"
+files = ["bindings/python/semq", "benchmarks"]
+ignore_missing_imports = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+
+# The package itself is checked with every flag of `mypy --strict` that can
+# be set per module; the benchmark scripts keep the pragmatic gate above.
+[[tool.mypy.overrides]]
+module = "semq.*"
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+warn_return_any = true
+warn_unused_ignores = true
+no_implicit_reexport = true
+strict_equality = true
+extra_checks = true
+
+
+[tool.pytest.ini_options]
+# Register marker names so `-m slow`/`-m install` filtering does not
+# emit a PytestUnknownMarkWarning. Slow tests live under tests/scale/
+# and are excluded from the default collection.
+markers = [
+    "slow: stress / concurrency tests that take minutes; run with `pytest -m slow`.",
+    "install: full-build install tests (deselected by default; run with -m install)",
+]
+# By default do NOT collect scale tests (they take 5+ min each).
+# Run them explicitly with `pytest tests/scale -m slow`.
+addopts = "--ignore=tests/scale"
+
+
+[tool.scikit-build]
+# Source of CMakeLists.txt — repository root.
+cmake.source-dir = "."
+# Minimum CMake required (matches the project's own requirement).
+cmake.version = ">=3.20"
+# Default build type for wheel builds. Debug + sanitizers stay opt-in
+# for local development (see CMakeLists.txt SEMQ_ENABLE_SANITIZERS).
+cmake.build-type = "Release"
+
+# Pick up the Python package from its non-standard location under
+# bindings/python/. scikit-build-core copies the listed directory into
+# the wheel as the `semq` package.
+wheel.packages = ["bindings/python/semq"]
+# The package has no CPython extension: cffi loads the native library at
+# runtime. One py3-none-<platform> wheel per platform therefore serves every
+# Python 3 from requires-python on, including versions released later.
+wheel.py-api = "py3"
+
+# Skip the test executables when assembling the wheel — they are
+# only useful inside a developer checkout, not in installed packages.
+cmake.args = ["-DSEMQ_BUILD_TESTS=OFF"]
+
+# Version sourced from the latest git tag via setuptools-scm.
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
+
+# The minimum Python ABI tag is driven by requires-python above.
+minimum-version = "0.10"
+
+
+[tool.setuptools_scm]
+# Falls back to PEP 440 dev versions between tags (e.g. 1.0.0.dev3+g1abcdef).
+fallback_version = "0.0.0+unknown"
+
+[tool.setuptools_scm.scm.git]
+# Only SDK version tags (vX.Y.Z, vX.Y.Z-rc.N) name a Python version; the Go
+# module tags (bindings/go/v...) do not parse as one.
+describe_command = ["git", "describe", "--dirty", "--tags", "--long", "--match", "v[0-9]*"]
+
+
+# ---------------------------------------------------------------------------
+# cibuildwheel: produce platform wheels on release
+# ---------------------------------------------------------------------------
+
+[tool.cibuildwheel]
+# CPython only (skip PyPy until anyone asks for it).
+build = "cp311-* cp312-* cp313-* cp314-*"
+# Skip Alpine/musl by default — manylinux is the broad-compatibility target.
+skip = "*-musllinux_*"
+build-verbosity = 1
+
+# Test every wheel, on every Python above, against the conformance vectors:
+# the bytes that ship are the bytes that were verified. The first command
+# shows which installation is under test; pytest imports that one, because
+# the vector directory holds no semq package.
+test-requires = ["pytest"]
+test-command = [
+  "python -c \"import semq; from semq import Codec, CodecConfig; c = Codec(CodecConfig.quant(8, 4)); print('semq', semq.__version__, semq.__file__, 'backend', c.backend)\"",
+  "pytest {project}/tests/conformance -q -p no:cacheprovider",
+]
+
+[tool.cibuildwheel.linux]
+# manylinux_2_28 covers Ubuntu 20.04+/RHEL 8+/everything else recent.
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+# Install CMake + Ninja inside the manylinux container.
+before-all = "yum install -y cmake ninja-build"
+
+[tool.cibuildwheel.macos]
+# macOS 11, the first release on Apple Silicon. The built library records
+# minos 11.0 and the wheel is tagged macosx_11_0; a 13.3 value here was never
+# applied to the library.
+environment = { MACOSX_DEPLOYMENT_TARGET = "11.0" }

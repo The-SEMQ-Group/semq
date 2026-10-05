@@ -1,0 +1,254 @@
+{
+  "generated_utc": "2026-09-29T06:36:37Z",
+  "hardware": {
+    "arch": "arm64",
+    "cpu_threads": 12,
+    "gpu": "not used by this metric",
+    "machine": "Apple M4 Pro",
+    "os": "macOS-26.6.2-arm64-arm-64bit"
+  },
+  "inputs": {
+    "fixture_ids": {
+      "sha256": "ff1824dd90ac419700ca4f893754fb2ffdbc1202275102c4784953ef6bbbf422",
+      "source": "tests/reproducibility/ids.json"
+    },
+    "fixture_vectors": {
+      "sha256": "a1cea708bd4281777664a540aa0f0e30d4a7a57d30cdb6816c0e5427367a2488",
+      "source": "tests/reproducibility/vectors.f32"
+    },
+    "scifact-e5": {
+      "sha256": "1de0ad4e829851fcbae4af37658b8d4ccdfdd4bb1e3a07a35a68f077893d0f94",
+      "source": "~/.cache/semq-benchmarks/scifact-e5/embeddings.npz (rows 0..999 (lexical BEIR document id order))"
+    },
+    "workflow": {
+      "sha256": "6f0a2fcd17f1677f79359f95e55ca64a88ec5440b2bb15864706d13d64776b6b",
+      "source": ".github/workflows/test.yml"
+    }
+  },
+  "results": {
+    "ci_matrix": [
+      {
+        "architecture": "x86_64",
+        "binding": "python",
+        "ci_job": "c and python (linux-x86_64)",
+        "ci_step": "Python tests",
+        "platform": "Linux",
+        "runner": "ubuntu-24.04",
+        "status": "verified in CI",
+        "test": "tests/reproducibility/test_reproducibility.py"
+      },
+      {
+        "architecture": "arm64",
+        "binding": "python",
+        "ci_job": "c and python (linux-arm64)",
+        "ci_step": "Python tests",
+        "platform": "Linux",
+        "runner": "ubuntu-24.04-arm",
+        "status": "verified in CI",
+        "test": "tests/reproducibility/test_reproducibility.py"
+      },
+      {
+        "architecture": "arm64",
+        "binding": "python",
+        "ci_job": "c and python (macos-arm64)",
+        "ci_step": "Python tests",
+        "platform": "macOS",
+        "runner": "macos-26",
+        "status": "verified in CI",
+        "test": "tests/reproducibility/test_reproducibility.py"
+      },
+      {
+        "architecture": "x86_64",
+        "binding": "python",
+        "ci_job": "c and python (windows-x86_64)",
+        "ci_step": "Python tests",
+        "platform": "Windows",
+        "runner": "windows-2025-vs2026",
+        "status": "verified in CI",
+        "test": "tests/reproducibility/test_reproducibility.py"
+      },
+      {
+        "architecture": "x86_64",
+        "binding": "rust",
+        "ci_job": "rust (linux-x86_64)",
+        "ci_step": "cargo test",
+        "platform": "Linux",
+        "runner": "ubuntu-24.04",
+        "status": "verified in CI",
+        "test": "bindings/rust/semq/tests/reproducibility.rs"
+      },
+      {
+        "architecture": "arm64",
+        "binding": "rust",
+        "ci_job": "rust (linux-arm64)",
+        "ci_step": "cargo test",
+        "platform": "Linux",
+        "runner": "ubuntu-24.04-arm",
+        "status": "verified in CI",
+        "test": "bindings/rust/semq/tests/reproducibility.rs"
+      },
+      {
+        "architecture": "arm64",
+        "binding": "rust",
+        "ci_job": "rust (macos-arm64)",
+        "ci_step": "cargo test",
+        "platform": "macOS",
+        "runner": "macos-26",
+        "status": "verified in CI",
+        "test": "bindings/rust/semq/tests/reproducibility.rs"
+      },
+      {
+        "architecture": "x86_64",
+        "binding": "rust",
+        "ci_job": "rust (windows-x86_64)",
+        "ci_step": "cargo test",
+        "platform": "Windows",
+        "runner": "windows-2025-vs2026",
+        "status": "verified in CI",
+        "test": "bindings/rust/semq/tests/reproducibility.rs"
+      },
+      {
+        "architecture": "x86_64",
+        "binding": "go",
+        "ci_job": "go (linux-x86_64)",
+        "ci_step": "go test",
+        "platform": "Linux",
+        "runner": "ubuntu-24.04",
+        "status": "verified in CI",
+        "test": "bindings/go/reproducibility_test.go"
+      },
+      {
+        "architecture": "arm64",
+        "binding": "go",
+        "ci_job": "go (linux-arm64)",
+        "ci_step": "go test",
+        "platform": "Linux",
+        "runner": "ubuntu-24.04-arm",
+        "status": "verified in CI",
+        "test": "bindings/go/reproducibility_test.go"
+      },
+      {
+        "architecture": "arm64",
+        "binding": "go",
+        "ci_job": "go (macos-arm64)",
+        "ci_step": "go test",
+        "platform": "macOS",
+        "runner": "macos-26",
+        "status": "verified in CI",
+        "test": "bindings/go/reproducibility_test.go"
+      },
+      {
+        "architecture": "x86_64",
+        "binding": "go",
+        "ci_job": "go (windows-x86_64)",
+        "ci_step": "go test",
+        "platform": "Windows",
+        "runner": "windows-2025-vs2026",
+        "status": "verified in CI",
+        "test": "bindings/go/reproducibility_test.go"
+      },
+      {
+        "architecture": "wasm32",
+        "binding": "typescript",
+        "ci_job": "typescript",
+        "ci_step": "Test",
+        "platform": "WebAssembly (Node.js on Linux x86_64)",
+        "runner": "ubuntu-24.04",
+        "status": "verified in CI",
+        "test": "bindings/ts/test/reproducibility.test.ts"
+      }
+    ],
+    "claim": "the same real embeddings give the same content_digest, state_id and file bytes on every platform and in every binding",
+    "expected": {
+      "configs": {
+        "semq_orbit50": {
+          "config": {
+            "dim": 384,
+            "operator": "orbit",
+            "parameter": 50
+          },
+          "content_digest": "00da540a460457bf9a84174ae60faebe29abf0b99cfcb289302d6a1aeb7b80df",
+          "file_sha256": "283af8589ffda052f97b5d6d68d2de66c1a40ff6a15da411b4ce16a2ca024908",
+          "file_size": 400107,
+          "state_id": "1eef30a86ae76c1ee2aa9c7b206220bb055a1cf6359f75797dcffd4b9d53f94c"
+        },
+        "semq_phase16": {
+          "config": {
+            "dim": 384,
+            "operator": "phase",
+            "parameter": 16
+          },
+          "content_digest": "b39dec4ad14b51448e1e1601a8af5978d9dbf651cfdcbd0d935b90ff175a3c1e",
+          "file_sha256": "2f2f5907326ff7f4ccebb99c968955393e37fcd8757eb8bcacc8a3c667e3bb57",
+          "file_size": 112107,
+          "state_id": "7a16881c4d64e7332f28a764bc9c7dd85351cd065278ff7ce8884a75749c816f"
+        },
+        "semq_quant2": {
+          "config": {
+            "dim": 384,
+            "operator": "quant",
+            "parameter": 2
+          },
+          "content_digest": "8d28452b66b51a8524d30181ed6240a73a8ae0b5e26a8e87e2cbd46f552d0a79",
+          "file_sha256": "6859dd20f46448276f422d717eb77ef864ac42b7f5dfa6030e13fde5b0f46465",
+          "file_size": 112107,
+          "state_id": "ad47a8e23bb97a71837a4d6f2c92eba84eb0aedd7f8a284947859656a48019cf"
+        },
+        "semq_quant4": {
+          "config": {
+            "dim": 384,
+            "operator": "quant",
+            "parameter": 4
+          },
+          "content_digest": "c4b7485aacecd6d070033138feaf48add37defa1670d0f894f744c2449f55c9d",
+          "file_sha256": "c8307a151c38984e3cd5a621e5ee897d1e5a51fe741f183e4327747d398aa865",
+          "file_size": 160107,
+          "state_id": "dc1711764b7971438514c823eb48fbf695c8f83dd114e86b5994e224356b5388"
+        },
+        "semq_quant8": {
+          "config": {
+            "dim": 384,
+            "operator": "quant",
+            "parameter": 8
+          },
+          "content_digest": "f6911febd47a586b1044830b72730fb3d8f653b8012b835f0ea21e26ac63b4f5",
+          "file_sha256": "db02e67446edc15ef87f820016c247dbb489ebcff513e6875e53ac1b4c578117",
+          "file_size": 208107,
+          "state_id": "a6dff46503a7a93719adc0d6006c7b9a426ddd7102af8899228b5a172031f8b7"
+        }
+      },
+      "dim": 384,
+      "id_kind": "utf8",
+      "manifest": {
+        "encoder": "intfloat/e5-small-v2",
+        "encoder_revision": "ffb93f3bd4047442299a41ebb6fa998a38507c52"
+      },
+      "rows": 1000,
+      "vectors_sha256": "a1cea708bd4281777664a540aa0f0e30d4a7a57d30cdb6816c0e5427367a2488"
+    },
+    "local": {
+      "bindings": {
+        "go": {
+          "command": "(cd bindings/go && CGO_LDFLAGS=-L$REPO/build-go CGO_CFLAGS=-I$REPO/include go test -race -run TestReproducibility .)",
+          "status": "pass"
+        },
+        "python": {
+          "command": "(cd . && SEMQ_LIBRARY_PATH=$REPO/build-trim-rel/libsemq.dylib python -m pytest tests/reproducibility -q)",
+          "status": "pass"
+        },
+        "rust": {
+          "command": "(cd bindings/rust && SEMQ_LIBRARY_PATH=$REPO/build-trim-rel DYLD_LIBRARY_PATH=$REPO/build-trim-rel LD_LIBRARY_PATH=$REPO/build-trim-rel cargo test -p semq --test reproducibility)",
+          "status": "pass"
+        },
+        "typescript": {
+          "command": "(cd bindings/ts && npx vitest run test/reproducibility.test.ts)",
+          "status": "pass"
+        }
+      },
+      "machine": "Apple M4 Pro"
+    }
+  },
+  "schema": "semq-bench/reproducibility/1",
+  "sdk_commit": "c606294b99b09894f9642a9f22bfa97bc9863098",
+  "working_tree_dirty": false
+}

@@ -1,0 +1,186 @@
+/*
+ * Copyright (c) 2026 The SEMQ Group Inc.
+ * Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
+ */
+
+/*
+ * semq_phase_scalar.c — scalar reference for the SEMQ phase operator.
+ *
+ * Pairs consecutive input dims (d0, d1), (d2, d3), ... as a 2-D vector
+ * and bins the angle θ = atan2(d_{i+1}, d_i) into one of `n_bins`
+ * equal sectors. The atan2 is the polynomial reference defined in
+ * semq_phase_atan2.h — bit-identical across architectures.
+ *
+ * Output layout:
+ *
+ *   unpacked  (config.packed == 0)
+ *       One byte per pair → dim/2 bytes total.
+ *       Each byte holds the full sector index 0..n_bins-1 (n_bins ≤ 256),
+ *       so decode must read the whole byte, not just the low nibble.
+ *
+ *   packed    (config.packed != 0, n_bins ≤ 16 only)
+ *       Two pairs per byte → dim/4 bytes total.
+ *       byte[i] = sectors[2i]  |  (sectors[2i+1] << 4)
+ *       Low nibble = even-pair sector, high nibble = odd-pair sector.
+ *
+ * Requires `dim` to be even (unpacked) or divisible by 4 (packed).
+ */
+
+#include "semq_dispatch.h"
+#include "semq_phase_atan2.h"
+
+#include <math.h>
+#include <stddef.h>
+#include <stdint.h>
+
+/* -------------------------------------------------------------------------- */
+/*  Output size                                                                */
+/* -------------------------------------------------------------------------- */
+
+static uint32_t phase_output_size(uint32_t dim, uint32_t n_bins, uint32_t packed) {
+    (void)n_bins;
+    if (dim == 0u) {
+        return 0u;
+    }
+    /* dim must be even (one sector per pair). */
+    if ((dim & 1u) != 0u) {
+        return 0u;
+    }
+    const uint32_t pairs = dim / 2u;
+    if (packed != 0u) {
+        /* packed: 2 nibbles per byte. pairs must be even. */
+        if ((pairs & 1u) != 0u) {
+            return 0u;
+        }
+        return pairs / 2u;
+    }
+    return pairs;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Encode                                                                    */
+/* -------------------------------------------------------------------------- */
+
+static semq_status_t phase_encode(
+    const float* input,
+    uint32_t     dim,
+    uint32_t     n_bins,
+    uint32_t     packed,
+    semq_code_t* output) {
+
+    const uint32_t out_bytes = phase_output_size(dim, n_bins, packed);
+    if (out_bytes == 0u) {
+        return SEMQ_ERR_INVALID_INPUT;
+    }
+
+    const uint32_t pairs = dim / 2u;
+
+    if (packed == 0u) {
+        for (uint32_t p = 0u; p < pairs; ++p) {
+            output[p] = semq_phase_sector(
+                input[(size_t)p * 2u + 1u],
+                input[(size_t)p * 2u + 0u],
+                n_bins);
+        }
+    } else {
+        for (uint32_t p = 0u; p < pairs; p += 2u) {
+            const uint8_t lo = semq_phase_sector(
+                input[(size_t)p * 2u + 1u],
+                input[(size_t)p * 2u + 0u],
+                n_bins);
+            const uint8_t hi = semq_phase_sector(
+                input[(size_t)(p + 1u) * 2u + 1u],
+                input[(size_t)(p + 1u) * 2u + 0u],
+                n_bins);
+            output[p / 2u] = (semq_code_t)(lo | (uint8_t)(hi << 4u));
+        }
+    }
+    return SEMQ_OK;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Reconstruct — one representative direction per sector                     */
+/*                                                                            */
+/*  The representative is the direction whose encoder angle (the polynomial   */
+/*  atan2 above, not the exact angle) is the midpoint of the sector, so the   */
+/*  fixed point kernel_encode(reconstruct(row)) == row holds for every sector */
+/*  count. It is obtained by inverting the polynomial on [0, 1] by bisection. */
+/*  Representatives are outside the byte contract.                            */
+/* -------------------------------------------------------------------------- */
+
+/* t in [0, 1] with semq_phase_atan_poly_unit(t) == target, for target in
+ * [0, poly(1)]. The polynomial is strictly increasing on [0, 1]. */
+static double invert_poly(double target) {
+    double lo = 0.0, hi = 1.0;
+    for (int i = 0; i < 64; i++) {
+        const double mid = 0.5 * (lo + hi);
+        if (semq_phase_atan_poly_unit(mid) < target) lo = mid; else hi = mid;
+    }
+    return 0.5 * (lo + hi);
+}
+
+/* The unit direction (x, y) whose encoder angle is theta in (-pi, pi]. */
+static void direction_for(double theta, double* x, double* y) {
+    const int neg_y = theta < 0.0;
+    double m = neg_y ? -theta : theta;          /* [0, pi] */
+    const int neg_x = m > SEMQ_PI_HALF;
+    if (neg_x) m = SEMQ_PI - m;                 /* first-quadrant magnitude, [0, pi/2] */
+    const double top = semq_phase_atan_poly_unit(1.0);
+    double ax, ay;
+    if (m <= top) {
+        ax = 1.0;
+        ay = invert_poly(m);                    /* ax >= ay branch */
+    } else {
+        ay = 1.0;
+        ax = invert_poly(SEMQ_PI_HALF - m);     /* ay > ax branch */
+    }
+    const double norm = sqrt(ax * ax + ay * ay);
+    ax /= norm;
+    ay /= norm;
+    *x = neg_x ? -ax : ax;
+    *y = neg_y ? -ay : ay;
+}
+
+/* The representative of one sector: the direction whose encoder angle is
+ * the sector midpoint. It depends only on (n_bins, sector), so a decoder can
+ * compute it once per sector and reuse it for every pair. */
+void semq_phase_representative(uint32_t n_bins, uint32_t sector, double out[2]) {
+    const double bin_width = (2.0 * SEMQ_PI) / (double)n_bins;
+    const double theta = -SEMQ_PI + ((double)sector + 0.5) * bin_width;
+    direction_for(theta, &out[0], &out[1]);
+}
+
+static semq_status_t phase_reconstruct(
+    const semq_code_t* codes,
+    uint32_t           dim,
+    uint32_t           n_bins,
+    uint32_t           packed,
+    double*            output) {
+
+    if (phase_output_size(dim, n_bins, packed) == 0u) {
+        return SEMQ_ERR_INVALID_INPUT;
+    }
+    const uint32_t pairs = dim / 2u;
+
+    for (uint32_t p = 0u; p < pairs; ++p) {
+        uint8_t sector;
+        if (packed == 0u) {
+            sector = codes[p];
+        } else {
+            const uint32_t byte_idx = p / 2u;
+            const uint32_t nibble   = p & 1u;
+            sector = (uint8_t)((codes[byte_idx] >> (4u * nibble)) & 0x0Fu);
+        }
+        semq_phase_representative(n_bins, sector, output + (size_t)p * 2u);
+    }
+    return SEMQ_OK;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Backend descriptor                                                        */
+/* -------------------------------------------------------------------------- */
+
+const semq_phase_backend_t SEMQ_PHASE_SCALAR_BACKEND = {
+    .encode       = phase_encode,
+    .reconstruct  = phase_reconstruct,
+};

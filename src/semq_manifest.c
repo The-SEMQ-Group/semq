@@ -1,0 +1,138 @@
+/*
+ * Copyright (c) 2026 The SEMQ Group Inc.
+ * Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
+ */
+
+/* Manifest validation, canonical bytes and pair indexing. */
+#include "semq_internal.h"
+
+static int pair_less(const semq_pair_t* p, uint32_t a, uint32_t b) {
+    return semqi_cmp_bytes(p[a].key, p[a].key_len, p[b].key, p[b].key_len) < 0;
+}
+
+static void pair_sort(const semq_pair_t* p, uint32_t* idx, uint32_t* tmp, uint32_t n) {
+    if (n < 2u) return;
+    const uint32_t h = n / 2u;
+    pair_sort(p, idx, tmp, h);
+    pair_sort(p, idx + h, tmp, n - h);
+    uint32_t i = 0u, j = h, k = 0u;
+    while (i < h && j < n) {
+        if (pair_less(p, idx[j], idx[i])) tmp[k++] = idx[j++];
+        else                              tmp[k++] = idx[i++];
+    }
+    while (i < h) tmp[k++] = idx[i++];
+    while (j < n) tmp[k++] = idx[j++];
+    memcpy(idx, tmp, (size_t)n * sizeof(uint32_t));
+}
+
+semq_status_t semqi_manifest_build(const semq_pair_t* pairs, uint32_t n_pairs, uint8_t** section,
+                                   uint64_t* len, semq_error_t* err) {
+    *section = NULL;
+    *len = 0u;
+    if (n_pairs > SEMQ_MANIFEST_MAX_PAIRS) {
+        return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "manifest exceeds 4096 pairs");
+    }
+    if (n_pairs > 0u && pairs == NULL) {
+        return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "manifest pairs are NULL");
+    }
+    uint64_t total = 4u;
+    for (uint32_t i = 0u; i < n_pairs; i++) {
+        const semq_pair_t* p = &pairs[i];
+        if (p->key_len < 1u || p->key_len > SEMQ_MANIFEST_KEY_MAX || p->key == NULL) {
+            return SEMQI_INVALID(err, SEMQ_NONE, i, "manifest key must be 1..256 bytes");
+        }
+        if (p->value_len > SEMQ_MANIFEST_VALUE_MAX || (p->value_len > 0u && p->value == NULL)) {
+            return SEMQI_INVALID(err, SEMQ_NONE, i, "manifest value must be at most 65536 bytes");
+        }
+        if (!semqi_utf8_valid(p->key, p->key_len)) {
+            return SEMQI_INVALID(err, SEMQ_NONE, i, "manifest key is not valid UTF-8");
+        }
+        if (p->value_len > 0u && !semqi_utf8_valid(p->value, p->value_len)) {
+            return SEMQI_INVALID(err, SEMQ_NONE, i, "manifest value is not valid UTF-8");
+        }
+        total += 8u + p->key_len + p->value_len;
+    }
+    if (total > (uint64_t)SEMQ_MANIFEST_SECTION_MAX) {
+        return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "manifest section exceeds 16 MiB");
+    }
+    uint32_t* idx = (uint32_t*)semqi_alloc((uint64_t)n_pairs * sizeof(uint32_t));
+    uint32_t* tmp = (uint32_t*)semqi_alloc((uint64_t)n_pairs * sizeof(uint32_t));
+    uint8_t*  out = (uint8_t*)semqi_alloc(total);
+    if (idx == NULL || tmp == NULL || out == NULL) {
+        semqi_free(idx); semqi_free(tmp); semqi_free(out);
+        return SEMQI_NOMEM(err);
+    }
+    for (uint32_t i = 0u; i < n_pairs; i++) idx[i] = i;
+    pair_sort(pairs, idx, tmp, n_pairs);
+    for (uint32_t i = 1u; i < n_pairs; i++) {
+        if (semqi_cmp_bytes(pairs[idx[i - 1u]].key, pairs[idx[i - 1u]].key_len,
+                            pairs[idx[i]].key, pairs[idx[i]].key_len) == 0) {
+            const uint32_t dup = idx[i];
+            semqi_free(idx); semqi_free(tmp); semqi_free(out);
+            return SEMQI_INVALID(err, SEMQ_NONE, dup, "duplicate manifest key");
+        }
+    }
+    semqi_wr32(out, n_pairs);
+    uint64_t pos = 4u;
+    for (uint32_t i = 0u; i < n_pairs; i++) {
+        const semq_pair_t* p = &pairs[idx[i]];
+        semqi_wr32(out + pos, p->key_len);              pos += 4u;
+        memcpy(out + pos, p->key, p->key_len);           pos += p->key_len;
+        semqi_wr32(out + pos, p->value_len);            pos += 4u;
+        if (p->value_len > 0u) memcpy(out + pos, p->value, p->value_len);
+        pos += p->value_len;
+    }
+    semqi_free(idx);
+    semqi_free(tmp);
+    *section = out;
+    *len = total;
+    return SEMQ_OK;
+}
+
+semq_status_t semqi_manifest_index(const uint8_t* section, uint64_t len, uint32_t* n_pairs,
+                                   semqi_pair_index_t** index, semq_error_t* err) {
+    *n_pairs = 0u;
+    *index = NULL;
+    if (len < 4u || len > (uint64_t)SEMQ_MANIFEST_SECTION_MAX) {
+        return SEMQI_FORMAT(err, SEMQ_SECTION_MANIFEST, "manifest section has an invalid length");
+    }
+    const uint32_t n = semqi_rd32(section);
+    if (n > SEMQ_MANIFEST_MAX_PAIRS) {
+        return SEMQI_FORMAT(err, SEMQ_SECTION_MANIFEST, "manifest exceeds 4096 pairs");
+    }
+    semqi_pair_index_t* ix = (n == 0u) ? NULL
+        : (semqi_pair_index_t*)semqi_alloc((uint64_t)n * sizeof(semqi_pair_index_t));
+    if (n > 0u && ix == NULL) return SEMQI_NOMEM(err);
+    uint64_t pos = 4u;
+    const uint8_t* prev_key = NULL;
+    uint32_t prev_len = 0u;
+    for (uint32_t i = 0u; i < n; i++) {
+        if (len - pos < 4u) goto bad;
+        const uint32_t klen = semqi_rd32(section + pos);
+        pos += 4u;
+        if (klen < 1u || klen > SEMQ_MANIFEST_KEY_MAX || len - pos < klen) goto bad;
+        const uint8_t* key = section + pos;
+        pos += klen;
+        if (len - pos < 4u) goto bad;
+        const uint32_t vlen = semqi_rd32(section + pos);
+        pos += 4u;
+        if (vlen > SEMQ_MANIFEST_VALUE_MAX || len - pos < vlen) goto bad;
+        const uint8_t* value = section + pos;
+        pos += vlen;
+        if (!semqi_utf8_valid(key, klen) || (vlen > 0u && !semqi_utf8_valid(value, vlen))) goto bad;
+        if (prev_key != NULL && semqi_cmp_bytes(prev_key, prev_len, key, klen) >= 0) goto bad;
+        ix[i].key_off   = (uint32_t)(key - section);
+        ix[i].key_len   = klen;
+        ix[i].value_off = (uint32_t)(value - section);
+        ix[i].value_len = vlen;
+        prev_key = key;
+        prev_len = klen;
+    }
+    if (pos != len) goto bad;
+    *n_pairs = n;
+    *index = ix;
+    return SEMQ_OK;
+bad:
+    semqi_free(ix);
+    return SEMQI_FORMAT(err, SEMQ_SECTION_MANIFEST, "manifest section is malformed");
+}

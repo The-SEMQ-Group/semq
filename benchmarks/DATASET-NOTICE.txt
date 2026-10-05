@@ -1,0 +1,35 @@
+SEMQ benchmark inputs: SciFact and FiQA with E5-small-v2 and BGE-small-en-v1.5
+
+These files contain derived embeddings, document/query identifiers, and relevance
+judgments. They do not include source document text or model weights.
+
+Source datasets and judgments:
+- SciFact, David Wadden et al., "Fact or Fiction: Verifying Scientific Claims" (2020).
+  https://huggingface.co/datasets/BeIR/scifact
+  https://huggingface.co/datasets/BeIR/scifact-qrels
+- FiQA-2018, Financial Opinion Mining and Question Answering challenge.
+  https://sites.google.com/view/fiqa/
+  https://huggingface.co/datasets/BeIR/fiqa
+  https://huggingface.co/datasets/BeIR/fiqa-qrels
+- BEIR, Nandan Thakur et al., "BEIR: A Heterogeneous Benchmark for Zero-shot
+  Evaluation of Information Retrieval Models" (2021).
+  https://github.com/beir-cellar/beir
+
+The source distributions identify their license as CC BY-SA 4.0. These derived
+benchmark data are distributed under CC BY-SA 4.0, separately from the SDK code:
+https://creativecommons.org/licenses/by-sa/4.0/
+Retain this attribution and the source and transformation manifests when sharing.
+No endorsement by the source dataset or model authors is implied.
+
+Embedding models (MIT licensed; weights are not redistributed):
+- intfloat/e5-small-v2, Liang Wang et al., "Text Embeddings by Weakly-Supervised
+  Contrastive Pre-training". https://huggingface.co/intfloat/e5-small-v2
+- BAAI/bge-small-en-v1.5, Shitao Xiao et al., "C-Pack: Packaged Resources To
+  Advance General Chinese Embedding". https://huggingface.co/BAAI/bge-small-en-v1.5
+
+Changes: document titles and text joined with a space; model-specific query and
+passage prefixes; 512-token truncation; L2-normalized float32 embeddings; lexical
+identifier ordering; official test queries and full corpus. The fit array repeats
+the corpus. Per-input manifests record exact revisions, transformations, packages,
+source hashes and device. This archive does not establish model-inference
+byte identity across hardware.

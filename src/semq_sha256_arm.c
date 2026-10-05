@@ -1,0 +1,56 @@
+/*
+ * Copyright (c) 2026 The SEMQ Group Inc.
+ * Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
+ */
+
+/* ARMv8 SHA-256 rounds over the same FIPS message schedule and constants as
+ * the scalar implementation. Called only after a runtime SHA2 feature check.
+ * This translation unit alone is compiled with crypto instructions enabled. */
+
+#if defined(__aarch64__) || defined(_M_ARM64)
+
+#include "semq_sha256.h"
+
+#include <arm_neon.h>
+
+static inline uint32_t rotr(uint32_t x, uint32_t n) {
+    return (x >> n) | (x << (32u - n));
+}
+
+void semqi_sha256_block_arm(uint32_t state[8], const uint8_t block[64]) {
+    uint32_t words[64];
+    for (size_t i = 0u; i < 16u; i++) {
+        words[i] = ((uint32_t)block[i * 4u] << 24u)
+                 | ((uint32_t)block[i * 4u + 1u] << 16u)
+                 | ((uint32_t)block[i * 4u + 2u] << 8u)
+                 | (uint32_t)block[i * 4u + 3u];
+    }
+    for (uint32_t i = 16u; i < 64u; i++) {
+        const uint32_t s0 = rotr(words[i - 15u], 7u) ^ rotr(words[i - 15u], 18u)
+                          ^ (words[i - 15u] >> 3u);
+        const uint32_t s1 = rotr(words[i - 2u], 17u) ^ rotr(words[i - 2u], 19u)
+                          ^ (words[i - 2u] >> 10u);
+        words[i] = words[i - 16u] + s0 + words[i - 7u] + s1;
+    }
+
+    uint32x4_t abcd = vld1q_u32(state);
+    uint32x4_t efgh = vld1q_u32(state + 4);
+    for (uint32_t i = 0u; i < 64u; i += 4u) {
+        const uint32_t wk[4] = {
+            words[i] + semqi_sha256_k[i],
+            words[i + 1u] + semqi_sha256_k[i + 1u],
+            words[i + 2u] + semqi_sha256_k[i + 2u],
+            words[i + 3u] + semqi_sha256_k[i + 3u],
+        };
+        const uint32x4_t schedule = vld1q_u32(wk);
+        const uint32x4_t prior_abcd = abcd;
+        abcd = vsha256hq_u32(abcd, efgh, schedule);
+        efgh = vsha256h2q_u32(efgh, prior_abcd, schedule);
+    }
+    abcd = vaddq_u32(abcd, vld1q_u32(state));
+    efgh = vaddq_u32(efgh, vld1q_u32(state + 4));
+    vst1q_u32(state, abcd);
+    vst1q_u32(state + 4, efgh);
+}
+
+#endif /* ARM64 */

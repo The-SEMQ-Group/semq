@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "name": "Illustrative arithmetic example, not a SEMQ deployment estimate",
+  "pricing": {
+    "kind": "illustrative",
+    "provider": "fictional provider",
+    "region": "fictional region",
+    "hardware": "fictional CPU instance; RAM included",
+    "currency": "USD",
+    "as_of": "2026-09-21",
+    "source": "Invented tariffs for testing the evaluator; no market-price claim",
+    "instance_hour": "0.50",
+    "storage_gb_month": "0.02",
+    "transfer_gb": "0.05",
+    "requests_per_thousand": "0.004"
+  },
+  "workload": {"embeddings": 1000000, "monthly_successful_queries": 10000000},
+  "deployment": {
+    "instances": 2,
+    "billed_hours_per_instance_month": 720,
+    "stored_bytes_per_copy": 1000000000000,
+    "storage_copies": 2,
+    "transferred_bytes_month": 100000000000,
+    "requests_month": 1000000,
+    "additional_preparation_runs_month": 4
+  },
+  "preparation": {
+    "embeddings": 1000000,
+    "training_instance_hours": 1,
+    "encoding_instance_hours": 2,
+    "build_and_persist_instance_hours": 3
+  },
+  "requirements": {"quality_metric": "ndcg@10", "min_quality": 0.60, "max_p99_ms": 50, "max_error_rate": 0.001},
+  "observations": {},
+  "excluded_costs": ["embedding generation", "tax", "engineering labor", "licensing", "other platform services"]
+}

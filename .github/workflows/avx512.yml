@@ -1,0 +1,131 @@
+# The conformance vectors on a real Intel CPU with AVX-512.
+#
+# The Linux wheels carry AVX-512 kernels compiled by GCC, and GitHub's Linux
+# x86_64 runners (AMD Zen 3) have no AVX-512, so those kernels never run in
+# the test workflow. This job launches one short-lived c7i.large (Intel
+# Sapphire Rapids) through the semq-avx512-check role, runs the vectors under
+# every backend there, requiring AVX-512, and terminates it. The AWS side
+# (role, launch template, bucket) is defined in semq-infra, ec2-avx512/.
+#
+# Runs every night on main, by hand, from the release workflow on the exact
+# wheel it is about to publish, and on every pull request from a branch of
+# this repository (forks get no OIDC token). A pull request that does not
+# change the core or this check passes without starting the instance, so the
+# check always reports and can be required.
+
+name: avx512
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      from-release:
+        description: Check the manylinux x86_64 wheel in the caller's release-dist artifact
+        type: boolean
+        default: false
+      required:
+        description: Fail instead of skipping when the AWS role is not configured
+        type: boolean
+        default: false
+    secrets:
+      AWS_AVX512_ROLE_ARN:
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: avx512-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    name: conformance on Intel AVX-512
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write   # assumes the semq-avx512-check role through OIDC
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Pull requests run the check only when they change what it covers.
+      - name: Decide whether this change needs the check
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT" != pull_request ]; then echo "run=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if git diff --name-only "$BASE...$HEAD" | grep -qE '^(src/|include/|CMakeLists\.txt$|tests/conformance/|tools/(backends\.py|avx512_check\.py|remote_backends\.sh)$|\.github/workflows/avx512\.yml$)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "This pull request does not change the core or this check; nothing to run on Intel." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # The role trusts pull requests, main and release tags only. Elsewhere,
+      # such as a release rehearsal on a feature branch, AWS refuses the
+      # token, so the check is skipped with a warning unless it is required.
+      - name: Check that the AWS role is configured and trusts this run
+        if: steps.scope.outputs.run == 'true'
+        id: role
+        env:
+          ROLE: ${{ secrets.AWS_AVX512_ROLE_ARN }}
+          REQUIRED: ${{ inputs.required || github.event_name == 'schedule' }}
+          TRUSTED: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          reason=""
+          if [ -z "$ROLE" ]; then reason="AWS_AVX512_ROLE_ARN is not configured"
+          elif [ "$TRUSTED" != true ]; then reason="the AWS role does not trust $GITHUB_REF"; fi
+          if [ -z "$reason" ]; then echo "configured=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$REQUIRED" = true ]; then echo "::error::$reason"; exit 1; fi
+          echo "::warning::$reason; skipping the AVX-512 check"
+          echo "configured=false" >> "$GITHUB_OUTPUT"
+
+      - name: Download the release wheels
+        if: steps.role.outputs.configured == 'true' && inputs.from-release
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-dist
+          path: dist
+
+      # The same cibuildwheel image and settings as the release, so the check
+      # runs the binary the release would ship.
+      - name: Build the Linux x86_64 wheel
+        if: steps.role.outputs.configured == 'true' && !inputs.from-release
+        uses: pypa/cibuildwheel@e090b81e30c4d855ea63bf4b6e59204c09a101ae # v4.2.1
+        env:
+          CIBW_BUILD: cp312-manylinux_x86_64
+          CIBW_TEST_SKIP: "*"
+        with:
+          output-dir: dist
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        if: steps.role.outputs.configured == 'true'
+        with:
+          python-version: "3.12"
+
+      - name: Assume the AVX-512 check role
+        if: steps.role.outputs.configured == 'true'
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ secrets.AWS_AVX512_ROLE_ARN }}
+          aws-region: us-east-2
+
+      - name: Run the conformance vectors on Intel AVX-512
+        if: steps.role.outputs.configured == 'true'
+        run: |
+          shopt -s nullglob
+          wheels=(dist/*-manylinux*_x86_64*.whl)
+          test "${#wheels[@]}" -eq 1 || { echo "expected one manylinux x86_64 wheel: ${wheels[*]}"; exit 1; }
+          python -m pip install --quiet --require-hashes -r .github/requirements/avx512.txt
+          python tools/avx512_check.py --wheel "${wheels[0]}"

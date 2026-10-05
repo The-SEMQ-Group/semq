@@ -1,0 +1,2 @@
+# Independent metric validation, excluded from SDK runtime dependencies.
+pytrec-eval-terrier==0.5.10

@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "suite": "codec_quality",
+  "seed": 20260921,
+  "k": [
+    10,
+    100
+  ],
+  "query_batch_size": 8,
+  "synthetic": {
+    "corpus_rows": 512,
+    "fit_rows": 1024,
+    "query_rows": 32,
+    "dim": 32
+  },
+  "methods": [
+    {
+      "id": "fp32",
+      "name": "fp32"
+    },
+    {
+      "id": "fp16",
+      "name": "fp16"
+    },
+    {
+      "id": "bf16",
+      "name": "bf16"
+    },
+    {
+      "id": "int8_row",
+      "name": "int8_symmetric_per_row"
+    },
+    {
+      "id": "uint8_dimension",
+      "name": "uint8_affine_per_dimension"
+    },
+    {
+      "id": "quant2",
+      "name": "semq_quant",
+      "bits": 2
+    },
+    {
+      "id": "phase16",
+      "name": "semq_phase",
+      "sectors": 16
+    },
+    {
+      "id": "orbit50",
+      "name": "semq_orbit",
+      "scale": 50
+    },
+    {
+      "id": "quant_default",
+      "name": "semq_quant"
+    }
+  ],
+  "direction_scoring": true
+}

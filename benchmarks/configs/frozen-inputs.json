@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "repository": "The-SEMQ-Group/semq",
+  "release": "benchmark-inputs-2026-09",
+  "inputs": {
+    "scifact-e5": {
+      "files": [
+        {
+          "file": "embeddings.npz",
+          "asset": "scifact-e5.npz",
+          "bytes": 16592310,
+          "sha256": "1de0ad4e829851fcbae4af37658b8d4ccdfdd4bb1e3a07a35a68f077893d0f94"
+        },
+        {
+          "file": "manifest.json",
+          "asset": "scifact-e5.manifest.json",
+          "bytes": 2172,
+          "sha256": "cb5eeb8efa3b79c6f10ffec0fad3a0833643c9c8ccbf7b2496363f41779abb59"
+        },
+        {
+          "file": "DATASET-NOTICE.txt",
+          "asset": "DATASET-NOTICE.txt",
+          "bytes": 1994,
+          "sha256": "103c9e29b83b8f8d3ae89a34bf8ffdf62252102601be13eb798e3d91701323c0"
+        }
+      ]
+    },
+    "fiqa-e5": {
+      "files": [
+        {
+          "file": "embeddings.npz",
+          "asset": "fiqa-e5.npz",
+          "bytes": 179506222,
+          "sha256": "c1e8ebad315d3abff95571574b6d7c58143e7283b8de7a69f6d89cf536d4d867"
+        },
+        {
+          "file": "manifest.json",
+          "asset": "fiqa-e5.manifest.json",
+          "bytes": 2155,
+          "sha256": "f6342fb8230cf81c6e46fa10230db53694399cfa246bd1538c9f9b98bfb1fb32"
+        },
+        {
+          "file": "DATASET-NOTICE.txt",
+          "asset": "DATASET-NOTICE.txt",
+          "bytes": 1994,
+          "sha256": "103c9e29b83b8f8d3ae89a34bf8ffdf62252102601be13eb798e3d91701323c0"
+        }
+      ]
+    },
+    "scifact-bge": {
+      "files": [
+        {
+          "file": "embeddings.npz",
+          "asset": "scifact-bge.npz",
+          "bytes": 16592482,
+          "sha256": "1bedf1b8ff5439d3379091b51b88b703cdb78b318856346c711128b7629f3d79"
+        },
+        {
+          "file": "manifest.json",
+          "asset": "scifact-bge.manifest.json",
+          "bytes": 2215,
+          "sha256": "81c924e2bebdaabd8ad5fdcfad18e75bb2a574cf97e539a12deda894cd1e5399"
+        },
+        {
+          "file": "DATASET-NOTICE.txt",
+          "asset": "DATASET-NOTICE.txt",
+          "bytes": 1994,
+          "sha256": "103c9e29b83b8f8d3ae89a34bf8ffdf62252102601be13eb798e3d91701323c0"
+        }
+      ]
+    },
+    "fiqa-bge": {
+      "files": [
+        {
+          "file": "embeddings.npz",
+          "asset": "fiqa-bge.npz",
+          "bytes": 179506394,
+          "sha256": "ec4c8061b9da8472348cc736fcf42e2d24a49410ff082ca9c7f00d72b3ec70df"
+        },
+        {
+          "file": "manifest.json",
+          "asset": "fiqa-bge.manifest.json",
+          "bytes": 2198,
+          "sha256": "ba5d205f74948978998a7d1507dbbddff374216a377843c37d96f81c87d3cc0d"
+        },
+        {
+          "file": "DATASET-NOTICE.txt",
+          "asset": "DATASET-NOTICE.txt",
+          "bytes": 1994,
+          "sha256": "103c9e29b83b8f8d3ae89a34bf8ffdf62252102601be13eb798e3d91701323c0"
+        }
+      ]
+    },
+    "scifact-arctic": {
+      "files": [
+        {
+          "file": "embeddings.npz",
+          "asset": "scifact-arctic.npz",
+          "bytes": 32975606,
+          "sha256": "12ffa5bfaea62d06a1fe5dc1527b928c5838dee9b2de90263b5c9dd7b2ca32b3"
+        },
+        {
+          "file": "manifest.json",
+          "asset": "scifact-arctic.manifest.json",
+          "bytes": 2256,
+          "sha256": "7099e43888206deb15a37795e418d93b723f1c6b76e6a24594cf7333a6b7ab87"
+        },
+        {
+          "file": "DATASET-NOTICE.txt",
+          "asset": "DATASET-NOTICE.txt",
+          "bytes": 1994,
+          "sha256": "103c9e29b83b8f8d3ae89a34bf8ffdf62252102601be13eb798e3d91701323c0"
+        }
+      ],
+      "release": "benchmark-inputs-2026-10"
+    },
+    "fiqa-arctic": {
+      "files": [
+        {
+          "file": "embeddings.npz",
+          "asset": "fiqa-arctic.npz",
+          "bytes": 357565806,
+          "sha256": "87e5fba328a3adb9c1486d87326d0917fd3d80c48aa918250a28d6264f9f43f9"
+        },
+        {
+          "file": "manifest.json",
+          "asset": "fiqa-arctic.manifest.json",
+          "bytes": 2239,
+          "sha256": "7f19ae748d95ef5fe3860f3f977938da37864e5fb7858cffa1fea7a228cd87a1"
+        },
+        {
+          "file": "DATASET-NOTICE.txt",
+          "asset": "DATASET-NOTICE.txt",
+          "bytes": 1994,
+          "sha256": "103c9e29b83b8f8d3ae89a34bf8ffdf62252102601be13eb798e3d91701323c0"
+        }
+      ],
+      "release": "benchmark-inputs-2026-10"
+    },
+    "scifact-mxbai": {
+      "files": [
+        {
+          "file": "embeddings.npz",
+          "asset": "scifact-mxbai.npz",
+          "bytes": 43897574,
+          "sha256": "a558245a661fcebd22ee459e884e78411c2e99e1eacabe9ece1e55441c3721e1"
+        },
+        {
+          "file": "manifest.json",
+          "asset": "scifact-mxbai.manifest.json",
+          "bytes": 2252,
+          "sha256": "50068fb96bbcce3c312cd92f4799f0acbc3a2e5218a4f6e0c9aa2981dfb3d2a9"
+        },
+        {
+          "file": "DATASET-NOTICE.txt",
+          "asset": "DATASET-NOTICE.txt",
+          "bytes": 1994,
+          "sha256": "103c9e29b83b8f8d3ae89a34bf8ffdf62252102601be13eb798e3d91701323c0"
+        }
+      ],
+      "release": "benchmark-inputs-2026-10"
+    },
+    "fiqa-mxbai": {
+      "files": [
+        {
+          "file": "embeddings.npz",
+          "asset": "fiqa-mxbai.npz",
+          "bytes": 476271966,
+          "sha256": "2a340a636169b00e9e9925acb5b302905f8a161b6d5560fd5a5ff7c7368b3bcb"
+        },
+        {
+          "file": "manifest.json",
+          "asset": "fiqa-mxbai.manifest.json",
+          "bytes": 2235,
+          "sha256": "49e5967be0faa3f3591ef677dcedb926cfdf1c9640e106dfc6294da99d1717d1"
+        },
+        {
+          "file": "DATASET-NOTICE.txt",
+          "asset": "DATASET-NOTICE.txt",
+          "bytes": 1994,
+          "sha256": "103c9e29b83b8f8d3ae89a34bf8ffdf62252102601be13eb798e3d91701323c0"
+        }
+      ],
+      "release": "benchmark-inputs-2026-10"
+    }
+  }
+}

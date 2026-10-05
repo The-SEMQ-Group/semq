@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "models": {
+    "intfloat/e5-small-v2": {
+      "model_revision": "ffb93f3bd4047442299a41ebb6fa998a38507c52",
+      "source_url": "https://huggingface.co/intfloat/e5-small-v2/blob/ffb93f3bd4047442299a41ebb6fa998a38507c52/README.md",
+      "source_sha256": "0d57eda4766cc7ac045f2bf7e700286ea5a8360bb9b57278f67f9b8ef60b0b24",
+      "ndcg_at_10_points": {
+        "fiqa": 37.434,
+        "scifact": 68.854
+      },
+      "scope": "Author-reported MTEB test results in model card; dataset revision unspecified. External baseline check, not an identical-protocol claim."
+    },
+    "BAAI/bge-small-en-v1.5": {
+      "model_revision": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a",
+      "source_url": "https://huggingface.co/BAAI/bge-small-en-v1.5/blob/5c38ec7c405ec4b44b94cc5a9bb96e735b38267a/README.md",
+      "source_sha256": "ddb964361a55c6e5dfca6361615854b260c9c960205d04c7520151aaa1d75837",
+      "ndcg_at_10_points": {
+        "fiqa": 40.343,
+        "scifact": 71.275
+      },
+      "scope": "Author-reported MTEB test results in model card; dataset revision unspecified. External baseline check, not an identical-protocol claim."
+    }
+  }
+}

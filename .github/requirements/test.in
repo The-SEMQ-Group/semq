@@ -1,0 +1,4 @@
+# Test runner for the Python suites (test.yml). The SDK itself and its
+# runtime dependencies are installed separately, from pyproject.toml.
+pytest
+hypothesis

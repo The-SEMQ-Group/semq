@@ -1,0 +1,259 @@
+/*
+ * Copyright (c) 2026 The SEMQ Group Inc.
+ * Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
+ */
+
+/*
+ * semq_avx512.c — AVX-512 backend (x86_64).
+ *
+ * Implements the SEMQ orbit operator using AVX-512 F + BW + VL
+ * intrinsics. The inner loop processes 64 input floats per iteration
+ * (4 × __m512). The `x · scale` step is performed in float64 to match
+ * the scalar reference exactly. The remaining integer math is done in
+ * 32-bit lanes; final packing uses a single VPMOVUSDB instruction
+ * (_mm512_cvtusepi32_epi8) per chunk — no manual lane-permute fix-up.
+ *
+ * Equivalence band:
+ *
+ *   Bit-identical output to scalar for every input satisfying
+ *   |round(x · scale)| ≤ INT32_MAX.
+ *
+ * Tail:
+ *
+ *   For dim that is not a multiple of 64, the trailing 0..63 lanes
+ *   fall through to the scalar fallback at the bottom of this file.
+ *
+ * Frequency throttling:
+ *
+ *   Sustained 512-bit float64 multiplies trigger Intel's "AVX-512
+ *   heavy" license tier. On Skylake-X / Cascade Lake this causes
+ *   significant downclocking; on Ice Lake+ the impact is much smaller;
+ *   on Sapphire Rapids and later it is negligible. Latency-sensitive
+ *   deployments on older Intel SKUs can override with
+ *   SEMQ_FORCE_BACKEND=avx2.
+ */
+
+#if defined(__x86_64__) || defined(_M_X64)
+
+#include "semq_dispatch.h"
+
+#include <immintrin.h>
+#include <math.h>
+#include <stdint.h>
+
+
+/* -------------------------------------------------------------------------- */
+/*  Scalar fallback (per-element)                                             */
+/* -------------------------------------------------------------------------- */
+
+static int64_t scaled_round_one(float x, uint32_t scale) {
+    if (!isfinite(x)) {
+        return 0;
+    }
+    /* Ties-to-even; matches MXCSR default for the SIMD path. */
+    double y = nearbyint((double)x * (double)scale);
+    if (y >= 9.2233720368547748e18) {
+        return INT64_MAX;
+    }
+    if (y <= -9.2233720368547758e18) {
+        return INT64_MIN;
+    }
+    return (int64_t)y;
+}
+
+static uint8_t reduce_one(uint64_t a) {
+    if (a == 0u) return 0u;
+    return (uint8_t)(1u + (uint32_t)((a - 1u) % 9u));
+}
+
+static semq_code_t scalar_op(float x, uint32_t scale) {
+    int64_t      v = scaled_round_one(x, scale);
+    unsigned int s = (v > 0) ? 2u : ((v < 0) ? 0u : 1u);
+    uint64_t a;
+    if (v == INT64_MIN) {
+        a = (uint64_t)INT64_MAX + 1u;
+    } else {
+        a = (v < 0) ? (uint64_t)(-v) : (uint64_t)v;
+    }
+    return (semq_code_t)(s * 10u + (unsigned int)reduce_one(a));
+}
+
+static double scalar_inverse(semq_code_t code, uint32_t scale) {
+    int          sign = (int)(code / 10u) - 1;
+    unsigned int g    = (unsigned int)(code % 10u);
+    return ((double)g * (double)sign) / (double)scale;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Internal helpers                                                          */
+/* -------------------------------------------------------------------------- */
+
+/* Convert sixteen float32 → sixteen int32 with float64 multiplication.
+ * Bit-identical to scalar within the equivalence band. */
+static inline __m512i scale_round_16(__m512 f, __m512d dsc) {
+    __m512d d_lo = _mm512_mul_pd(_mm512_cvtps_pd(_mm512_castps512_ps256(f)),    dsc);
+    /* Upper 8 floats: extract via _mm512_extractf64x4_pd reinterpretation
+     * since _mm512_extractf32x8_ps is AVX-512 DQ-only. */
+    __m256i upper_bits = _mm512_extracti64x4_epi64(_mm512_castps_si512(f), 1);
+    __m256  f_hi       = _mm256_castsi256_ps(upper_bits);
+    __m512d d_hi = _mm512_mul_pd(_mm512_cvtps_pd(f_hi), dsc);
+    /* _mm512_cvtpd_epi32 rounds to nearest using MXCSR (default = nearest-even).
+     * Out-of-range inputs yield the indefinite integer 0x80000000, equivalent to
+     * a saturating narrow within the documented equivalence band. */
+    __m256i v_lo = _mm512_cvtpd_epi32(d_lo);    /* 8 × int32 in __m256i */
+    __m256i v_hi = _mm512_cvtpd_epi32(d_hi);
+    /* _mm512_inserti32x8 is AVX-512 DQ; use the F-only inserti64x4 instead.
+     * Both produce identical 256-bit-half placement in the 512-bit register. */
+    return _mm512_inserti64x4(_mm512_castsi256_si512(v_lo), v_hi, 1);
+}
+
+/* mod_9_u32_512(a) = a mod 9, branchless via magic multiplication. */
+static inline __m512i mod_9_u32_512(__m512i a) {
+    /* q = (a * 0x38E38E39) >> 33  for all a in [0, 2^32). */
+    const __m512i magic = _mm512_set1_epi32((int)0x38E38E39u);
+
+    __m512i prod_even = _mm512_mul_epu32(a, magic);                 /* even lanes */
+    __m512i a_odd     = _mm512_srli_epi64(a,     32);
+    __m512i m_odd     = _mm512_srli_epi64(magic, 32);
+    __m512i prod_odd  = _mm512_mul_epu32(a_odd, m_odd);             /* odd lanes  */
+
+    __m512i q_even    = _mm512_srli_epi64(prod_even, 33);
+    __m512i q_odd     = _mm512_slli_epi64(_mm512_srli_epi64(prod_odd, 33), 32);
+
+    __m512i mask_lo32 = _mm512_set1_epi64((long long)0x00000000FFFFFFFFULL);
+    __m512i q = _mm512_or_si512(_mm512_and_si512(q_even, mask_lo32), q_odd);
+
+    return _mm512_sub_epi32(a, _mm512_mullo_epi32(q, _mm512_set1_epi32(9)));
+}
+
+/* Map sixteen int32 lanes to the SEMQ orbit operator output, returning
+ * the codes still as 32-bit lanes. The final saturating narrow-to-uint8
+ * happens once per chunk in the caller. */
+static inline __m512i encode_int32_16(__m512i v) {
+    const __m512i Z   = _mm512_setzero_si512();
+    const __m512i ONE = _mm512_set1_epi32(1);
+
+    /* Sign code s ∈ {0, 1, 2}. AVX-512 base lacks _mm512_movm_epi32 (DQ-only),
+     * so build s with masked merge ops on a starting vector of 1.            */
+    __mmask16 pos_mask = _mm512_cmpgt_epi32_mask(v, Z);     /* lane > 0 */
+    __mmask16 neg_mask = _mm512_cmpgt_epi32_mask(Z, v);     /* lane < 0 */
+    __m512i s = ONE;
+    s = _mm512_mask_mov_epi32(s, pos_mask, _mm512_set1_epi32(2));
+    s = _mm512_mask_mov_epi32(s, neg_mask, _mm512_setzero_si512());
+
+    /* a = |v| ; (a − 1), magic-mod-9, +1, then mask for a == 0 → 0. */
+    __m512i   a       = _mm512_abs_epi32(v);
+    __m512i   am1     = _mm512_sub_epi32(a, ONE);
+    __m512i   r       = mod_9_u32_512(am1);
+    __m512i   g_pos   = _mm512_add_epi32(r, ONE);
+    __mmask16 nz_mask = _mm512_cmpneq_epi32_mask(a, Z);
+    __m512i   g       = _mm512_maskz_mov_epi32(nz_mask, g_pos);
+
+    /* code = s · 10 + g. Final values are in [0, 29] so packing is unsigned-safe. */
+    __m512i ten = _mm512_set1_epi32(10);
+    return _mm512_add_epi32(_mm512_mullo_epi32(s, ten), g);
+}
+
+/* Pack four __m512i (16 int32 each, 64 lanes total) into one __m512i of 64
+ * uint8 codes. Each VPMOVUSDB does 16 int32 → 16 uint8 saturated; four such
+ * results are inserted into a single 512-bit register for one 64-byte store. */
+static inline __m512i pack_codes_64(__m512i a, __m512i b, __m512i c, __m512i d) {
+    __m128i p0 = _mm512_cvtusepi32_epi8(a);
+    __m128i p1 = _mm512_cvtusepi32_epi8(b);
+    __m128i p2 = _mm512_cvtusepi32_epi8(c);
+    __m128i p3 = _mm512_cvtusepi32_epi8(d);
+    __m512i packed = _mm512_castsi128_si512(p0);
+    packed = _mm512_inserti32x4(packed, p1, 1);
+    packed = _mm512_inserti32x4(packed, p2, 2);
+    packed = _mm512_inserti32x4(packed, p3, 3);
+    return packed;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Backend entry points                                                      */
+/* -------------------------------------------------------------------------- */
+
+static semq_status_t avx512_encode(
+    const float* input,
+    uint32_t     dim,
+    uint32_t     scale,
+    semq_code_t* output) {
+
+    __m512d  dsc = _mm512_set1_pd((double)scale);
+    uint32_t i   = 0u;
+
+    for (; i + 64u <= dim; i += 64u) {
+        __m512 f0 = _mm512_loadu_ps(input + i +  0u);
+        __m512 f1 = _mm512_loadu_ps(input + i + 16u);
+        __m512 f2 = _mm512_loadu_ps(input + i + 32u);
+        __m512 f3 = _mm512_loadu_ps(input + i + 48u);
+
+        __m512i v0 = scale_round_16(f0, dsc);
+        __m512i v1 = scale_round_16(f1, dsc);
+        __m512i v2 = scale_round_16(f2, dsc);
+        __m512i v3 = scale_round_16(f3, dsc);
+
+        __m512i c0 = encode_int32_16(v0);
+        __m512i c1 = encode_int32_16(v1);
+        __m512i c2 = encode_int32_16(v2);
+        __m512i c3 = encode_int32_16(v3);
+
+        _mm512_storeu_si512((__m512i*)(output + i),
+                            pack_codes_64(c0, c1, c2, c3));
+    }
+    for (; i < dim; ++i) {
+        output[i] = scalar_op(input[i], scale);
+    }
+    return SEMQ_OK;
+}
+
+static semq_status_t avx512_reconstruct(
+    const semq_code_t* codes,
+    uint32_t           dim,
+    uint32_t           scale,
+    double*            output) {
+
+    /* 16 codes per iteration → 16 doubles. */
+    __m512d  dsc = _mm512_set1_pd((double)scale);
+    uint32_t i   = 0u;
+
+    for (; i + 16u <= dim; i += 16u) {
+        /* Load 16 uint8 → __m128i, widen to __m512i of 16 int32. */
+        __m128i  c8  = _mm_loadu_si128((const __m128i*)(codes + i));
+        __m512i  c32 = _mm512_cvtepu8_epi32(c8);
+
+        /* q = c / 10 via magic (c · 26) >> 8, valid for c ≤ 29. */
+        __m512i q = _mm512_srli_epi32(_mm512_mullo_epi32(c32, _mm512_set1_epi32(26)), 8);
+        /* r = c − 10·q ; sign = q − 1 ∈ {−1, 0, 1} ; gs = g · sign. */
+        __m512i r    = _mm512_sub_epi32(c32,
+                            _mm512_mullo_epi32(q, _mm512_set1_epi32(10)));
+        __m512i sign = _mm512_sub_epi32(q, _mm512_set1_epi32(1));
+        __m512i gs   = _mm512_mullo_epi32(r, sign);
+
+        /* int32 → float64 in two halves of 8 lanes each, then divide by scale.
+         * _mm512_extracti64x4_epi64 is F-only; _mm512_extracti32x8_epi32 is DQ. */
+        __m256i  gs_lo = _mm512_castsi512_si256(gs);
+        __m256i  gs_hi = _mm512_extracti64x4_epi64(gs, 1);
+        __m512d  f_lo  = _mm512_cvtepi32_pd(gs_lo);
+        __m512d  f_hi  = _mm512_cvtepi32_pd(gs_hi);
+        f_lo = _mm512_div_pd(f_lo, dsc);
+        f_hi = _mm512_div_pd(f_hi, dsc);
+        _mm512_storeu_pd(output + i + 0, f_lo);
+        _mm512_storeu_pd(output + i + 8, f_hi);
+    }
+    for (; i < dim; ++i) {
+        output[i] = scalar_inverse(codes[i], scale);
+    }
+    return SEMQ_OK;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Backend descriptor                                                        */
+/* -------------------------------------------------------------------------- */
+
+const semq_backend_t SEMQ_AVX512_BACKEND = {
+    .encode       = avx512_encode,
+    .reconstruct  = avx512_reconstruct
+};
+
+#endif /* __x86_64__ */

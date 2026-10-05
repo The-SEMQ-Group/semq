@@ -1,0 +1,5 @@
+node_modules/
+dist/
+# Built WASM artifacts (produced by scripts/build-wasm.sh).
+src/wasm/semq.mjs
+src/wasm/semq.wasm

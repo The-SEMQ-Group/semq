@@ -1,0 +1,40 @@
+---
+# Copyright (c) 2026 The SEMQ Group Inc. All rights reserved.
+# clang-tidy configuration for the SEMQ SDK core. CI runs it with the version
+# pinned in test.yml; a newer clang-tidy can add checks, so upgrade it on purpose.
+#
+# The checks look for defects: undefined behavior, overflow, misuse of the C
+# library, unchecked results. Style is left to clang-format, and the
+# modernize-* and most readability-* checks are left out because they target
+# C++ or rewrite working C without catching bugs. So does
+# bugprone-casting-through-void, whose fix is a C++ reinterpret_cast.
+# The analyzer's insecureAPI buffer check is off too: it asks for the C11
+# Annex K functions (memcpy_s), which glibc and most C libraries do not provide.
+
+Checks: >
+  -*,
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  misc-*,
+  performance-*,
+  portability-*,
+  readability-braces-around-statements,
+  readability-duplicate-include,
+  readability-inconsistent-declaration-parameter-name,
+  readability-misleading-indentation,
+  readability-redundant-declaration,
+  -bugprone-casting-through-void,
+  -bugprone-easily-swappable-parameters,
+  -misc-include-cleaner,
+  -misc-no-recursion,
+  -cert-err58-cpp,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
+
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*/(include|src)/.*'
+FormatStyle: file
+
+CheckOptions:
+  - key:   readability-braces-around-statements.ShortStatementLines
+    value: '2'

@@ -1,0 +1,78 @@
+# Public API compatibility. Compares every public surface of a pull request
+# (the C ABI and the Python, Rust, Go and TypeScript APIs) with its base
+# branch, using tools/api_compat.py. Additions pass; a removal or an
+# incompatible change fails, unless the pull request carries the
+# `breaking-change` label, which marks it for the next major version.
+#
+# Separate from test.yml so adding or removing the label reruns only this.
+
+name: api-compat
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+# Toolchains and tools are pinned like test.yml's; bump them in a pull request.
+env:
+  RUST_TOOLCHAIN: "1.99.0"
+  CARGO_SEMVER_CHECKS_VERSION: "0.51.0"
+  CARGO_SEMVER_CHECKS_SHA256: "cacadafaa5cd27ae6d05a74a103266917ebab4c5e43c898360e177d4fbf06a65"
+  APIDIFF_VERSION: "v0.0.0-20260908205506-85c1c2202aba"
+  GRIFFE_VERSION: "2.3.0"
+
+concurrency:
+  group: api-compat-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  api-compat:
+    name: public API compatibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: "1.27"
+          cache: false
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable branch
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+
+      - name: Install the comparison tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y abigail-tools ninja-build cmake
+          python -m pip install "griffe==$GRIFFE_VERSION"
+          go install "golang.org/x/exp/cmd/apidiff@$APIDIFF_VERSION"
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          archive=cargo-semver-checks-x86_64-unknown-linux-gnu.tar.gz
+          curl -fsSLO "https://github.com/obi1kenobi/cargo-semver-checks/releases/download/v$CARGO_SEMVER_CHECKS_VERSION/$archive"
+          echo "$CARGO_SEMVER_CHECKS_SHA256  $archive" | sha256sum -c -
+          tar -xzf "$archive" -C "$HOME/.cargo/bin"
+          npm ci --prefix bindings/ts
+
+      - name: Compare the public API with the base branch
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          BREAKING: ${{ contains(github.event.pull_request.labels.*.name, 'breaking-change') }}
+        run: |
+          if python tools/api_compat.py --base "$BASE"; then exit 0; fi
+          if [ "$BREAKING" = true ]; then
+            echo "::warning::Incompatible API change, accepted by the breaking-change label. It ships only in a new major version."
+            exit 0
+          fi
+          echo "::error::Incompatible API change. If it is intended, add the breaking-change label; it then ships only in a new major version."
+          exit 1

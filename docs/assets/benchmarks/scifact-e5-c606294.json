@@ -1,0 +1,2309 @@
+{
+  "dataset": {
+    "arrays": {
+      "corpus": {
+        "dtype": "float32",
+        "sha256": "9ffffb650deff454ae982339186c06e0c5e1fe971fd3a04d916388bdd85f894f",
+        "shape": [
+          5183,
+          384
+        ]
+      },
+      "corpus_ids": {
+        "dtype": "<U9",
+        "sha256": "f60c407eecb0e21e5cfe176691b8fe3f9584f5d249f699ff26f7138ae48b9a8f",
+        "shape": [
+          5183
+        ]
+      },
+      "fit": {
+        "dtype": "float32",
+        "sha256": "9ffffb650deff454ae982339186c06e0c5e1fe971fd3a04d916388bdd85f894f",
+        "shape": [
+          5183,
+          384
+        ]
+      },
+      "qrel_document": {
+        "dtype": "int64",
+        "sha256": "ec2e466612ee2aeacfd278d4b0f2d9388c9385ed67d1be89c7016d86203676b1",
+        "shape": [
+          339
+        ]
+      },
+      "qrel_query": {
+        "dtype": "int64",
+        "sha256": "7ee67a97bdc6247673ac8ed11e1e2ea45cc146d1eae022c1e502b5dcd36f1fc7",
+        "shape": [
+          339
+        ]
+      },
+      "qrel_score": {
+        "dtype": "float64",
+        "sha256": "74d374ad7a5b9e66cc0b272a8426d00f61dae7a2f4aa17be88ab9d48ad3e9f15",
+        "shape": [
+          339
+        ]
+      },
+      "queries": {
+        "dtype": "float32",
+        "sha256": "6dd6f91363dd081a3ab7407de0399a6225c046d8ca03165251253b86a49669d9",
+        "shape": [
+          300,
+          384
+        ]
+      },
+      "query_ids": {
+        "dtype": "<U4",
+        "sha256": "db1de42a29d7bf1c7c2ba970bdd4f7707baebfa221570a44e5b9ea7e72d8698b",
+        "shape": [
+          300
+        ]
+      }
+    },
+    "kind": "user_npz",
+    "preparation": {
+      "batch_size": 32,
+      "dataset": "scifact",
+      "device": "mps:0",
+      "fit_policy": "transductive: full indexed corpus; no test queries or relevance used for fitting",
+      "model": {
+        "dimension": 384,
+        "document_prefix": "passage: ",
+        "max_length": 512,
+        "query_prefix": "query: ",
+        "repo": "intfloat/e5-small-v2",
+        "revision": "ffb93f3bd4047442299a41ebb6fa998a38507c52"
+      },
+      "normalization": "L2; float32 embeddings",
+      "packages": {
+        "huggingface-hub": "0.36.2",
+        "numpy": "2.4.6",
+        "pyarrow": "24.0.0",
+        "sentence-transformers": "5.5.1",
+        "torch": "2.12.1",
+        "transformers": "4.45.2"
+      },
+      "platform": "macOS-26.6.2-arm64-arm-64bit",
+      "preparation_source_sha256": "a2f5bcdc35e6f454f399f50b4df8792b94e9939bd2cf8bc4ffecdd117a9b414f",
+      "preprocessing": "strip title and text; join with one space; lexical string ID order",
+      "python": "3.11.15",
+      "schema_version": 1,
+      "seed": 20260921,
+      "source_files": {
+        "BeIR/scifact-qrels/test.tsv": {
+          "revision": "2938d17dc3b09882fdb8c12bbbe2e2dc0e75a029",
+          "sha256": "0864bb985e0ca2367ba217977e72004d549054b2b06666ed9d4825ac7c21284c"
+        },
+        "BeIR/scifact/corpus/corpus-00000-of-00001.parquet": {
+          "revision": "b3b5335604bf5ee3c4447671af975ea25143d4f5",
+          "sha256": "243324b35f03d82bd6d98a5f575966876e86cad7ce16e5333a35b1b793dc4f45"
+        },
+        "BeIR/scifact/queries/queries-00000-of-00001.parquet": {
+          "revision": "b3b5335604bf5ee3c4447671af975ea25143d4f5",
+          "sha256": "1c37956c5dc8b810b60302323c24d1a9e79e26411ba8f5ad9d0888642e2a9034"
+        }
+      },
+      "sources": {
+        "corpus_file": "corpus/corpus-00000-of-00001.parquet",
+        "corpus_rows": 5183,
+        "license_declared_by_source": "CC-BY-SA-4.0",
+        "qrels_repo": "BeIR/scifact-qrels",
+        "qrels_revision": "2938d17dc3b09882fdb8c12bbbe2e2dc0e75a029",
+        "queries_file": "queries/queries-00000-of-00001.parquet",
+        "repo": "BeIR/scifact",
+        "revision": "b3b5335604bf5ee3c4447671af975ea25143d4f5",
+        "test_queries": 300
+      },
+      "split": "official test qrels; full corpus; only queries present in test qrels"
+    },
+    "scope": "user supplied; dataset/model provenance must accompany publication",
+    "sha256": "1de0ad4e829851fcbae4af37658b8d4ccdfdd4bb1e3a07a35a68f077893d0f94"
+  },
+  "memory": {
+    "reason": "no process-level collector",
+    "status": "not_measured"
+  },
+  "methods": [
+    {
+      "artifact": {
+        "file": "fp32.npz",
+        "file_bytes": 7961352,
+        "sha256": "30713e427b5d24c69022b0169dfb1703f63eb559d7f2fbfcdd03accbaa34a572"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 0.0,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.687499226674564,
+              "ndcg_delta": 0.0,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": 0.0,
+                "mean_delta": 0.0,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.0
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 1.0,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": 0.0,
+          "score_rmse": 0.0
+        },
+        "status": "measured"
+      },
+      "id": "fp32",
+      "method": {
+        "id": "fp32",
+        "name": "fp32"
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 0.0,
+        "normalized_squared_error": 0.0,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.687499226674564,
+            "ndcg_delta": 0.0,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": 0.0,
+              "mean_delta": 0.0,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": 0.0
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 1.0,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": 0.0,
+        "score_rmse": 0.0,
+        "status": "measured"
+      },
+      "resolved_parameters": {},
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 1536.0,
+        "code_and_model_bytes": 7961088,
+        "code_bits_per_dimension": 32.0,
+        "code_bytes": 7961088,
+        "effective_bits_per_dimension": 32.0,
+        "model_bits_per_dimension": 0.0,
+        "model_bytes": 0,
+        "ratio_vs_fp32_payload": 1.0,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "fp16.npz",
+        "file_bytes": 3980808,
+        "sha256": "065115f5538e800cae778ef1f0fde29a97c02b4cfcecad852bf66304df48a609"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 1.1190606180845831e-10,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.687575472853813,
+              "ndcg_delta": 7.62461792489629e-05,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": 0.0,
+                "mean_delta": 7.62461792489629e-05,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.0002287385377468887
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.9996666666666666,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -2.2679263459454085e-08,
+          "score_rmse": 6.666912922514734e-06
+        },
+        "status": "measured"
+      },
+      "id": "fp16",
+      "method": {
+        "id": "fp16",
+        "name": "fp16"
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 1.1284615551877431e-10,
+        "normalized_squared_error": 4.3332926239293304e-08,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.6884627760956236,
+            "ndcg_delta": 0.0009635494210596263,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": 0.0,
+              "mean_delta": 0.0009635494210596263,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": 0.002890648263178879
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.9993333333333334,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": -8.458532661320211e-08,
+        "score_rmse": 1.607538021761625e-05,
+        "status": "measured"
+      },
+      "resolved_parameters": {},
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 768.0,
+        "code_and_model_bytes": 3980544,
+        "code_bits_per_dimension": 16.0,
+        "code_bytes": 3980544,
+        "effective_bits_per_dimension": 16.0,
+        "model_bits_per_dimension": 0.0,
+        "model_bytes": 0,
+        "ratio_vs_fp32_payload": 2.0,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "bf16.npz",
+        "file_bytes": 3980808,
+        "sha256": "7052fe854efd5174bdb8045526a1f51f54671ef087271ac3286760abd2a6eae9"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 7.161231674932835e-09,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6872124528288214,
+              "ndcg_delta": -0.000286773845742657,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.0037403894563085424,
+                "mean_delta": -0.000286773845742657,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.002842698884579458
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.9970000000000001,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -9.044334473284244e-08,
+          "score_rmse": 5.3422526857210594e-05
+        },
+        "status": "measured"
+      },
+      "id": "bf16",
+      "method": {
+        "id": "bf16",
+        "name": "bf16"
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 7.2207537423408186e-09,
+        "normalized_squared_error": 2.772769598312979e-06,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.6883363816386346,
+            "ndcg_delta": 0.0008371549640705153,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.0028058991464280317,
+              "mean_delta": 0.0008371549640705153,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": 0.0048133441150048474
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.9923333333333333,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": -2.7053512418392144e-06,
+        "score_rmse": 0.0001292183196910044,
+        "status": "measured"
+      },
+      "resolved_parameters": {},
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 768.0,
+        "code_and_model_bytes": 3980544,
+        "code_bits_per_dimension": 16.0,
+        "code_bytes": 3980544,
+        "effective_bits_per_dimension": 16.0,
+        "model_bits_per_dimension": 0.0,
+        "model_bytes": 0,
+        "ratio_vs_fp32_payload": 2.0,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "fp8_e4m3.npz",
+        "file_bytes": 1990796,
+        "sha256": "1f048444787e862926b91dd3496fc0fb10fd1e93b6de81fdf33e611dc9a372d6"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 1.8276455319487328e-06,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6877092027877707,
+              "ndcg_delta": 0.00020997611320669018,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.005901734683425418,
+                "mean_delta": 0.00020997611320669018,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.006310489616383647
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.9613333333333335,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.00027287598237935105,
+          "score_rmse": 0.0008914116497338922
+        },
+        "status": "measured"
+      },
+      "id": "fp8_e4m3",
+      "method": {
+        "id": "fp8_e4m3",
+        "name": "fp8_e4m3"
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 1.8429803557370425e-06,
+        "normalized_squared_error": 0.0007077044977605209,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.6794604662431993,
+            "ndcg_delta": -0.00803876043136466,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.01836387665930723,
+              "mean_delta": -0.00803876043136466,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": 0.0020155207635676104
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.8836666666666667,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": -0.000550575199855533,
+        "score_rmse": 0.002144127418411511,
+        "status": "measured"
+      },
+      "resolved_parameters": {
+        "tensor_scale": 0.000556790444534272
+      },
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 384.0007717538105,
+        "code_and_model_bytes": 1990276,
+        "code_bits_per_dimension": 8.0,
+        "code_bytes": 1990272,
+        "effective_bits_per_dimension": 8.000016078204386,
+        "model_bits_per_dimension": 1.6078204386134157e-05,
+        "model_bytes": 4,
+        "ratio_vs_fp32_payload": 3.9999919609139636,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "fp8_e5m2.npz",
+        "file_bytes": 1990796,
+        "sha256": "4568ac4bc243b720bba10762e93e8357441f191a76f152bb1f78b825fab6111b"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 7.241093410012802e-06,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6840331553958043,
+              "ndcg_delta": -0.0034660712787597265,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.012311154446916403,
+                "mean_delta": -0.0034660712787597265,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.005249686987680603
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.915,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.0010753997431768151,
+          "score_rmse": 0.0020148460488278314
+        },
+        "status": "measured"
+      },
+      "id": "fp8_e5m2",
+      "method": {
+        "id": "fp8_e5m2",
+        "name": "fp8_e5m2"
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 7.297229808074384e-06,
+        "normalized_squared_error": 0.002802136409262534,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.6691819960685036,
+            "ndcg_delta": -0.01831723060606046,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.03156171261348039,
+              "mean_delta": -0.01831723060606046,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": -0.004475606223602948
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.7796666666666667,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": -0.0022308971554388713,
+        "score_rmse": 0.004666597210658297,
+        "status": "measured"
+      },
+      "resolved_parameters": {
+        "tensor_scale": 4.349925347924e-06
+      },
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 384.0007717538105,
+        "code_and_model_bytes": 1990276,
+        "code_bits_per_dimension": 8.0,
+        "code_bytes": 1990272,
+        "effective_bits_per_dimension": 8.000016078204386,
+        "model_bits_per_dimension": 1.6078204386134157e-05,
+        "model_bytes": 4,
+        "ratio_vs_fp32_payload": 3.9999919609139636,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "int4_block32.npz",
+        "file_bytes": 1120046,
+        "sha256": "51ca3115275f555b18062012e13433faf2bbae8bc5c242bfbbe64dddfd5a6c35"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 2.7040077050632834e-05,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6831103566226553,
+              "ndcg_delta": -0.004388870051908687,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.017370989595894858,
+                "mean_delta": -0.004388870051908687,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.008926715872435884
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.8400000000000001,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.0040535992324065104,
+          "score_rmse": 0.005206697125831627
+        },
+        "status": "measured"
+      },
+      "id": "int4_block32",
+      "method": {
+        "id": "int4_block32",
+        "name": "int4_block32"
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 2.7328715672549977e-05,
+        "normalized_squared_error": 0.01049422742856495,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.6745453554425822,
+            "ndcg_delta": -0.012953871231981866,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.03075751610277979,
+              "mean_delta": -0.012953871231981866,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": 0.004707785414470132
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.7456666666666666,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": 0.00023978665559804948,
+        "score_rmse": 0.004911983354842641,
+        "status": "measured"
+      },
+      "resolved_parameters": {},
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 216.0,
+        "code_and_model_bytes": 1119528,
+        "code_bits_per_dimension": 4.0,
+        "code_bytes": 995136,
+        "effective_bits_per_dimension": 4.5,
+        "model_bits_per_dimension": 0.5,
+        "model_bytes": 124392,
+        "ratio_vs_fp32_payload": 7.111111111111111,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "mxfp4.npz",
+        "file_bytes": 1057860,
+        "sha256": "45e98a397d02996921981a74afd1165b56d3a8fd96de075c55994afa967e87a7"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 3.5899716622048875e-05,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6768503066906678,
+              "ndcg_delta": -0.01064891998389625,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.02295015890202611,
+                "mean_delta": -0.01064891998389625,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.002513686164789438
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.8310000000000001,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.006159185842791517,
+          "score_rmse": 0.0072209415397730325
+        },
+        "status": "measured"
+      },
+      "id": "mxfp4",
+      "method": {
+        "id": "mxfp4",
+        "name": "mxfp4"
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 3.622892438812873e-05,
+        "normalized_squared_error": 0.013911907774106938,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.6174696866949763,
+            "ndcg_delta": -0.07002953997958772,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.09552457531590665,
+              "mean_delta": -0.07002953997958772,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": -0.04306850430366895
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.5619999999999999,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": -0.017953811301958326,
+        "score_rmse": 0.020008966351182912,
+        "status": "measured"
+      },
+      "resolved_parameters": {},
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 204.0,
+        "code_and_model_bytes": 1057332,
+        "code_bits_per_dimension": 4.0,
+        "code_bytes": 995136,
+        "effective_bits_per_dimension": 4.25,
+        "model_bits_per_dimension": 0.25,
+        "model_bytes": 62196,
+        "ratio_vs_fp32_payload": 7.529411764705882,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "mxfp8.npz",
+        "file_bytes": 2052996,
+        "sha256": "0a2defdd8850661bd0da6e4881218abfda498e613dea6420dd94ce9898086c26"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 2.3896274903670587e-06,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6909142745447286,
+              "ndcg_delta": 0.0034150478701645602,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.002180324812847795,
+                "mean_delta": 0.0034150478701645602,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.009220933495901931
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.9476666666666667,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.0005678320656176085,
+          "score_rmse": 0.0011340715695501002
+        },
+        "status": "measured"
+      },
+      "id": "mxfp8",
+      "method": {
+        "id": "mxfp8",
+        "name": "mxfp8"
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 2.428977879423125e-06,
+        "normalized_squared_error": 0.0009327275599424922,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.6816882293124518,
+            "ndcg_delta": -0.005810997362112222,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.017910567866170183,
+              "mean_delta": -0.005810997362112222,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": 0.006138419578745805
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.8626666666666669,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": -0.0030052092997018775,
+        "score_rmse": 0.003930270297162829,
+        "status": "measured"
+      },
+      "resolved_parameters": {},
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 396.0,
+        "code_and_model_bytes": 2052468,
+        "code_bits_per_dimension": 8.0,
+        "code_bytes": 1990272,
+        "effective_bits_per_dimension": 8.25,
+        "model_bits_per_dimension": 0.25,
+        "model_bytes": 62196,
+        "ratio_vs_fp32_payload": 3.878787878787879,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "nvfp4.npz",
+        "file_bytes": 1120316,
+        "sha256": "7bebb261bce78c840174bab708daafe2178a37cc9129666a8db73bbf95d2b604"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 2.2824847957721628e-05,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6801954864967993,
+              "ndcg_delta": -0.007303740177764624,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.019758802026101065,
+                "mean_delta": -0.007303740177764624,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.004707012910150252
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.8623333333333335,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.0033991723743306335,
+          "score_rmse": 0.0045462355641577926
+        },
+        "status": "measured"
+      },
+      "id": "nvfp4",
+      "method": {
+        "id": "nvfp4",
+        "name": "nvfp4"
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 2.2922258128347586e-05,
+        "normalized_squared_error": 0.00880214763318608,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.6384025905976016,
+            "ndcg_delta": -0.04909663607696242,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.07021444838745822,
+              "mean_delta": -0.04909663607696242,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": -0.02835527476435509
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.7053333333333334,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": -0.0038415713123901287,
+        "score_rmse": 0.006937005222415297,
+        "status": "measured"
+      },
+      "resolved_parameters": {
+        "tensor_scale": 9.279841469833627e-05
+      },
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 216.00077175381054,
+        "code_and_model_bytes": 1119532,
+        "code_bits_per_dimension": 4.0,
+        "code_bytes": 995136,
+        "effective_bits_per_dimension": 4.5000160782043865,
+        "model_bits_per_dimension": 0.5000160782043861,
+        "model_bytes": 124396,
+        "ratio_vs_fp32_payload": 7.111085703669033,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "st_int8.npz",
+        "file_bytes": 1993852,
+        "sha256": "b5525c0d2b99db45be9897357ff7b67665edb9fdf1602db9eed3b99b4137dbb5"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 1.2298649417728352e-07,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6901107035212796,
+              "ndcg_delta": 0.002611476846715503,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": 0.00018040446886276597,
+                "mean_delta": 0.002611476846715503,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.005912827158723003
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.9906666666666666,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": 0.0016176074366535365,
+          "score_rmse": 0.001634600828920431
+        },
+        "status": "measured"
+      },
+      "id": "st_int8",
+      "method": {
+        "id": "st_int8",
+        "name": "st_int8"
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 1.3643990597843446e-07,
+        "normalized_squared_error": 5.2392926942699195e-05,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.6900035270152095,
+            "ndcg_delta": 0.002504300340645474,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": 8.084320382551209e-05,
+              "mean_delta": 0.002504300340645474,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": 0.005745029486844894
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.9803333333333334,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": -0.00016094889175675108,
+        "score_rmse": 0.00037829904721085975,
+        "status": "measured"
+      },
+      "resolved_parameters": {},
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 384.59270692649045,
+        "code_and_model_bytes": 1993344,
+        "code_bits_per_dimension": 8.0,
+        "code_bytes": 1990272,
+        "effective_bits_per_dimension": 8.01234806096855,
+        "model_bits_per_dimension": 0.012348060968551032,
+        "model_bytes": 3072,
+        "ratio_vs_fp32_payload": 3.993835484492391,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "st_binary.npz",
+        "file_bytes": 249048,
+        "sha256": "02b6abc63beb0883182645a11e3258cbe93d512e9e4be40cfb588fc12a33badd"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 0.001022339819636476,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.43074799882747994,
+              "ndcg_delta": -0.25675122784708404,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.2978469611218067,
+                "mean_delta": -0.25675122784708404,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": -0.218705012904353
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.2723333333333333,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.13306602999432446,
+          "score_rmse": 0.1343725961750853
+        },
+        "status": "measured"
+      },
+      "id": "st_binary",
+      "method": {
+        "id": "st_binary",
+        "name": "st_binary"
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 0.9205757834995694,
+        "normalized_squared_error": 353.5011214221626,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.43074799882747994,
+            "ndcg_delta": -0.25675122784708404,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.2978469611218067,
+              "mean_delta": -0.25675122784708404,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": -0.218705012904353
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.2723333333333333,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": 11.851935545003574,
+        "score_rmse": 11.86252463385787,
+        "status": "measured"
+      },
+      "resolved_parameters": {},
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 48.0,
+        "code_and_model_bytes": 248784,
+        "code_bits_per_dimension": 1.0,
+        "code_bytes": 248784,
+        "effective_bits_per_dimension": 1.0,
+        "model_bits_per_dimension": 0.0,
+        "model_bytes": 0,
+        "ratio_vs_fp32_payload": 32.0,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "faiss_sq8.npz",
+        "file_bytes": 1993943,
+        "sha256": "5b6a8a13e5e126ad06aa0a4315278be2aa6855406d6713971b08a90a97e427f3"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 3.4287046325718965e-08,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.687499226674564,
+              "ndcg_delta": 0.0,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": 0.0,
+                "mean_delta": 0.0,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.0
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.9946666666666666,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -4.189777137700491e-06,
+          "score_rmse": 0.00011630435561428128
+        },
+        "status": "measured"
+      },
+      "id": "faiss_sq8",
+      "method": {
+        "bits": 8,
+        "id": "faiss_sq8",
+        "name": "faiss_sq"
+      },
+      "method_scoring": {
+        "profile": "faiss_exhaustive_ip_fp32_query_no_query_quantization",
+        "quality": {
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6877727446693678,
+              "ndcg_delta": 0.00027351799480367106,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.0032274340159623343,
+                "mean_delta": 0.00027351799480367106,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.0034036540998164753
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.9890000000000001,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": 1.6508060394851177e-06,
+          "score_rmse": 0.00018406165032497387
+        },
+        "status": "measured"
+      },
+      "quality": {
+        "coordinate_mse": 3.437825041192499e-08,
+        "normalized_squared_error": 1.320124892591539e-05,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.6877727446693678,
+            "ndcg_delta": 0.00027351799480367106,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.0032274340159623343,
+              "mean_delta": 0.00027351799480367106,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": 0.0034036540998164753
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.9890000000000001,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": 1.6510641334405266e-06,
+        "score_rmse": 0.00018406163606188384,
+        "status": "measured"
+      },
+      "resolved_parameters": {},
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 384.60833494115377,
+        "code_and_model_bytes": 1993425,
+        "code_bits_per_dimension": 8.0,
+        "code_bytes": 1990272,
+        "effective_bits_per_dimension": 8.01267364460737,
+        "model_bits_per_dimension": 0.012673644607370249,
+        "model_bytes": 3153,
+        "ratio_vs_fp32_payload": 3.9936732006471276,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "faiss_pq2.npz",
+        "file_bytes": 522912,
+        "sha256": "b323235a46ed9cb788777986c14817bdcac942cd2ba011cf3e6b1ba078ce9d2b"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 5.3285775038299024e-05,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6758628244490568,
+              "ndcg_delta": -0.01163640222550733,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.027941075181248196,
+                "mean_delta": -0.01163640222550733,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.00506006076024252
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.7816666666666666,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": 0.008023253153706078,
+          "score_rmse": 0.010094093875032855
+        },
+        "status": "measured"
+      },
+      "id": "faiss_pq2",
+      "method": {
+        "bits": 4,
+        "id": "faiss_pq2",
+        "name": "faiss_pq",
+        "seed": 20260921,
+        "subquantizers": 192
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 5.313895570416789e-05,
+        "normalized_squared_error": 0.020405360177101338,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.63171031158613,
+            "ndcg_delta": -0.05578891508843399,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.07955196582702076,
+              "mean_delta": -0.05578891508843399,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": -0.03327930969655893
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.6476666666666666,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": -7.520200426220248e-05,
+        "score_rmse": 0.007076975320506973,
+        "status": "measured"
+      },
+      "resolved_parameters": {},
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 100.7439706733552,
+        "code_and_model_bytes": 522156,
+        "code_bits_per_dimension": 2.0,
+        "code_bytes": 497568,
+        "effective_bits_per_dimension": 2.098832722361567,
+        "model_bits_per_dimension": 0.09883272236156666,
+        "model_bytes": 24588,
+        "ratio_vs_fp32_payload": 15.246569990577528,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "rabitq2.npz",
+        "file_bytes": 1193436,
+        "sha256": "54896a32efaa9bf2a47ab4eadcaee231446dd3e7a57c7d75a2601b019f5e983d"
+      },
+      "direction_scoring": {
+        "reason": "Faiss multibit RaBitQ decode exposes the one-bit representative; use method_scoring",
+        "status": "not_comparable"
+      },
+      "id": "rabitq2",
+      "method": {
+        "bits": 2,
+        "id": "rabitq2",
+        "name": "faiss_rabitq",
+        "seed": 20260921
+      },
+      "method_scoring": {
+        "profile": "faiss_exhaustive_ip_fp32_query_no_query_quantization",
+        "quality": {
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6705736618561702,
+              "ndcg_delta": -0.016925564818393836,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.03319810941065294,
+                "mean_delta": -0.016925564818393836,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": -0.002278238900493189
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.792,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": 2.1890955519684252e-05,
+          "score_rmse": 0.004186104512682678
+        },
+        "status": "measured"
+      },
+      "quality": {
+        "reason": "Faiss multibit RaBitQ decode exposes the one-bit representative; use method_scoring",
+        "status": "not_comparable"
+      },
+      "resolved_parameters": {},
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 230.1119043025275,
+        "code_and_model_bytes": 1192670,
+        "code_bits_per_dimension": 2.4166666666666665,
+        "code_bytes": 601228,
+        "effective_bits_per_dimension": 4.793998006302656,
+        "model_bits_per_dimension": 2.3773313396359894,
+        "model_bytes": 591442,
+        "ratio_vs_fp32_payload": 6.675013205664602,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "rabitq4.npz",
+        "file_bytes": 1691004,
+        "sha256": "70f335d91d2a027241ca1331b5b89cc862c6928a0ef66489ffe4f85a8899a21e"
+      },
+      "direction_scoring": {
+        "reason": "Faiss multibit RaBitQ decode exposes the one-bit representative; use method_scoring",
+        "status": "not_comparable"
+      },
+      "id": "rabitq4",
+      "method": {
+        "bits": 4,
+        "id": "rabitq4",
+        "name": "faiss_rabitq",
+        "seed": 20260921
+      },
+      "method_scoring": {
+        "profile": "faiss_exhaustive_ip_fp32_query_no_query_quantization",
+        "quality": {
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6943199867114725,
+              "ndcg_delta": 0.00682076003690852,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.0017816047938680616,
+                "mean_delta": 0.00682076003690852,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.015485748864925873
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.9280000000000002,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": 2.087289101169334e-07,
+          "score_rmse": 0.0012479836167538871
+        },
+        "status": "measured"
+      },
+      "quality": {
+        "reason": "Faiss multibit RaBitQ decode exposes the one-bit representative; use method_scoring",
+        "status": "not_comparable"
+      },
+      "resolved_parameters": {},
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 326.1119043025275,
+        "code_and_model_bytes": 1690238,
+        "code_bits_per_dimension": 4.416666666666667,
+        "code_bytes": 1098796,
+        "effective_bits_per_dimension": 6.793998006302656,
+        "model_bits_per_dimension": 2.3773313396359894,
+        "model_bytes": 591442,
+        "ratio_vs_fp32_payload": 4.710039651220716,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "turboquant_mse2.npz",
+        "file_bytes": 1109249,
+        "sha256": "473896d8a3a160462be5acec06eb937b39c112e18dc3e19d4b1a56dbe1a3e9e0"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 0.0003048950102852977,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.61548275561262,
+              "ndcg_delta": -0.07201647106194398,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.09601516623532577,
+                "mean_delta": -0.07201647106194398,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": -0.047963954505198046
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.5533333333333333,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.04384316367510186,
+          "score_rmse": 0.045146494940888196
+        },
+        "status": "measured"
+      },
+      "id": "turboquant_mse2",
+      "method": {
+        "bits": 2,
+        "id": "turboquant_mse2",
+        "name": "faiss_turboquant_mse",
+        "seed": 20260921
+      },
+      "method_scoring": {
+        "profile": "faiss_exhaustive_ip_fp32_query_no_query_quantization",
+        "quality": {
+          "retrieval": {
+            "10": {
+              "ndcg": 0.4852214443306524,
+              "ndcg_delta": -0.20227778234391167,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.23735816815298866,
+                "mean_delta": -0.20227778234391167,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": -0.16664105938799
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.3396666666666666,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.08643738511102986,
+          "score_rmse": 0.08786223264113417
+        },
+        "status": "measured"
+      },
+      "quality": {
+        "coordinate_mse": 0.00029652218795465837,
+        "normalized_squared_error": 0.11386452679653185,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.4852214443306524,
+            "ndcg_delta": -0.20227778234391167,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.23735816815298866,
+              "mean_delta": -0.20227778234391167,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": -0.16664105938799
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.3396666666666666,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": -0.08643738864831604,
+        "score_rmse": 0.08786223606081373,
+        "status": "measured"
+      },
+      "resolved_parameters": {},
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 213.8207601775034,
+        "code_and_model_bytes": 1108233,
+        "code_bits_per_dimension": 2.0,
+        "code_bytes": 497568,
+        "effective_bits_per_dimension": 4.454599170364654,
+        "model_bits_per_dimension": 2.4545991703646535,
+        "model_bytes": 610665,
+        "ratio_vs_fp32_payload": 7.183586845004616,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "turboquant_mse4.npz",
+        "file_bytes": 1606913,
+        "sha256": "a2efbedac1de34d103a1397fedd786e13de4a9aa087c4dd17f1e9701f8d0d607"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 2.3379097285696e-05,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6874585970932737,
+              "ndcg_delta": -4.062958129030569e-05,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.012141853154767202,
+                "mean_delta": -4.062958129030569e-05,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.012310817917062783
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.8520000000000001,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.003248040781248503,
+          "score_rmse": 0.00444078605857944
+        },
+        "status": "measured"
+      },
+      "id": "turboquant_mse4",
+      "method": {
+        "bits": 4,
+        "id": "turboquant_mse4",
+        "name": "faiss_turboquant_mse",
+        "seed": 20260921
+      },
+      "method_scoring": {
+        "profile": "faiss_exhaustive_ip_fp32_query_no_query_quantization",
+        "quality": {
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6528351296203564,
+              "ndcg_delta": -0.0346640970542077,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.05402655002617335,
+                "mean_delta": -0.0346640970542077,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": -0.016428984197033914
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.6776666666666668,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.005974470306143187,
+          "score_rmse": 0.00867096699801583
+        },
+        "status": "measured"
+      },
+      "quality": {
+        "coordinate_mse": 2.3455292372284062e-05,
+        "normalized_squared_error": 0.009006832794761424,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.6528351296203564,
+            "ndcg_delta": -0.0346640970542077,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.05402655002617335,
+              "mean_delta": -0.0346640970542077,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": -0.016428984197033914
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.6776666666666668,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": -0.005974473632588027,
+        "score_rmse": 0.008670969285970652,
+        "status": "measured"
+      },
+      "resolved_parameters": {},
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 309.8392822689562,
+        "code_and_model_bytes": 1605897,
+        "code_bits_per_dimension": 4.0,
+        "code_bytes": 995136,
+        "effective_bits_per_dimension": 6.454985047269921,
+        "model_bits_per_dimension": 2.454985047269921,
+        "model_bytes": 610761,
+        "ratio_vs_fp32_payload": 4.957408850007193,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "semq_quant2.npz",
+        "file_bytes": 498580,
+        "sha256": "c1169f4cf5bd0a6c0eb21cdd9104c93edfa81b22c799bad3a4891502078af326"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 0.000338453191756967,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6256282581756157,
+              "ndcg_delta": -0.06187096849894833,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.08679633688187406,
+                "mean_delta": -0.06187096849894833,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": -0.03869596021051155
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.5743333333333334,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.05141569480928281,
+          "score_rmse": 0.052551514867552974
+        },
+        "status": "measured"
+      },
+      "id": "semq_quant2",
+      "method": {
+        "bits": 2,
+        "id": "semq_quant2",
+        "name": "semq_quant"
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 0.00032800608286881813,
+        "normalized_squared_error": 0.12595434314666853,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.5190477695395127,
+            "ndcg_delta": -0.16845145713505127,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.20268456554260067,
+              "mean_delta": -0.16845145713505127,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": -0.1356967908752726
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.38366666666666666,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": -0.09487593187798628,
+        "score_rmse": 0.09606618564763346,
+        "status": "measured"
+      },
+      "resolved_parameters": {
+        "bins": 2,
+        "dim": 384,
+        "max_magnitude": 0.10206207633018494
+      },
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 96.0023152614316,
+        "code_and_model_bytes": 497580,
+        "code_bits_per_dimension": 2.0,
+        "code_bytes": 497568,
+        "effective_bits_per_dimension": 2.0000482346131583,
+        "model_bits_per_dimension": 4.823461315840247e-05,
+        "model_bytes": 12,
+        "ratio_vs_fp32_payload": 15.99961413240082,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "semq_quant4.npz",
+        "file_bytes": 747364,
+        "sha256": "73da882215915d3b5df200d9aaefdca187ee468500f2de2b5d063cf3d6a4386f"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 0.00012506924329186482,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6575702439090599,
+              "ndcg_delta": -0.029928982765504,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.045999408886518905,
+                "mean_delta": -0.029928982765504,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": -0.01392298161571168
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.7593333333333334,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.019368114311172177,
+          "score_rmse": 0.020394827312248683
+        },
+        "status": "measured"
+      },
+      "id": "semq_quant4",
+      "method": {
+        "bits": 3,
+        "id": "semq_quant4",
+        "name": "semq_quant"
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 0.00012760281268384209,
+        "normalized_squared_error": 0.048999482920225476,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.597786179143179,
+            "ndcg_delta": -0.08971304753138497,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.1140853565292573,
+              "mean_delta": -0.08971304753138497,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": -0.06598105696621992
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.5683333333333334,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": -0.06664970520687406,
+        "score_rmse": 0.06737333621139673,
+        "status": "measured"
+      },
+      "resolved_parameters": {
+        "bins": 4,
+        "dim": 384,
+        "max_magnitude": 0.10206207633018494
+      },
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 144.0023152614316,
+        "code_and_model_bytes": 746364,
+        "code_bits_per_dimension": 3.0,
+        "code_bytes": 746352,
+        "effective_bits_per_dimension": 3.0000482346131583,
+        "model_bits_per_dimension": 4.823461315840247e-05,
+        "model_bytes": 12,
+        "ratio_vs_fp32_payload": 10.666495168577262,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "semq_quant8.npz",
+        "file_bytes": 996148,
+        "sha256": "7006010a93f19f24a56abe3609c01a7978b58da4964a118cf3085cb27c33e108"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 6.604172626220284e-05,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6789450271451011,
+              "ndcg_delta": -0.008554199529462927,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.02159933291543043,
+                "mean_delta": -0.008554199529462927,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.0038310654746796114
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.8386666666666668,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.010428131908515248,
+          "score_rmse": 0.011338563042867445
+        },
+        "status": "measured"
+      },
+      "id": "semq_quant8",
+      "method": {
+        "bits": 4,
+        "id": "semq_quant8",
+        "name": "semq_quant"
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 7.095804579865317e-05,
+        "normalized_squared_error": 0.027247891171320177,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.6379134090670702,
+            "ndcg_delta": -0.04958581760749389,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.0682237616200412,
+              "mean_delta": -0.04958581760749389,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": -0.03175411302119569
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.6633333333333334,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": -0.0545164237752137,
+        "score_rmse": 0.05504036901142086,
+        "status": "measured"
+      },
+      "resolved_parameters": {
+        "bins": 8,
+        "dim": 384,
+        "max_magnitude": 0.10206207633018494
+      },
+      "role": "retrieval",
+      "storage": {
+        "bytes_per_embedding": 192.0023152614316,
+        "code_and_model_bytes": 995148,
+        "code_bits_per_dimension": 4.0,
+        "code_bytes": 995136,
+        "effective_bits_per_dimension": 4.000048234613159,
+        "model_bits_per_dimension": 4.823461315840247e-05,
+        "model_bytes": 12,
+        "ratio_vs_fp32_payload": 7.999903531936958,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "semq_phase16.npz",
+        "file_bytes": 498324,
+        "sha256": "1e3cf7c39a93d6bf5526c8ca5c44fd2c7dd5c758dde228086e3a78955e02719e"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 0.0006332665546885449,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.5839395013969041,
+              "ndcg_delta": -0.10355972527765989,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.13242984109973993,
+                "mean_delta": -0.10355972527765989,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": -0.07714205101430222
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.4776666666666667,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.0840258642032913,
+          "score_rmse": 0.08520266559283418
+        },
+        "status": "measured"
+      },
+      "id": "semq_phase16",
+      "method": {
+        "id": "semq_phase16",
+        "name": "semq_phase",
+        "sectors": 16
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 0.4392101688470168,
+        "normalized_squared_error": 168.65671464571005,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.5839395013969041,
+            "ndcg_delta": -0.10355972527765989,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.13242984109973993,
+              "mean_delta": -0.10355972527765989,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": -0.07714205101430222
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.4776666666666667,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": 8.832361550323865,
+        "score_rmse": 8.83895684040253,
+        "status": "measured"
+      },
+      "resolved_parameters": {
+        "dim": 384,
+        "sectors": 16
+      },
+      "role": "angular_representation",
+      "storage": {
+        "bytes_per_embedding": 96.00154350762107,
+        "code_and_model_bytes": 497576,
+        "code_bits_per_dimension": 2.0,
+        "code_bytes": 497568,
+        "effective_bits_per_dimension": 2.000032156408772,
+        "model_bits_per_dimension": 3.2156408772268315e-05,
+        "model_bytes": 8,
+        "ratio_vs_fp32_payload": 15.999742752865894,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    },
+    {
+      "artifact": {
+        "file": "semq_orbit50.npz",
+        "file_bytes": 1991024,
+        "sha256": "d4f015dd937055933f761f35d046e41b63278b5079317c3ff40a60c745b18843"
+      },
+      "direction_scoring": {
+        "profile": "unit_query_unit_reconstruction_cosine_f64",
+        "quality": {
+          "direction_coordinate_mse": 5.092392183499365e-05,
+          "retrieval": {
+            "10": {
+              "ndcg": 0.6695001824822581,
+              "ndcg_delta": -0.017999044192305882,
+              "ndcg_delta_interval": {
+                "confidence": 0.95,
+                "eligible_queries": 300,
+                "lower": -0.03823018033430008,
+                "mean_delta": -0.017999044192305882,
+                "method": "paired_query_percentile_bootstrap",
+                "samples": 2000,
+                "seed": 20260921,
+                "status": "measured",
+                "upper": 0.00029926465131428895
+              },
+              "ndcg_eligible_queries": 300,
+              "ndcg_status": "measured",
+              "overlap": 0.7956666666666667,
+              "reference_ndcg": 0.687499226674564
+            }
+          },
+          "score_bias": -0.006577847057674349,
+          "score_rmse": 0.008534848831447
+        },
+        "status": "measured"
+      },
+      "id": "semq_orbit50",
+      "method": {
+        "id": "semq_orbit50",
+        "name": "semq_orbit",
+        "scale": 50
+      },
+      "method_scoring": {
+        "status": "not_supported"
+      },
+      "quality": {
+        "coordinate_mse": 5.100726174130922e-05,
+        "normalized_squared_error": 0.01958678964775855,
+        "retrieval": {
+          "10": {
+            "ndcg": 0.611796098440705,
+            "ndcg_delta": -0.075703128233859,
+            "ndcg_delta_interval": {
+              "confidence": 0.95,
+              "eligible_queries": 300,
+              "lower": -0.10787879813342216,
+              "mean_delta": -0.075703128233859,
+              "method": "paired_query_percentile_bootstrap",
+              "samples": 2000,
+              "seed": 20260921,
+              "status": "measured",
+              "upper": -0.04617059251881058
+            },
+            "ndcg_eligible_queries": 300,
+            "ndcg_status": "measured",
+            "overlap": 0.6523333333333333,
+            "reference_ndcg": 0.687499226674564
+          }
+        },
+        "score_bias": -0.005043595048755507,
+        "score_rmse": 0.012596298734609624,
+        "status": "measured"
+      },
+      "resolved_parameters": {
+        "dim": 384,
+        "scale": 50
+      },
+      "role": "comparison",
+      "storage": {
+        "bytes_per_embedding": 384.0015435076211,
+        "code_and_model_bytes": 1990280,
+        "code_bits_per_dimension": 8.0,
+        "code_bytes": 1990272,
+        "effective_bits_per_dimension": 8.000032156408773,
+        "model_bits_per_dimension": 3.2156408772268315e-05,
+        "model_bytes": 8,
+        "ratio_vs_fp32_payload": 3.999983921860241,
+        "scope": "array_payload_and_model; excludes file envelope, index and runtime memory"
+      }
+    }
+  ],
+  "performance": {
+    "reason": "codec quality workload",
+    "status": "not_measured"
+  },
+  "portability": {
+    "reason": "single runtime",
+    "status": "not_measured"
+  },
+  "provenance": {
+    "architecture": "arm64",
+    "benchmark_source_sha256": {
+      "benchmarks/__init__.py": "b8509f4d07ee73aa8a90fc5e34db661d104c8e9f57592fb7f1ddef2267055194",
+      "benchmarks/codecs.py": "d206758dd06f4e1ec9dd64339086c1e595e56d522b542d21e145fdedb1cc630a",
+      "benchmarks/compare.py": "5887d435e952c2de9cef4adc1f41717e57f7a4c35adb8add97320a7d465cd173",
+      "benchmarks/costs.py": "74c6a638766dfe3dadd6d172e71a90db5f6f2f695c8bb9c29080a18fd94706c3",
+      "benchmarks/faiss_codecs.py": "37f2b0662ae6e474f5f6dc01ca30ff5472673b9aa820fd58a624bb6b37bd54c6",
+      "benchmarks/formats.py": "c1adc6011cb9cbcefe8564a91696b9878e6d309cba58afab998711ea93d8baa3",
+      "benchmarks/granularity.py": "f4680ec2178a9882d34e59b62bbda5438fdeb60db172f17d73aeecacc4a24b77",
+      "benchmarks/inputs.py": "598046c8848bf30837d2c963b956660cad956635846d0e1249c9646cda287f6b",
+      "benchmarks/metrics.py": "32efce4bf5b3a39554c1d2ada05a6430d8b489cbbb61e6be3791bce31f3737f0",
+      "benchmarks/page.py": "e86df898ec02aa639610c666163103c4ad1c8c7f25c7c5f8569773db36926f34",
+      "benchmarks/prepare_beir.py": "5f0edf87a47c2dddd94fa5353101d8b2ef8f96ba92f4c144c5b068b6f7dc4793",
+      "benchmarks/publish.py": "d3206b4f16170703d8fb31123664ff122868d7e93efead8a5116f022fc7cf92f",
+      "benchmarks/quality_v1.py": "cef03ad77d1f55338140ef597baa8dd09355f3c38fd681c8b96d2e50c1696e94",
+      "benchmarks/rebuild.py": "33d1fb655273274de726cd60318d31fb3d6aa56f5a50520950938f0e88bd6655",
+      "benchmarks/relevance.py": "53235a54b3474c96bc52b2974dddfd6ba81f5a782825e5fdb1b4e17879d35d69",
+      "benchmarks/render.py": "e79c07b656281ebcfc601efd7efd2c54ecd6b0393da7caa43ac3a4a3f5a69a45",
+      "benchmarks/reproducibility.py": "d364877c80110058a5967c813677738580fa298120100a47108c6519acd7f451",
+      "benchmarks/run.py": "76da7fa3b39bd3a172648a9c7fc28ed6baae8f7c2503a27a1e7d8e36719819e8",
+      "benchmarks/scale.py": "52403f85fe724fb5fbef0457c65e4f83abd4609ab391f9bda895c88aa5acf084",
+      "benchmarks/size.py": "c34d85af86761aec1efc929518529e34ddfda5a8c49e541dfc5dce908680ea9f",
+      "benchmarks/speed.py": "736df3fb630dc16a617aae7945ee3f0cfd86334d160264d9153ec835d4e1072c",
+      "benchmarks/verify_ndcg.py": "9a20f7eb80f98bae5089d2e2424e87da0b27a0738ad877d9f02d9d1075815c24"
+    },
+    "config_sha256": "153c3ca83004e47ad41c441f21ffb6835490fad33aee662e0451b6b05a6545bb",
+    "git_commit": "c606294b99b09894f9642a9f22bfa97bc9863098",
+    "packages": {
+      "faiss-cpu": "1.14.2",
+      "numpy": "2.4.6"
+    },
+    "platform": "macOS-26.6.2-arm64-arm-64bit",
+    "python": "3.11.15",
+    "quality_environment": {
+      "platform": "macOS-26.6.2-arm64-arm-64bit"
+    },
+    "semq": {
+      "binding_source_sha256": {
+        "__init__.py": "ab6e9953a543f3c6cb494fdfbeb058d5a77e264e281bcd366811cf35e44494f9",
+        "__main__.py": "a7a2ea168c397d42d517bb77a786501749897beb0e3ca54980efab71541e1049",
+        "_convert.py": "fb7466cf23b34f48c6f4a95ca80ed05dfc8778c99d3e591b01f017c8967b998d",
+        "_ffi.py": "072cc479a50d3b73db025b0208bf005753026c0d25b41b4e452684753ca688a6",
+        "build.py": "5852ee0130e4a65fdc3cd83bb2afb7c4222b955b2b4343678fc36537678d3906",
+        "cli.py": "d218a288be772422512069c59247639511b2ad14690ec25b1f218951e8d2270e",
+        "codec.py": "b01f310621348d896822f9e3b6c14a278c103237634d093bacdf359727a2fe0d",
+        "config.py": "62985dba9bf2f63b4da97416a95bb0f97da594c06760834de3daaa0724f4cd27",
+        "diff.py": "64157756260b9730f27ae0b532184425581b219127d76642aa9e48243b49cce6",
+        "encoding.py": "1a941e281a0ecd089c7aa760a3814563892f2d6c2a1254dba3da06e480aef486",
+        "errors.py": "4ca0bcc8f8804fc6731f95e67a0e101532fecf56c374229abd0ff43143778272",
+        "floor.py": "611f8fc75b4621990a613016cd31e9c9a717c429153d5c6a2b20798ccd22e7c7"
+      },
+      "native_sha256": "9a38269d0a309102e9346bbf18b6bda410abdb3bc9972dfcaa08624289e9c76f"
+    },
+    "utc": "2026-09-29T06:09:14.242285+00:00",
+    "working_tree_dirty": false
+  },
+  "publication": {
+    "config": {
+      "direction_scoring": true,
+      "k": [
+        10
+      ],
+      "method_scoring": true,
+      "methods": [
+        {
+          "id": "fp32",
+          "name": "fp32"
+        },
+        {
+          "id": "fp16",
+          "name": "fp16"
+        },
+        {
+          "id": "bf16",
+          "name": "bf16"
+        },
+        {
+          "id": "fp8_e4m3",
+          "name": "fp8_e4m3"
+        },
+        {
+          "id": "fp8_e5m2",
+          "name": "fp8_e5m2"
+        },
+        {
+          "id": "int4_block32",
+          "name": "int4_block32"
+        },
+        {
+          "id": "mxfp4",
+          "name": "mxfp4"
+        },
+        {
+          "id": "mxfp8",
+          "name": "mxfp8"
+        },
+        {
+          "id": "nvfp4",
+          "name": "nvfp4"
+        },
+        {
+          "id": "st_int8",
+          "name": "st_int8"
+        },
+        {
+          "id": "st_binary",
+          "name": "st_binary"
+        },
+        {
+          "bits": 8,
+          "id": "faiss_sq8",
+          "name": "faiss_sq"
+        },
+        {
+          "bits": 4,
+          "id": "faiss_pq2",
+          "name": "faiss_pq",
+          "seed": 20260921,
+          "subquantizers": 192
+        },
+        {
+          "bits": 2,
+          "id": "rabitq2",
+          "name": "faiss_rabitq",
+          "seed": 20260921
+        },
+        {
+          "bits": 4,
+          "id": "rabitq4",
+          "name": "faiss_rabitq",
+          "seed": 20260921
+        },
+        {
+          "bits": 2,
+          "id": "turboquant_mse2",
+          "name": "faiss_turboquant_mse",
+          "seed": 20260921
+        },
+        {
+          "bits": 4,
+          "id": "turboquant_mse4",
+          "name": "faiss_turboquant_mse",
+          "seed": 20260921
+        },
+        {
+          "bits": 2,
+          "id": "semq_quant2",
+          "name": "semq_quant"
+        },
+        {
+          "bits": 3,
+          "id": "semq_quant4",
+          "name": "semq_quant"
+        },
+        {
+          "bits": 4,
+          "id": "semq_quant8",
+          "name": "semq_quant"
+        },
+        {
+          "id": "semq_phase16",
+          "name": "semq_phase",
+          "sectors": 16
+        },
+        {
+          "id": "semq_orbit50",
+          "name": "semq_orbit",
+          "scale": 50
+        }
+      ],
+      "query_batch_size": 8,
+      "schema_version": 1,
+      "seed": 20260921,
+      "suite": "codec_quality",
+      "uncertainty": {
+        "bootstrap_samples": 2000,
+        "confidence": 0.95,
+        "seed": 20260921
+      }
+    },
+    "omitted": "per-query arrays, machine-local paths and installed SEMQ distribution metadata; encoded artifacts are not distributed",
+    "paired_comparisons": {},
+    "schema_version": 1,
+    "source_report_sha256": "cec5ca3acf0fb691b091c967c125dc4c1fa36dde6b954856b929af8ce2484367",
+    "verification": {
+      "evaluator": "pytrec-eval-terrier",
+      "profiles": {
+        "direction_scoring": {
+          "max_absolute_error": 2.220446049250313e-16,
+          "queries": 300
+        },
+        "quality": {
+          "max_absolute_error": 2.220446049250313e-16,
+          "queries": 300
+        }
+      },
+      "report_sha256": "cec5ca3acf0fb691b091c967c125dc4c1fa36dde6b954856b929af8ce2484367",
+      "scope": "FP32 per-query raw and direction nDCG; shared metric checked on identical rankings",
+      "status": "verified",
+      "tolerance": 1e-12,
+      "verification_source_sha256": "9a20f7eb80f98bae5089d2e2424e87da0b27a0738ad877d9f02d9d1075815c24",
+      "version": "0.5.10"
+    }
+  },
+  "schema_version": 2,
+  "scoring_profile": "original_query_ip_f64_no_renormalization",
+  "status": "complete",
+  "suite": "codec_quality"
+}

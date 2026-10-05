@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-09-29",
+  "note": "What each format provides by itself, as documented by its maintainers. A pipeline can build any of these on top; the table says what is built in.",
+  "capabilities": [
+    {
+      "id": "identity",
+      "label": "Content identity",
+      "question": "Is there one value that names exactly these rows under this rule?"
+    },
+    {
+      "id": "declared",
+      "label": "Declarations inside the identity",
+      "question": "Are encoder and revision part of what is identified?"
+    },
+    {
+      "id": "diff",
+      "label": "Diff by id",
+      "question": "Which ids were added, removed or changed, and by how much?"
+    },
+    {
+      "id": "gate",
+      "label": "Rebuild gate",
+      "question": "Is this rebuild within the variation of rebuilds that changed nothing?"
+    },
+    {
+      "id": "verify",
+      "label": "Verification on load",
+      "question": "Is a corrupted or tampered file rejected when read?"
+    },
+    {
+      "id": "portable",
+      "label": "Same bytes everywhere",
+      "question": "Does the same input produce the same bytes on every CPU, OS and language?"
+    }
+  ],
+  "formats": [
+    {
+      "id": "semq",
+      "label": "SEMQ .semq",
+      "values": {
+        "identity": {
+          "level": "yes",
+          "note": "content_digest and state_id, SHA-256"
+        },
+        "declared": {
+          "level": "yes",
+          "note": "the manifest is part of state_id"
+        },
+        "diff": {
+          "level": "yes",
+          "note": "added, removed, changed with hamming per row"
+        },
+        "gate": {
+          "level": "yes",
+          "note": "Floor.measure and diff.within, semq diff --floor"
+        },
+        "verify": {
+          "level": "yes",
+          "note": "both digests recomputed and every row checked on load"
+        },
+        "portable": {
+          "level": "yes",
+          "note": "pinned by conformance vectors in four languages and three architectures"
+        }
+      }
+    },
+    {
+      "id": "npy",
+      "label": "NumPy .npy",
+      "values": {
+        "identity": {
+          "level": "no",
+          "note": "hash the file yourself; a re-embedding changes float bytes"
+        },
+        "declared": {
+          "level": "no",
+          "note": "no metadata beyond dtype and shape"
+        },
+        "diff": {
+          "level": "no",
+          "note": "positional arrays, no ids"
+        },
+        "gate": {
+          "level": "no",
+          "note": ""
+        },
+        "verify": {
+          "level": "no",
+          "note": "no checksum"
+        },
+        "portable": {
+          "level": "partial",
+          "note": "stores floats as given; nothing is encoded"
+        }
+      }
+    },
+    {
+      "id": "parquet",
+      "label": "Parquet",
+      "values": {
+        "identity": {
+          "level": "no",
+          "note": "no content digest of the data"
+        },
+        "declared": {
+          "level": "partial",
+          "note": "key-value metadata, outside any identity"
+        },
+        "diff": {
+          "level": "no",
+          "note": "a join you write yourself"
+        },
+        "gate": {
+          "level": "no",
+          "note": ""
+        },
+        "verify": {
+          "level": "partial",
+          "note": "optional CRC32 per page; reader support varies"
+        },
+        "portable": {
+          "level": "partial",
+          "note": "stores floats as given; nothing is encoded"
+        }
+      },
+      "sources": [
+        "https://parquet.apache.org/docs/file-format/data-pages/checksumming/"
+      ]
+    },
+    {
+      "id": "lance",
+      "label": "Lance",
+      "values": {
+        "identity": {
+          "level": "no",
+          "note": "numbered versions, not content-addressed"
+        },
+        "declared": {
+          "level": "partial",
+          "note": "schema and table metadata, outside any identity"
+        },
+        "diff": {
+          "level": "partial",
+          "note": "row version tracking says which rows were written, not whether their vectors changed"
+        },
+        "gate": {
+          "level": "no",
+          "note": ""
+        },
+        "verify": {
+          "level": "no",
+          "note": ""
+        },
+        "portable": {
+          "level": "partial",
+          "note": "stores floats as given; nothing is encoded"
+        }
+      },
+      "sources": [
+        "https://lance.org/format/table/row_id_lineage/",
+        "https://lance.org/quickstart/versioning/"
+      ]
+    },
+    {
+      "id": "faiss",
+      "label": "FAISS index",
+      "values": {
+        "identity": {
+          "level": "no",
+          "note": ""
+        },
+        "declared": {
+          "level": "no",
+          "note": ""
+        },
+        "diff": {
+          "level": "no",
+          "note": ""
+        },
+        "gate": {
+          "level": "no",
+          "note": ""
+        },
+        "verify": {
+          "level": "no",
+          "note": ""
+        },
+        "portable": {
+          "level": "no",
+          "note": "trained quantizers and SIMD paths are not specified to be byte-identical across builds"
+        }
+      }
+    }
+  ],
+  "related": [
+    {
+      "label": "Valori",
+      "source": "https://arxiv.org/abs/2512.22280",
+      "summary": "replaces floating point with Q16.16 fixed-point arithmetic in the memory layer, so that stored states, snapshots and search results are bit-identical across platforms. It shares the goal of platform-independent state; SEMQ keeps the float32 inputs, makes their encoding and its identity deterministic instead, and adds diff and a rebuild gate."
+    }
+  ]
+}

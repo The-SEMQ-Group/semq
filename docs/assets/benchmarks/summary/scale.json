@@ -1,0 +1,175 @@
+{
+  "generated_utc": "2026-10-02T22:06:16.420957+00:00",
+  "hardware": {
+    "arch": "arm64",
+    "cpu_threads": 12,
+    "gpu": "Apple M4 Pro (MPS)",
+    "machine": "Apple M4 Pro",
+    "os": "macOS-26.6.2-arm64-arm-64bit"
+  },
+  "inputs": {
+    "native_library": {
+      "sha256": "6084e1f6a79ce8e85e97d988ff27502e8d0e0a5af43e9ee87cf6a2f833c0bbd5",
+      "source": "build/libsemq.1.0.0.dylib"
+    }
+  },
+  "results": {
+    "codec": "CodecConfig.quant(768, 4)",
+    "config": "semq_quant4",
+    "dim": 768,
+    "method": {
+      "candidate": "1 row in 100 moved by 0.5 x a random unit row, renormalized",
+      "concat_parts": 10,
+      "ids": "u64, 0..rows-1; empty manifest",
+      "inputs": "random unit rows, numpy default_rng([20260928, dim, chunk]), generated in chunks of 100,000 rows",
+      "nulls": "3 rebuilds; null k moves rows with id % 1000 == k by 0.01 x a random unit row, renormalized",
+      "process": "one fresh Python subprocess per operation; peak_rss_bytes is that process's ru_maxrss after the operation, peak_rss_before_bytes the same just before it (after setup); the encode peak includes one float32 input chunk",
+      "timing": "single wall-clock run per operation"
+    },
+    "rows": {
+      "100000": {
+        "files": {
+          "npy_float16_bytes": 153600128,
+          "npy_float32_bytes": 307200128,
+          "semq_bytes": 29600096,
+          "semq_vs_npy_float16": 5.189176683751296,
+          "semq_vs_npy_float32": 10.378349043192292
+        },
+        "operations": {
+          "concat": {
+            "parts": 10,
+            "peak_rss_before_bytes": 70057984,
+            "peak_rss_bytes": 99680256,
+            "seconds": 0.019036749843508005,
+            "timed": "Encoding.concat of 10 parts"
+          },
+          "diff": {
+            "changed_rows": 1000,
+            "modified_rows": 1000,
+            "peak_rss_before_bytes": 126271488,
+            "peak_rss_bytes": 126337024,
+            "seconds": 0.0018559158779680729,
+            "timed": "Encoding.diff against a copy with 1 row in 100 changed",
+            "unchanged_rows": 99000
+          },
+          "encode": {
+            "chunks": 1,
+            "input_chunk_bytes": 307200000,
+            "peak_rss_before_bytes": 37273600,
+            "peak_rss_bytes": 402358272,
+            "seconds": 0.13182862498797476,
+            "timed": "Codec.encode per chunk plus one Encoding.concat; vector generation excluded"
+          },
+          "floor": {
+            "floor_changed_rows": 100,
+            "floor_hamming": 18,
+            "null_changed_rows": [
+              100,
+              100,
+              100
+            ],
+            "nulls": 3,
+            "peak_rss_before_bytes": 185516032,
+            "peak_rss_bytes": 185516032,
+            "seconds": 0.0012407081667333841,
+            "timed": "Floor.measure over 3 null diffs (diffs built untimed)"
+          },
+          "gate": {
+            "candidate_changed_rows": 1000,
+            "nulls": 3,
+            "peak_rss_before_bytes": 37355520,
+            "peak_rss_bytes": 185761792,
+            "seconds": 0.10964854201301932,
+            "timed": "load reference, three nulls and candidate; diff nulls; Floor.measure; diff candidate; Diff.within",
+            "within_floor": false
+          },
+          "load": {
+            "peak_rss_before_bytes": 32915456,
+            "peak_rss_bytes": 96616448,
+            "seconds": 0.045605082996189594,
+            "timed": "Encoding.load from a path (file in the OS page cache)"
+          },
+          "save": {
+            "peak_rss_before_bytes": 96256000,
+            "peak_rss_bytes": 96288768,
+            "seconds": 0.015446709003299475,
+            "timed": "Encoding.save to a path (atomic write with fsync)"
+          }
+        }
+      },
+      "1000000": {
+        "files": {
+          "npy_float16_bytes": 1536000128,
+          "npy_float32_bytes": 3072000128,
+          "semq_bytes": 296000096,
+          "semq_vs_npy_float16": 5.18918793864175,
+          "semq_vs_npy_float32": 10.378375444851207
+        },
+        "operations": {
+          "concat": {
+            "parts": 10,
+            "peak_rss_before_bytes": 363216896,
+            "peak_rss_bytes": 659275776,
+            "seconds": 0.19518108293414116,
+            "timed": "Encoding.concat of 10 parts"
+          },
+          "diff": {
+            "changed_rows": 10000,
+            "modified_rows": 10000,
+            "peak_rss_before_bytes": 925253632,
+            "peak_rss_bytes": 925581312,
+            "seconds": 0.04888045787811279,
+            "timed": "Encoding.diff against a copy with 1 row in 100 changed",
+            "unchanged_rows": 990000
+          },
+          "encode": {
+            "chunks": 10,
+            "input_chunk_bytes": 307200000,
+            "peak_rss_before_bytes": 37339136,
+            "peak_rss_bytes": 685424640,
+            "seconds": 1.4705870833713561,
+            "timed": "Codec.encode per chunk plus one Encoding.concat; vector generation excluded"
+          },
+          "floor": {
+            "floor_changed_rows": 1000,
+            "floor_hamming": 21,
+            "null_changed_rows": [
+              1000,
+              1000,
+              1000
+            ],
+            "nulls": 3,
+            "peak_rss_before_bytes": 1296056320,
+            "peak_rss_bytes": 1296629760,
+            "seconds": 0.01469450001604855,
+            "timed": "Floor.measure over 3 null diffs (diffs built untimed)"
+          },
+          "gate": {
+            "candidate_changed_rows": 10000,
+            "nulls": 3,
+            "peak_rss_before_bytes": 37519360,
+            "peak_rss_bytes": 1527693312,
+            "seconds": 1.081432375125587,
+            "timed": "load reference, three nulls and candidate; diff nulls; Floor.measure; diff candidate; Diff.within",
+            "within_floor": false
+          },
+          "load": {
+            "peak_rss_before_bytes": 32686080,
+            "peak_rss_bytes": 629374976,
+            "seconds": 0.23981666704639792,
+            "timed": "Encoding.load from a path (file in the OS page cache)"
+          },
+          "save": {
+            "peak_rss_before_bytes": 629243904,
+            "peak_rss_bytes": 629276672,
+            "seconds": 0.1858544999267906,
+            "timed": "Encoding.save to a path (atomic write with fsync)"
+          }
+        }
+      }
+    }
+  },
+  "schema": "semq-bench/scale/1",
+  "sdk_commit": "c755a7754198fa1d4d0d70e459effec4e7795b17",
+  "working_tree_dirty": false
+}

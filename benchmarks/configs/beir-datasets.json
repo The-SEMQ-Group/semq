@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "seed": 20260921,
+  "datasets": {
+    "scifact": {
+      "repo": "BeIR/scifact",
+      "revision": "b3b5335604bf5ee3c4447671af975ea25143d4f5",
+      "qrels_repo": "BeIR/scifact-qrels",
+      "qrels_revision": "2938d17dc3b09882fdb8c12bbbe2e2dc0e75a029",
+      "corpus_file": "corpus/corpus-00000-of-00001.parquet",
+      "queries_file": "queries/queries-00000-of-00001.parquet",
+      "corpus_rows": 5183,
+      "test_queries": 300,
+      "license_declared_by_source": "CC-BY-SA-4.0"
+    },
+    "fiqa": {
+      "repo": "BeIR/fiqa",
+      "revision": "979c07a7cb5ccc6ca009792241fa1250b98055dd",
+      "qrels_repo": "BeIR/fiqa-qrels",
+      "qrels_revision": "252958f2d646e22cab6d0c72dd3f0d5de6d0655a",
+      "corpus_file": "corpus/corpus-00000-of-00001.parquet",
+      "queries_file": "queries/queries-00000-of-00001.parquet",
+      "corpus_rows": 57638,
+      "test_queries": 648,
+      "license_declared_by_source": "CC-BY-SA-4.0"
+    }
+  },
+  "models": {
+    "e5_small": {
+      "repo": "intfloat/e5-small-v2",
+      "revision": "ffb93f3bd4047442299a41ebb6fa998a38507c52",
+      "query_prefix": "query: ",
+      "document_prefix": "passage: ",
+      "max_length": 512,
+      "dimension": 384
+    },
+    "bge_small": {
+      "repo": "BAAI/bge-small-en-v1.5",
+      "revision": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a",
+      "query_prefix": "Represent this sentence for searching relevant passages: ",
+      "document_prefix": "",
+      "max_length": 512,
+      "dimension": 384
+    },
+    "arctic_m": {
+      "repo": "Snowflake/snowflake-arctic-embed-m-v1.5",
+      "revision": "e58a8f756156a1293d763f17e3aae643474e9b8a",
+      "query_prefix": "Represent this sentence for searching relevant passages: ",
+      "document_prefix": "",
+      "max_length": 512,
+      "dimension": 768,
+      "matryoshka": true
+    },
+    "mxbai_large": {
+      "repo": "mixedbread-ai/mxbai-embed-large-v1",
+      "revision": "b33106f585b9ce46904ad7443a3b52b7a63e231c",
+      "query_prefix": "Represent this sentence for searching relevant passages: ",
+      "document_prefix": "",
+      "max_length": 512,
+      "dimension": 1024,
+      "matryoshka": true
+    }
+  }
+}

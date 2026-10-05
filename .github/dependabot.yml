@@ -1,0 +1,109 @@
+# Weekly dependency updates. Workflow actions are pinned to commit SHAs;
+# Dependabot moves the SHA and its version comment together.
+#
+# Each ecosystem gets at most two pull requests per run: one for minor and
+# patch updates, and one for major updates, which more often need code
+# changes. The cooldown skips versions published in the last week, so a
+# compromised release has time to be caught and yanked before it reaches
+# this repository. Security updates are not delayed.
+
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    # The workflows, and the actions the local composite actions use.
+    directories:
+      - /
+      - /.github/actions/*
+    ignore:
+      # cibuildwheel majors change the wheels that get built; they are
+      # upgraded together with the supported Python versions.
+      - dependency-name: pypa/cibuildwheel
+        update-types: ["version-update:semver-major"]
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        update-types: [minor, patch]
+      actions-major:
+        update-types: [major]
+
+  - package-ecosystem: npm
+    directory: /bindings/ts
+    # @types/node majors follow Node releases; the package supports Node 22.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # typedoc, which builds the TypeScript API reference, does not support
+      # TypeScript 7 yet. Remove this rule once it does.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      npm:
+        update-types: [minor, patch]
+      npm-major:
+        update-types: [major]
+
+  - package-ecosystem: cargo
+    directory: /bindings/rust
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      cargo:
+        update-types: [minor, patch]
+      cargo-major:
+        update-types: [major]
+
+  - package-ecosystem: pip
+    directory: /benchmarks
+    # sentence-transformers 6 requires huggingface-hub < 2. Remove this rule
+    # once a sentence-transformers release accepts huggingface-hub 2.
+    ignore:
+      - dependency-name: huggingface-hub
+        update-types: ["version-update:semver-major"]
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      benchmarks:
+        update-types: [minor, patch]
+      benchmarks-major:
+        update-types: [major]
+  # The hash-pinned tools CI and the release install (.github/requirements).
+  - package-ecosystem: pip
+    directory: /.github/requirements
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+    groups:
+      ci-tools:
+        update-types: [minor, patch]
+      ci-tools-major:
+        update-types: [major]
