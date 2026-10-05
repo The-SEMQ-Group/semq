@@ -9,6 +9,8 @@ surface.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-05
+
 First public release.
 
 ### Added
@@ -76,3 +78,4 @@ First public release.
   also ships `THIRD_PARTY_LICENSES` for the Emscripten runtime it bundles.
 
 [Unreleased]: https://github.com/The-SEMQ-Group/semq/commits/main
+[1.0.0]: https://github.com/The-SEMQ-Group/semq/releases/tag/v1.0.0
