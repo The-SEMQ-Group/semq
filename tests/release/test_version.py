@@ -29,11 +29,28 @@ FILES = (
 )
 
 
+# The repository's CHANGELOG changes with every release, so the tests use the
+# real preamble (the links the release history page rewrites) followed by
+# their own unreleased notes and no published version.
+UNRELEASED = """## [Unreleased]
+
+First public release.
+
+### Added
+
+- A codec.
+
+[Unreleased]: https://github.com/The-SEMQ-Group/semq/commits/main
+"""
+
+
 @pytest.fixture
 def repo(tmp_path: Path) -> Path:
     for name in FILES:
         (tmp_path / name).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / name, tmp_path / name)
+    preamble = (ROOT / "CHANGELOG.md").read_text().split("## [Unreleased]", 1)[0]
+    (tmp_path / "CHANGELOG.md").write_text(preamble + UNRELEASED)
     return tmp_path
 
 
