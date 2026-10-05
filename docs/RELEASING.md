@@ -70,6 +70,28 @@ creates no attestation, publishes nothing and creates no GitHub Release. Run
 one on any pull request that changes the release workflow or its actions,
 because pull request CI does not run this workflow.
 
+## Check the publishing credentials
+
+A rehearsal does not authenticate to the registries. Before the first release,
+and after changing a trusted publisher or the npm token, run the
+[credentials check](../.github/workflows/registry-credentials.yml): it
+authenticates to PyPI, crates.io and npm from the release environments the way
+the release does, and uploads nothing. The environments accept only `v*`
+tags, so allow `main` for the run and remove it afterwards:
+
+```sh
+for env in pypi-release crates-release npm-release; do
+  gh api -X POST "repos/The-SEMQ-Group/semq/environments/$env/deployment-branch-policies" \
+    -f name=main -f type=branch
+done
+gh workflow run registry-credentials.yml --ref main
+# after the run: delete each environment's "main" policy again
+```
+
+The check cannot tell whether npm lets the token publish in the `@semq`
+scope, or whether both crates have a trusted publisher; a release candidate
+confirms those.
+
 ## Publish
 
 Push the tag to the merged commit:
