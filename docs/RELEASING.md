@@ -37,7 +37,7 @@ on its release history page.
 Every release tag needs the `AWS_AVX512_ROLE_ARN` secret: before publishing,
 the workflow runs the conformance vectors with the Linux wheel on an Intel
 instance with AVX-512, which GitHub's Linux runners lack. The role and the
-instance template are defined in semq-infra (`ec2-avx512/`).
+instance template are defined outside this repository.
 
 Release candidates from the private repository also need the CodeArtifact
 variables (`CODEARTIFACT_DOMAIN`, `CODEARTIFACT_DOMAIN_OWNER`,
@@ -77,17 +77,23 @@ and after changing a trusted publisher or the npm token, run the release
 workflow with `check-credentials`. It does only the release's authentication
 step for PyPI, crates.io and npm, each from its publish environment, and
 uploads nothing. The trusted publishers name `release.yml`, so no other
-workflow can test them. The environments accept only `v*` tags, so allow
-`main` for the run and remove it afterwards:
+workflow can test them.
+
+The environments accept only `v*` tags. Run the check from a throwaway tag
+that matches `v*` but none of the release tag patterns, so pushing it starts
+no release:
 
 ```sh
-for env in pypi-release crates-release npm-release; do
-  gh api -X POST "repos/The-SEMQ-Group/semq/environments/$env/deployment-branch-policies" \
-    -f name=main -f type=branch
-done
-gh workflow run release.yml --ref main -f check-credentials=true
-# after the run: delete each environment's "main" policy again
+git tag v-credentials-check origin/main
+git push origin v-credentials-check
+gh workflow run release.yml --ref v-credentials-check -f check-credentials=true
+# after the run:
+git push --delete origin v-credentials-check && git tag -d v-credentials-check
 ```
+
+Do not open the environments to `main` instead. A branch policy left behind
+lets every workflow run on `main` use the publish environments and their
+trusted publishers.
 
 The npm job proves the token is valid, not that it may publish in the
 `@semq` scope; a release candidate confirms that.
