@@ -22,6 +22,11 @@
 # Rehearsal: run this workflow by hand on any branch to exercise the whole
 # pipeline at the declared version, without tag checks, attestations,
 # publication or a GitHub Release. Use it to test changes to this workflow.
+#
+# Credentials check: run it by hand with check-credentials=true to do only
+# the release's authentication step for each registry, from its publish
+# environment. The trusted publishers name this workflow file, so only this
+# workflow can test them. Nothing is uploaded; see docs/RELEASING.md.
 
 name: release
 
@@ -31,6 +36,11 @@ on:
       - "v[0-9]+.[0-9]+.[0-9]+"
       - "v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"
   workflow_dispatch:
+    inputs:
+      check-credentials:
+        description: Only authenticate to PyPI, crates.io and npm, publishing nothing
+        type: boolean
+        default: false
 
 # One release at a time per ref, and never cancelled: a half-published
 # release must finish or fail on its own.
@@ -55,7 +65,70 @@ permissions:
   contents: read
 
 jobs:
+  # --- Credentials check (check-credentials=true only) -------------------
+  pypi-credentials:
+    name: check PyPI credentials
+    if: github.event_name == 'workflow_dispatch' && inputs.check-credentials
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: pypi-release
+    permissions:
+      id-token: write
+    steps:
+      # The token exchange gh-action-pypi-publish does before an upload. The
+      # minted token is masked and never used.
+      - name: Mint an upload token through the trusted publisher
+        run: |
+          audience="$(curl -fsS https://pypi.org/_/oidc/audience | jq -r .audience)"
+          oidc="$(curl -fsS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=$audience" | jq -r .value)"
+          echo "::add-mask::$oidc"
+          response="$(curl -sS -X POST https://pypi.org/_/oidc/mint-token \
+            -H 'Content-Type: application/json' -d "{\"token\": \"$oidc\"}")"
+          token="$(jq -r '.token // empty' <<< "$response")"
+          if [ -n "$token" ]; then
+            echo "::add-mask::$token"
+            echo "PyPI accepted the trusted publisher; an upload token was minted and discarded."
+          else
+            echo "PyPI refused the trusted publisher:"
+            jq '{message, errors}' <<< "$response"
+            exit 1
+          fi
+
+  crates-credentials:
+    name: check crates.io credentials
+    if: github.event_name == 'workflow_dispatch' && inputs.check-credentials
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: crates-release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      # The release's own step; its post step revokes the token.
+      - name: Authenticate with crates.io using OIDC
+        uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1.0.5
+
+  npm-credentials:
+    name: check npm credentials
+    if: github.event_name == 'workflow_dispatch' && inputs.check-credentials
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: npm-release
+    steps:
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+      - name: Read the account behind the token
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: echo "npm accepts the token for $(npm whoami)"
+
+  # --- Release or rehearsal ----------------------------------------------
+  # Every other job needs preflight, so a credentials check skips them all.
   preflight:
+    if: github.event_name != 'workflow_dispatch' || !inputs.check-credentials
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
