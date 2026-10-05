@@ -162,7 +162,9 @@ def rust_probe(structs: dict, constants: list[str]) -> str:
 def ts_layout(values: dict[str, int], structs: dict) -> str:
     obj = {typ.removeprefix("semq_").removesuffix("_t"): {key.split(".", 1)[1]: value for key, value in values.items() if key.startswith(typ + ".")} for typ in structs}
     obj["constants"] = {k: v for k, v in values.items() if k.startswith("SEMQ_") and k != "SEMQ_NONE"}
-    return '// Generated from the wasm32 C compiler by tools/check_abi.py --write-layout.\nexport const ABI = ' + json.dumps(obj, indent=2) + ' as const;\n'
+    header = ('// Copyright (c) 2026 The SEMQ Group Inc.\n'
+              '// Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.\n\n')
+    return header + '// Generated from the wasm32 C compiler by tools/check_abi.py --write-layout.\nexport const ABI = ' + json.dumps(obj, indent=2) + ' as const;\n'
 
 
 def main() -> None:
