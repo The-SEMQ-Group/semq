@@ -1,0 +1,167 @@
+# One-time recovery for the v1.0.0 npm publish path bug. The original release
+# run passed every gate and published PyPI + crates.io, but npm treated a
+# relative tarball path as a GitHub shorthand. Do not move or recreate v1.0.0.
+#
+# After this workflow is merged into main, create a temporary tag
+# v-recover-1.0.0 at that merge commit. It matches the publish environment's
+# v* tag policy but does not match release.yml's version-tag trigger. Dispatch
+# this workflow with --ref v-recover-1.0.0 and confirmation RECOVER v1.0.0.
+name: recover v1.0.0 publication
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type RECOVER v1.0.0 to publish the verified npm artifact and finish the release
+        required: true
+        type: string
+
+concurrency:
+  group: recover-v1.0.0
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify recovery target
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: v1.0.0
+          fetch-depth: 0
+      - name: Require the exact release commit and recovery ref
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+          REPOSITORY_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          test "$GITHUB_REPOSITORY" = The-SEMQ-Group/semq
+          test "$GITHUB_REF" = refs/tags/v-recover-1.0.0
+          test "$CONFIRMATION" = 'RECOVER v1.0.0'
+          test "$REPOSITORY_PRIVATE" = false
+          test "$(git rev-parse HEAD)" = 8acf51c83373acb1baf61514e5b05952a2425bc3
+          python tools/version.py check v1.0.0
+      - name: Confirm PyPI and both crates are already published
+        run: |
+          curl -fsS --retry 3 https://pypi.org/pypi/semq/1.0.0/json > /dev/null
+          for crate in semq-sys semq; do
+            curl -fsS --retry 3 -A 'semq-release-recovery (github.com/The-SEMQ-Group/semq)' \
+              "https://crates.io/api/v1/crates/${crate}/1.0.0" > /dev/null
+          done
+
+  npm:
+    name: publish verified @semq/sdk 1.0.0
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: npm-release
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+      - name: Install the pinned npm CLI
+        env:
+          NPM_VERSION: '11.21.0'
+          NPM_SHA512: 668bfc2a16a63677a22dd10bb63e5800bb4d9895b82f87c22d3ce37e9cd71b6c3a3121dc7f453181d94ae6e9680ae92c593fbb986514ef08bbf5c3ba46a8af3e
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/npm.tgz" "https://registry.npmjs.org/npm/-/npm-${NPM_VERSION}.tgz"
+          echo "${NPM_SHA512}  $RUNNER_TEMP/npm.tgz" | sha512sum --check --strict
+          npm install --global "$RUNNER_TEMP/npm.tgz"
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-payloads
+          path: bundle
+          run-id: 37384362951
+          github-token: ${{ github.token }}
+      - name: Publish only the tested tarball
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: |
+          file=./bundle/semq-sdk-1.0.0.tgz
+          echo '312393aa96dbc28600cd94c9681df390a7d35e06c76a5626870d1677709cb96b  ./bundle/semq-sdk-1.0.0.tgz' | sha256sum --check --strict
+          tar -xOzf "$file" package/package.json | node -e 'let data="";process.stdin.on("data",x=>data+=x);process.stdin.on("end",()=>{const p=JSON.parse(data);if(p.name!=="@semq/sdk"||p.version!=="1.0.0")process.exit(1)})'
+          status=$(curl -sS --retry 3 -o "$RUNNER_TEMP/npm-version.json" -w '%{http_code}' 'https://registry.npmjs.org/@semq%2fsdk/1.0.0')
+          case "$status" in
+            404) npm publish "$file" --access public --tag latest --provenance ;;
+            200) node -e 'const fs=require("fs"),crypto=require("crypto");const p=JSON.parse(fs.readFileSync(process.argv[1]));const digest="sha512-"+crypto.createHash("sha512").update(fs.readFileSync(process.argv[2])).digest("base64");if(p.dist?.integrity!==digest){console.error("Existing npm version has different bytes; stop and inspect.");process.exit(1)}console.log("The exact tested tarball is already published.")' "$RUNNER_TEMP/npm-version.json" "$file" ;;
+            *) echo "npm registry returned HTTP $status" >&2; exit 1 ;;
+          esac
+
+  go:
+    name: tag and verify Go module v1.0.0
+    needs: npm
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: v1.0.0
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: '1.21'
+          cache: false
+      - name: Tag the original release commit
+        run: |
+          target=8acf51c83373acb1baf61514e5b05952a2425bc3
+          test "$(git rev-parse HEAD)" = "$target"
+          tag=bindings/go/v1.0.0
+          existing=$(git ls-remote --tags origin "refs/tags/${tag}" | cut -f1)
+          if [ -n "$existing" ] && [ "$existing" != "$target" ]; then
+            echo "Go tag $tag points to another commit" >&2
+            exit 1
+          fi
+          if [ -z "$existing" ]; then
+            git tag "$tag" "$target"
+            git push origin "refs/tags/${tag}"
+          fi
+      - name: Confirm the public Go proxy resolves the version
+        env:
+          GOPROXY: https://proxy.golang.org
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if go list -m github.com/The-SEMQ-Group/semq/bindings/go@v1.0.0; then
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+
+  github-release:
+    name: create GitHub Release v1.0.0
+    needs: go
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: v1.0.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: release-dist
+          path: dist
+          run-id: 37384362951
+          github-token: ${{ github.token }}
+      - name: Create the release from the original dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python tools/version.py notes 1.0.0 > "$RUNNER_TEMP/notes.md"
+          gh release create v1.0.0 dist/* --verify-tag --title 'SEMQ SDK 1.0.0' \
+            --notes-file "$RUNNER_TEMP/notes.md"

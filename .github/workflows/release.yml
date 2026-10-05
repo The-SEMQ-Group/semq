@@ -548,7 +548,7 @@ jobs:
           NPM_TAG: ${{ needs.preflight.outputs.npm_tag }}
         run: |
           aws codeartifact login --tool npm --domain "$DOMAIN" --domain-owner "$OWNER" --repository "$REPO" --namespace @semq
-          npm publish "bundle/semq-sdk-${VERSION}.tgz" --tag "$NPM_TAG"
+          npm publish "./bundle/semq-sdk-${VERSION}.tgz" --tag "$NPM_TAG"
 
   publish-pypi:
     name: publish to PyPI
@@ -663,7 +663,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
         # --provenance signs a Sigstore attestation of this workflow run,
         # which npm shows on the package page; it needs the public repository.
-        run: npm publish "bundle/semq-sdk-${VERSION}.tgz" --access public --tag "$NPM_TAG" --provenance
+        run: npm publish "./bundle/semq-sdk-${VERSION}.tgz" --access public --tag "$NPM_TAG" --provenance
 
   publish-go:
     name: tag Go module
