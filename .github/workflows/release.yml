@@ -417,7 +417,9 @@ jobs:
     with:
       from-release: true
       required: ${{ github.event_name == 'push' }}
-    secrets: inherit
+    # Only the role it assumes, not every secret the release can read.
+    secrets:
+      AWS_AVX512_ROLE_ARN: ${{ secrets.AWS_AVX512_ROLE_ARN }}
     permissions:
       contents: read
       id-token: write

@@ -5,7 +5,7 @@
 # the test workflow. This job launches one short-lived c7i.large (Intel
 # Sapphire Rapids) through the semq-avx512-check role, runs the vectors under
 # every backend there, requiring AVX-512, and terminates it. The AWS side
-# (role, launch template, bucket) is defined in semq-infra, ec2-avx512/.
+# (role, launch template, bucket) is defined outside this repository.
 #
 # Runs every night on main, by hand, from the release workflow on the exact
 # wheel it is about to publish, and on every pull request from a branch of
