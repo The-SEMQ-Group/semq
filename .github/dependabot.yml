@@ -92,12 +92,10 @@ updates:
         update-types: [minor, patch]
       benchmarks-major:
         update-types: [major]
-  # The hash-pinned tools CI and the release install (.github/requirements),
-  # and the PR review action's own dependencies.
+  # The hash-pinned tools CI and the release install (.github/requirements).
   - package-ecosystem: pip
     directories:
       - /.github/requirements
-      - /.github/actions/pr-review
     schedule:
       interval: weekly
       day: monday

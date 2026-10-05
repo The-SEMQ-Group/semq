@@ -141,10 +141,8 @@ The CLA check must pass before merge.
 
 ### Merge
 
-CI must pass before merge. The
-[automated review criteria](.github/pr-review-prompt.md) supplement human review;
-address concrete findings with code changes or source-backed evidence.
-After approval, squash-merge and delete the branch.
+CI must pass before merge. After approval, squash-merge and delete the
+branch.
 
 ## Maintain the documentation
 
