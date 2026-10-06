@@ -9,8 +9,8 @@ use std::collections::{BTreeMap, HashSet};
 use std::io::{Cursor, ErrorKind};
 
 use semq::{
-    build_info, Codec, CodecConfig, Diff, Encoding, Error, Floor, FloorReport, Id, IdKind, Ids,
-    Manifest, Operator, Which,
+    build_info, Codec, CodecConfig, Diff, Encoding, Error, Floor, FloorReport, FloorReportV2,
+    GateOptions, Id, IdKind, Ids, Manifest, Operator, Reason, Which,
 };
 
 // --------------------------------------------------------------------------
@@ -744,8 +744,10 @@ fn floor_measure_and_within() {
         (f.nulls(), f.changed_rows(), f.total_rows(), f.hamming()),
         (1, 1, 100, 1)
     );
-    assert_eq!(f, floor_for(&da, 1, 1, 100, 1));
-    assert_ne!(f, floor_for(&da, 2, 1, 100, 1));
+    assert_eq!(f.max_hamming(), Some(1));
+    assert_eq!(f, floor_for(&da, 1, 1, 100, 1).with_max_hamming(1).unwrap());
+    assert_ne!(f, floor_for(&da, 1, 1, 100, 1));
+    assert_ne!(f, floor_for(&da, 2, 1, 100, 1).with_max_hamming(1).unwrap());
     assert!(da.within(&f).unwrap());
 
     // Two nulls of the same reference: the envelope of both.
@@ -887,6 +889,68 @@ fn floor_never_admits_an_encoder_change() {
 }
 
 #[test]
+fn evaluate_names_every_failed_check_and_the_rows_above_max() {
+    // 200 rows; the null changes rows 0..99 by 2 units. The candidate changes
+    // rows 0..98 by 2 and row 150 by 10: its p99 ignores row 150, so it is
+    // within the floor, and only the per-row check catches it.
+    let base = rows_with_changes(200, 0, 0, 4);
+    let null = base.diff(&rows_with_changes(200, 100, 2, 4)).unwrap();
+    let floor = Floor::measure([&null]).unwrap();
+    assert_eq!((floor.hamming(), floor.max_hamming()), (2, Some(2)));
+    let config = CodecConfig::quant(16, 4).unwrap();
+    let bpv = config.bytes_per_vector() as usize;
+    let ids: Vec<u64> = (0..200).collect();
+    let mut rows = Vec::with_capacity(200 * bpv);
+    for i in 0..200u64 {
+        let flip = if i < 99 {
+            2
+        } else if i == 150 {
+            10
+        } else {
+            0
+        };
+        let mut symbols = [4u8; 16];
+        symbols.iter_mut().take(flip).for_each(|s| *s = 5);
+        rows.extend(pack_quant(&symbols, 3, bpv));
+    }
+    let hidden = base
+        .diff(&Encoding::new(&ids, &rows, &config, None).unwrap())
+        .unwrap();
+    assert!(hidden.within(&floor).unwrap());
+    let plain = hidden.evaluate(&floor, &GateOptions::new()).unwrap();
+    assert!(plain.passed() && plain.reasons().is_empty() && plain.rows().is_empty());
+    let strict = hidden
+        .evaluate(&floor, &GateOptions::new().per_row(true))
+        .unwrap();
+    assert!(!strict.passed());
+    assert_eq!(strict.reasons(), &[Reason::RowAboveMax]);
+    assert_eq!(strict.rows(), &[Id::U64(150)]);
+    // Every failed check is named, not only the first.
+    let tight = floor_for(&hidden, 1, 1, 200, 1)
+        .with_max_hamming(1)
+        .unwrap();
+    let all = hidden
+        .evaluate(&tight, &GateOptions::new().per_row(true))
+        .unwrap();
+    assert_eq!(
+        all.reasons(),
+        &[Reason::ChangedRatio, Reason::Hamming, Reason::RowAboveMax]
+    );
+    assert_eq!(
+        all.reasons().iter().map(|r| r.name()).collect::<Vec<_>>(),
+        ["changed_ratio", "hamming", "row_above_max"]
+    );
+    assert_eq!(all.rows().len(), 100);
+    // A floor without max_hamming refuses the per-row check and keeps its plain verdict.
+    let v1 = floor_for(&hidden, 1, 100, 200, 2);
+    assert!(hidden.evaluate(&v1, &GateOptions::new()).unwrap().passed());
+    assert!(matches!(
+        hidden.evaluate(&v1, &GateOptions::new().per_row(true)),
+        Err(Error::Incompatible { .. })
+    ));
+}
+
+#[test]
 fn floor_report_and_its_strict_inverse() {
     let a0 = rows_with_changes(100, 0, 0, 4);
     let a1 = rows_with_changes(100, 1, 1, 4);
@@ -912,18 +976,47 @@ fn floor_report_and_its_strict_inverse() {
         format!("{f:?}"),
         format!(
             "Floor {{ config: {:?}, id_kind: \"u64\", reference_id: {:?}, nulls: 1, \
-             changed_rows: 1, total_rows: 100, hamming: 1 }}",
+             changed_rows: 1, total_rows: 100, hamming: 1, max_hamming: Some(1) }}",
             r.config, r.reference_id
         )
     );
 
-    // The inverse gives back the same floor; a serializer sees the same data.
+    // The semq-floor/1 report drops max_hamming; the semq-floor/2 report
+    // gives back the same floor.
     let back = Floor::from_report(&r).unwrap();
-    assert_eq!(back, f);
+    assert_eq!(back.max_hamming(), None);
     assert_eq!(back.as_report(), r);
+    assert_eq!(back.as_report_v2(), None);
     assert!(da.within(&back).unwrap());
-    let set: HashSet<Floor> = [f, back].into_iter().collect();
-    assert_eq!(set.len(), 1);
+    let r2 = f.as_report_v2().unwrap();
+    assert_eq!(
+        (r2.version.as_str(), r2.hamming, r2.max_hamming),
+        (FloorReportV2::VERSION, 1, 1)
+    );
+    let back2 = Floor::from_report_v2(&r2).unwrap();
+    assert_eq!(back2, f);
+    assert_eq!(back2.as_report_v2(), Some(r2.clone()));
+    for bad in [
+        FloorReportV2 {
+            version: FloorReport::VERSION.to_string(),
+            ..r2.clone()
+        },
+        FloorReportV2 {
+            max_hamming: 0,
+            ..r2.clone()
+        },
+        FloorReportV2 {
+            max_hamming: 17,
+            ..r2.clone()
+        },
+    ] {
+        assert!(
+            matches!(Floor::from_report_v2(&bad), Err(Error::InvalidInput { .. })),
+            "{bad:?}"
+        );
+    }
+    let set: HashSet<Floor> = [f, back2, back].into_iter().collect();
+    assert_eq!(set.len(), 2);
 
     // Strict: version, id kind, reference id and every count.
     let invalid = |bad: FloorReport| {

@@ -14,6 +14,46 @@ from .config import CodecConfig
 from .errors import InvalidInput
 from .floor import Floor
 
+REASONS = ("no_common_rows", "removed_rows", "changed_ratio", "hamming", "encoder", "row_above_max")
+
+
+class Verdict:
+    """The result of ``Diff.evaluate``: ``passed``, the checks that failed, and the rows above ``max_hamming``.
+
+    ``reasons`` names every failed check, in this order: ``no_common_rows``,
+    ``removed_rows``, ``changed_ratio``, ``hamming``, ``encoder``,
+    ``row_above_max``. ``rows`` is empty unless the per-row check ran.
+    """
+
+    __slots__ = ("passed", "reasons", "rows")
+
+    passed: bool
+    reasons: tuple[str, ...]
+    rows: list[Id]
+
+    def __init__(self, passed: bool, reasons: tuple[str, ...], rows: list[Id]) -> None:
+        self.passed = passed
+        self.reasons = reasons
+        self.rows = rows
+
+    def __bool__(self) -> bool:
+        return self.passed
+
+    def as_dict(self) -> dict[str, Any]:
+        """``{"passed", "reasons", "rows"}`` with ids as strings, as in reports."""
+        return {"passed": self.passed, "reasons": list(self.reasons), "rows": [str(i) for i in self.rows]}
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, Verdict) and (self.passed, self.reasons, self.rows) == (
+            other.passed, other.reasons, other.rows,
+        )
+
+    def __hash__(self) -> int:
+        return hash((self.passed, self.reasons, tuple(self.rows)))
+
+    def __repr__(self) -> str:
+        return f"Verdict(passed={self.passed}, reasons={list(self.reasons)!r}, rows={self.rows!r})"
+
 
 class Diff:
     """The result of ``reference.diff(candidate)``.
@@ -174,6 +214,34 @@ class Diff:
         err = _ffi.new_error()
         _ffi.check(_ffi.lib().semq_diff_within(self._d, floor._f, out, err), err, "within")
         return bool(out[0])
+
+    def evaluate(self, floor: Floor, *, per_row: bool = False) -> Verdict:
+        """The verdict of ``floor`` on this diff, with every check that failed.
+
+        With no options, ``evaluate(floor).passed == within(floor)``. With
+        ``per_row=True`` the verdict also fails when any changed row has a
+        hamming above ``floor.max_hamming``, and ``rows`` lists those ids;
+        a floor without ``max_hamming`` raises ``Incompatible``.
+        """
+        if not isinstance(floor, Floor):
+            raise InvalidInput("evaluate takes a Floor")
+        lib = _ffi.lib()
+        err = _ffi.new_error()
+        opts_out = ffi.new("semq_gate_options_t**")
+        _ffi.check(lib.semq_gate_options_create(opts_out, err), err, "evaluate")
+        opts = ffi.gc(opts_out[0], lib.semq_gate_options_free)
+        lib.semq_gate_options_set_per_row(opts, 1 if per_row else 0)
+        out = ffi.new("semq_verdict_t**")
+        _ffi.check(lib.semq_diff_evaluate(self._d, floor._f, opts, out, err), err, "evaluate")
+        v = ffi.gc(out[0], lib.semq_verdict_free)
+        reasons = int(lib.semq_verdict_reasons(v))
+        changed = self._ids(_ffi.LIST_CHANGED) if lib.semq_verdict_row_count(v) else []
+        rows = [changed[int(lib.semq_verdict_row(v, i))] for i in range(int(lib.semq_verdict_row_count(v)))]
+        return Verdict(
+            bool(lib.semq_verdict_passed(v)),
+            tuple(name for bit, name in enumerate(REASONS) if reasons & (1 << bit)),
+            rows,
+        )
 
     def as_dict(self) -> dict[str, Any]:
         """The report schema: digests as hex, ``u64`` ids as decimal strings, no floats."""

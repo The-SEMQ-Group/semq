@@ -296,25 +296,33 @@ def p99(values: list[int]) -> int:
     return sorted(values)[k - 1]
 
 
-FLOOR_VERSION = "semq-floor/1"
-FLOOR_KEYS = ("version", "config", "id_kind", "reference_id", "nulls", "changed_rows", "total_rows", "hamming")
+FLOOR_KEYS = {
+    "semq-floor/1": ("version", "config", "id_kind", "reference_id", "nulls", "changed_rows", "total_rows", "hamming"),
+    "semq-floor/2": (
+        "version", "config", "id_kind", "reference_id", "nulls", "changed_rows", "total_rows", "hamming", "max_hamming",
+    ),
+}
+REASONS = ("no_common_rows", "removed_rows", "changed_ratio", "hamming", "encoder", "row_above_max")
 
 
 def validate_floor(floor: dict[str, Any]) -> None:
     """The construction rules: a floor that violates them is InvalidInput."""
-    if tuple(floor) != FLOOR_KEYS or floor["version"] != FLOOR_VERSION:
+    if floor.get("version") not in FLOOR_KEYS or tuple(floor) != FLOOR_KEYS[floor["version"]]:
         raise ValueError("floor: schema")
     if floor["id_kind"] not in ("u64", "utf8"):
         raise ValueError("floor: id_kind")
     if len(bytes.fromhex(floor["reference_id"])) != 32:
         raise ValueError("floor: reference_id")
-    for k in ("nulls", "changed_rows", "total_rows", "hamming"):
+    for k in FLOOR_KEYS[floor["version"]][4:]:
         if isinstance(floor[k], bool) or not isinstance(floor[k], int) or floor[k] < 0:
             raise ValueError(f"floor: {k}")
     if floor["nulls"] == 0 or floor["total_rows"] == 0 or floor["changed_rows"] > floor["total_rows"]:
         raise ValueError("floor: counts")
-    if floor["hamming"] > units_per_row(floor["config"]["operator"], floor["config"]["dim"]):
+    units = units_per_row(floor["config"]["operator"], floor["config"]["dim"])
+    if floor["hamming"] > units:
         raise ValueError("floor: hamming")
+    if "max_hamming" in floor and not floor["hamming"] <= floor["max_hamming"] <= units:
+        raise ValueError("floor: max_hamming")
 
 
 def compatible(report: dict[str, Any], floor: dict[str, Any]) -> bool:
@@ -325,23 +333,34 @@ def compatible(report: dict[str, Any], floor: dict[str, Any]) -> bool:
     )
 
 
-def within(report: dict[str, Any], floor: dict[str, Any]) -> bool:
-    """Assumes `validate_floor` and `compatible` hold."""
+def evaluate(report: dict[str, Any], floor: dict[str, Any], per_row: bool = False) -> dict[str, Any]:
+    """Assumes `validate_floor` and `compatible` hold, and that the floor records
+    max_hamming when `per_row` is set (Incompatible otherwise)."""
     n_common = report["n_unchanged"] + len(report["changed"])
     hammings = [h for _, h in report["changed"]]
-    return (
-        n_common > 0
-        and not report["removed"]
-        and len(report["changed"]) * floor["total_rows"] <= floor["changed_rows"] * n_common
-        and p99(hammings) <= floor["hamming"]
-        and not ({"encoder", "encoder_revision"} & set(report["manifest_changes"]))
-    )
+    failed = {
+        "no_common_rows": n_common == 0,
+        "removed_rows": bool(report["removed"]),
+        "changed_ratio": len(report["changed"]) * floor["total_rows"] > floor["changed_rows"] * n_common,
+        "hamming": p99(hammings) > floor["hamming"],
+        "encoder": bool({"encoder", "encoder_revision"} & set(report["manifest_changes"])),
+        "row_above_max": False,
+    }
+    rows = [i for i, h in report["changed"] if h > floor["max_hamming"]] if per_row else []
+    failed["row_above_max"] = bool(rows)
+    reasons = [r for r in REASONS if failed[r]]
+    return {"passed": not reasons, "reasons": reasons, "rows": rows}
+
+
+def within(report: dict[str, Any], floor: dict[str, Any]) -> bool:
+    """Assumes `validate_floor` and `compatible` hold."""
+    return bool(evaluate(report, floor)["passed"])
 
 
 def measure(reports: list[dict[str, Any]]) -> dict[str, Any]:
     """Assumes every report is a valid null of one reference (asserted)."""
     best = None
-    max_p = 0
+    max_p = max_row = 0
     first = reports[0]
     for r in reports:
         assert r["config"] == first["config"] and r["id_kind"] == first["id_kind"]
@@ -353,9 +372,10 @@ def measure(reports: list[dict[str, Any]]) -> dict[str, Any]:
         if best is None or pair[0] * best[1] > best[0] * pair[1]:
             best = pair
         max_p = max(max_p, p99([h for _, h in r["changed"]]))
+        max_row = max([max_row] + [h for _, h in r["changed"]])
     assert best is not None
     return {
-        "version": FLOOR_VERSION,
+        "version": "semq-floor/2",
         "config": first["config"],
         "id_kind": first["id_kind"],
         "reference_id": first["reference_id"],
@@ -363,6 +383,7 @@ def measure(reports: list[dict[str, Any]]) -> dict[str, Any]:
         "changed_rows": best[0],
         "total_rows": best[1],
         "hamming": max_p,
+        "max_hamming": max_row,
     }
 
 
@@ -532,10 +553,12 @@ def check_11_13(root: Path) -> int:
                 n += 1
                 continue
             report = diff(ref, cand)
-            if not compatible(report, floor):
+            per_row = case["input"].get("per_row", False)
+            if not compatible(report, floor) or (per_row and "max_hamming" not in floor):
                 expect(e.get("error") == "Incompatible", f"floor incompatible {case['id']}")
             else:
                 expect("within" in e and within(report, floor) == e["within"], f"within {case['id']}")
+                expect(evaluate(report, floor, per_row) == e.get("evaluate"), f"evaluate {case['id']}")
             n += 1
         else:
             reports = [diff(parse((d / a).read_bytes()), parse((d / b).read_bytes())) for a, b in case["input"]["null_diffs"]]

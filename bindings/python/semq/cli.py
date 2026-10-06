@@ -19,7 +19,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from . import build_info
-from .diff import Diff
+from .diff import Diff, Verdict
 from .encoding import Encoding
 from .errors import SemqError
 from .floor import Floor
@@ -115,34 +115,41 @@ def cmd_diff(args: argparse.Namespace) -> int:
         d = ref.diff(cand)
     except SemqError as exc:
         raise _Exit(2, str(exc)) from exc
+    if args.per_row and args.floor is None:
+        raise _Exit(2, "--per-row needs --floor")
     floor: Floor | None = None
-    within: bool | None = None
+    verdict: Verdict | None = None
     if args.floor is not None:
         try:
             floor = Floor.load(args.floor)
         except (OSError, SemqError) as exc:
             raise _Exit(2, f"{args.floor}: invalid floor: {exc}") from exc
         try:
-            within = d.within(floor)
+            verdict = d.evaluate(floor, per_row=args.per_row)
         except SemqError as exc:
             raise _Exit(2, f"{args.floor}: {exc}") from exc
     if args.json:
         report = d.as_dict()
-        if within is not None:
-            report["within"] = within
+        if verdict is not None:
+            report["within"] = verdict.passed
+            report["verdict"] = verdict.as_dict()
         json.dump(report, sys.stdout, ensure_ascii=False)
         sys.stdout.write("\n")
     else:
         _print_diff(d, args.limit)
-    if within is None:
+    if verdict is None:
         return 0
     for key in d.manifest_changes:
         print(f"manifest key {_escape(key)} changed", file=sys.stderr)
-    if not within:
-        print("error: candidate is not within the floor", file=sys.stderr)
+    if not verdict.passed:
+        print(f"error: candidate is not within the floor ({', '.join(verdict.reasons)})", file=sys.stderr)
+    if verdict.rows:
+        shown = ", ".join(_render_id(i) for i in verdict.rows[: args.limit])
+        more = f", and {len(verdict.rows) - args.limit} more" if len(verdict.rows) > args.limit else ""
+        print(f"rows above max_hamming: {shown}{more}", file=sys.stderr)
     if not args.json:
-        print(f"within:        {within}")
-    return 0 if within else 1
+        print(f"within:        {verdict.passed}")
+    return 0 if verdict.passed else 1
 
 
 def cmd_floor(args: argparse.Namespace) -> int:
@@ -201,6 +208,11 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("reference")
     d.add_argument("candidate")
     d.add_argument("--floor", help="floor.json; exit 1 when the candidate is not within it")
+    d.add_argument(
+        "--per-row",
+        action="store_true",
+        help="also fail when any changed row has a hamming above the floor's max_hamming",
+    )
     d.add_argument("--json", action="store_true")
     d.add_argument("--limit", type=int, default=20)
     d.set_defaults(func=cmd_diff)

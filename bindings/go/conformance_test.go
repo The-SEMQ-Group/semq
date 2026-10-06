@@ -972,6 +972,7 @@ func conformance12(t *testing.T, dir string, c conformanceCase) {
 		Reference string          `json:"reference"`
 		Candidate string          `json:"candidate"`
 		Floor     json.RawMessage `json:"floor"`
+		PerRow    bool            `json:"per_row"`
 	}
 	decodeJSON(t, c.Input, &in)
 	if in.NullDiffs != nil {
@@ -998,21 +999,43 @@ func conformance12(t *testing.T, dir string, c conformanceCase) {
 		return
 	}
 	var expect struct {
-		Within bool `json:"within"`
+		Within   bool `json:"within"`
+		Evaluate struct {
+			Passed  bool     `json:"passed"`
+			Reasons []string `json:"reasons"`
+			Rows    []string `json:"rows"`
+		} `json:"evaluate"`
 	}
 	d := diffVectorFiles(t, dir, in.Reference, in.Candidate)
 	// A floor is validated at construction, so an invalid one is rejected
-	// before Within is called.
+	// before it is applied.
 	floor, err := floorOf(t, in.Floor)
 	if err != nil {
 		outcome(t, c.Expect, err)
 		return
 	}
-	within, err := d.Within(floor)
+	assertFloor(t, floor, in.Floor)
+	verdict, err := d.Evaluate(floor, semq.GateOptions{PerRow: in.PerRow})
 	if outcome(t, c.Expect, err) {
 		return
 	}
 	decodeJSON(t, c.Expect, &expect)
+	reasons := []string{}
+	for _, r := range verdict.Reasons {
+		reasons = append(reasons, string(r))
+	}
+	rows := []string{}
+	for _, id := range verdict.Rows {
+		rows = append(rows, id.String())
+	}
+	e := expect.Evaluate
+	if verdict.Passed != e.Passed || !reflect.DeepEqual(reasons, e.Reasons) || !reflect.DeepEqual(rows, e.Rows) {
+		t.Errorf("evaluate: got %v %v %v, want %v %v %v", verdict.Passed, reasons, rows, e.Passed, e.Reasons, e.Rows)
+	}
+	within, err := d.Within(floor)
+	if err != nil {
+		t.Fatalf("Within: %v", err)
+	}
 	if within != expect.Within {
 		t.Errorf("within: got %v, want %v", within, expect.Within)
 	}

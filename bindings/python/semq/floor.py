@@ -19,9 +19,15 @@ from .errors import InvalidInput
 if TYPE_CHECKING:
     from .diff import Diff
 
-FLOOR_VERSION = "semq-floor/1"
-_KEYS = ("version", "config", "id_kind", "reference_id", "nulls", "changed_rows", "total_rows", "hamming")
-_COUNTS = ("nulls", "changed_rows", "total_rows", "hamming")
+FLOOR_VERSION = "semq-floor/1"  # without max_hamming
+FLOOR_VERSION_2 = "semq-floor/2"  # with max_hamming, what measure writes
+_KEYS = {
+    FLOOR_VERSION: ("version", "config", "id_kind", "reference_id", "nulls", "changed_rows", "total_rows", "hamming"),
+    FLOOR_VERSION_2: (
+        "version", "config", "id_kind", "reference_id", "nulls", "changed_rows", "total_rows", "hamming", "max_hamming",
+    ),
+}
+_COUNTS = ("nulls", "changed_rows", "total_rows", "hamming", "max_hamming")
 
 Source = Union[str, "os.PathLike[str]", bytes, bytearray, memoryview, TextOrBinaryReader]
 
@@ -45,6 +51,11 @@ class Floor:
     verdict. Applying a floor to a diff of another config, id kind or
     reference raises ``Incompatible``. The floor describes what was
     observed; it claims no probabilistic coverage of the next rebuild.
+
+    A floor measured by this version also records ``max_hamming``, the
+    largest hamming of any changed row of any null, for the per-row check
+    of ``Diff.evaluate``. A floor read from ``semq-floor/1`` JSON has
+    ``max_hamming`` ``None``.
     """
 
     __slots__ = ("_config", "_f")
@@ -62,6 +73,7 @@ class Floor:
         changed_rows: int,
         total_rows: int,
         hamming: int,
+        max_hamming: int | None = None,
     ) -> None:
         if not isinstance(config, CodecConfig):
             raise InvalidInput("floor.config must be a CodecConfig")
@@ -70,10 +82,15 @@ class Floor:
         rid = bytes(reference_id) if isinstance(reference_id, (bytes, bytearray, memoryview)) else None
         if rid is None or len(rid) != 32:
             raise InvalidInput("floor.reference_id must be 32 bytes")
-        counts = [_count(n, v) for n, v in zip(_COUNTS, (nulls, changed_rows, total_rows, hamming), strict=True)]
+        values = (nulls, changed_rows, total_rows, hamming) + (() if max_hamming is None else (max_hamming,))
+        counts = [_count(n, v) for n, v in zip(_COUNTS, values, strict=False)]
         out = ffi.new("semq_floor_t**")
         err = _ffi.new_error()
-        status = _ffi.lib().semq_floor_create(config._c, _convert._KINDS[id_kind], rid, *counts, out, err)
+        kind = _convert._KINDS[id_kind]
+        if max_hamming is None:
+            status = _ffi.lib().semq_floor_create(config._c, kind, rid, *counts, out, err)
+        else:
+            status = _ffi.lib().semq_floor_create_with_max(config._c, kind, rid, *counts, out, err)
         _ffi.check(status, err, "floor")
         self._f = ffi.gc(out[0], _ffi.lib().semq_floor_free)
         self._config = config
@@ -147,12 +164,26 @@ class Floor:
         """
         return int(_ffi.lib().semq_floor_hamming(self._f))
 
+    @property
+    def max_hamming(self) -> int | None:
+        """The largest hamming of any changed row of any null (``0`` when no null changed a row).
+
+        ``Diff.evaluate(floor, per_row=True)`` flags every changed row above
+        it. ``None`` for a floor read from ``semq-floor/1`` JSON, which does
+        not record it.
+        """
+        v = int(_ffi.lib().semq_floor_max_hamming(self._f))
+        return None if v == _ffi.NONE else v
+
     # ---- report form -----------------------------------------------------
 
     def as_dict(self) -> dict[str, Any]:
-        """The ``semq-floor/1`` schema: the config as in reports, the reference id as hex."""
-        return {
-            "version": FLOOR_VERSION,
+        """The ``semq-floor/2`` schema: the config as in reports, the reference id as hex.
+
+        A floor without ``max_hamming`` keeps the ``semq-floor/1`` schema it was read from.
+        """
+        out: dict[str, Any] = {
+            "version": FLOOR_VERSION_2 if self.max_hamming is not None else FLOOR_VERSION,
             "config": self.config.as_dict(),
             "id_kind": self.id_kind,
             "reference_id": self.reference_id.hex(),
@@ -161,14 +192,21 @@ class Floor:
             "total_rows": self.total_rows,
             "hamming": self.hamming,
         }
+        if self.max_hamming is not None:
+            out["max_hamming"] = self.max_hamming
+        return out
 
     @classmethod
     def from_dict(cls, data: object) -> Floor:
-        """The inverse of ``as_dict``, strictly: those keys, that version, integers only."""
-        if not isinstance(data, dict) or set(data) != set(_KEYS):
-            raise InvalidInput(f"floor must have exactly the keys {', '.join(_KEYS)}")
-        if data["version"] != FLOOR_VERSION:
-            raise InvalidInput(f"floor.version must be {FLOOR_VERSION!r}")
+        """The inverse of ``as_dict``, strictly: a known version, its keys, integers only.
+
+        Reads ``semq-floor/1`` (no ``max_hamming``) and ``semq-floor/2``.
+        """
+        if not isinstance(data, dict) or data.get("version") not in _KEYS:
+            raise InvalidInput(f"floor.version must be one of {', '.join(map(repr, _KEYS))}")
+        keys = _KEYS[data["version"]]
+        if set(data) != set(keys):
+            raise InvalidInput(f"floor must have exactly the keys {', '.join(keys)}")
         rid = data["reference_id"]
         try:
             reference_id = bytes.fromhex(rid) if isinstance(rid, str) and len(rid) == 64 else b""
@@ -182,6 +220,7 @@ class Floor:
             changed_rows=data["changed_rows"],
             total_rows=data["total_rows"],
             hamming=data["hamming"],
+            max_hamming=_count("max_hamming", data["max_hamming"]) if "max_hamming" in keys else None,
         )
 
     # ---- persistence -----------------------------------------------------
@@ -223,8 +262,11 @@ class Floor:
 
     # ---- value semantics -------------------------------------------------
 
-    def _key(self) -> tuple[CodecConfig, str, bytes, int, int, int, int]:
-        return (self._config, self.id_kind, self.reference_id, self.nulls, self.changed_rows, self.total_rows, self.hamming)
+    def _key(self) -> tuple[CodecConfig, str, bytes, int, int, int, int, int | None]:
+        return (
+            self._config, self.id_kind, self.reference_id, self.nulls, self.changed_rows, self.total_rows, self.hamming,
+            self.max_hamming,
+        )
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Floor) and self._key() == other._key()
@@ -239,6 +281,7 @@ class Floor:
     def __repr__(self) -> str:
         return (
             f"Floor(changed_rows={self.changed_rows}, total_rows={self.total_rows}, hamming={self.hamming}, "
+            f"max_hamming={self.max_hamming}, "
             f"nulls={self.nulls}, config={self._config!r}, id_kind={self.id_kind!r}, "
             f"reference_id={self.reference_id.hex()!r})"
         )

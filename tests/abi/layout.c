@@ -80,6 +80,12 @@ int main(void) {
     printf("SEMQ_LIST_ADDED=%llu\n", (unsigned long long)(SEMQ_LIST_ADDED));
     printf("SEMQ_LIST_REMOVED=%llu\n", (unsigned long long)(SEMQ_LIST_REMOVED));
     printf("SEMQ_LIST_CHANGED=%llu\n", (unsigned long long)(SEMQ_LIST_CHANGED));
+    printf("SEMQ_REASON_NO_COMMON_ROWS=%llu\n", (unsigned long long)(SEMQ_REASON_NO_COMMON_ROWS));
+    printf("SEMQ_REASON_REMOVED_ROWS=%llu\n", (unsigned long long)(SEMQ_REASON_REMOVED_ROWS));
+    printf("SEMQ_REASON_CHANGED_RATIO=%llu\n", (unsigned long long)(SEMQ_REASON_CHANGED_RATIO));
+    printf("SEMQ_REASON_HAMMING=%llu\n", (unsigned long long)(SEMQ_REASON_HAMMING));
+    printf("SEMQ_REASON_ENCODER=%llu\n", (unsigned long long)(SEMQ_REASON_ENCODER));
+    printf("SEMQ_REASON_ROW_ABOVE_MAX=%llu\n", (unsigned long long)(SEMQ_REASON_ROW_ABOVE_MAX));
     printf("SEMQ_FILE_VERSION=%llu\n", (unsigned long long)(SEMQ_FILE_VERSION));
     printf("SEMQ_RULE_REVISION=%llu\n", (unsigned long long)(SEMQ_RULE_REVISION));
     printf("SEMQ_CONFIG_BYTES=%llu\n", (unsigned long long)(SEMQ_CONFIG_BYTES));

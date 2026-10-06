@@ -98,6 +98,17 @@ struct semq_floor {
     uint64_t      changed_rows;
     uint64_t      total_rows;
     uint64_t      hamming;
+    uint64_t      max_hamming;  /* SEMQ_NONE when not recorded (semq-floor/1) */
+};
+
+struct semq_gate_options {
+    int per_row;
+};
+
+struct semq_verdict {
+    uint32_t  reasons;
+    uint64_t  n_rows;
+    uint64_t* rows;  /* indices in the diff's changed list */
 };
 
 struct semq_diff {

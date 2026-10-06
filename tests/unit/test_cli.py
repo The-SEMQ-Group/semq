@@ -112,6 +112,26 @@ def test_diff_with_floor_gates(files, capsys) -> None:
     assert main(["diff", files["ref"], files["null"], "--floor", files["bad"]]) == 2
 
 
+def test_diff_per_row(files, capsys, tmp_path) -> None:
+    floor = files["floor"]
+    assert main(["diff", files["ref"], files["drift"], "--floor", floor, "--per-row"]) == 1
+    err = capsys.readouterr().err
+    assert "(changed_ratio, hamming, row_above_max)" in err and "rows above max_hamming: 3" in err
+    assert main(["diff", files["ref"], files["drift"], "--floor", floor, "--per-row", "--json"]) == 1
+    report = json.loads(capsys.readouterr().out)
+    assert report["within"] is False
+    assert report["verdict"] == {"passed": False, "reasons": ["changed_ratio", "hamming", "row_above_max"], "rows": ["3"]}
+    # A semq-floor/1 file has no max_hamming: the per-row check cannot run on it.
+    v1 = {k: v for k, v in Floor.load(floor).as_dict().items() if k != "max_hamming"} | {"version": "semq-floor/1"}
+    (tmp_path / "v1.json").write_text(json.dumps(v1))
+    assert main(["diff", files["ref"], files["null"], "--floor", str(tmp_path / "v1.json")]) == 0
+    capsys.readouterr()
+    assert main(["diff", files["ref"], files["null"], "--floor", str(tmp_path / "v1.json"), "--per-row"]) == 2
+    assert "max_hamming" in capsys.readouterr().err
+    assert main(["diff", files["ref"], files["null"], "--per-row"]) == 2
+    assert "--per-row needs --floor" in capsys.readouterr().err
+
+
 def test_floor_writes_only_json(files, capsys) -> None:
     assert main(["floor", files["ref"], files["null"], files["drift"], "--min-nulls", "2"]) == 0
     out = capsys.readouterr().out

@@ -406,6 +406,16 @@ SEMQ_API semq_status_t semq_floor_create(const semq_config_t* config, uint32_t i
                                          uint64_t changed_rows, uint64_t total_rows,
                                          uint64_t hamming, semq_floor_t** out,
                                          semq_error_t* err);
+/** Create a floor that also records `max_hamming`, the largest hamming of
+ *  any changed row across the nulls (`semq-floor/2`). The rules of
+ *  ::semq_floor_create apply, and `hamming ≤ max_hamming ≤
+ *  units_per_row(config)`; otherwise `InvalidInput`. A floor made by
+ *  ::semq_floor_create has no `max_hamming`. */
+SEMQ_API semq_status_t semq_floor_create_with_max(const semq_config_t* config, uint32_t id_kind,
+                                                   const uint8_t reference_id[32], uint64_t nulls,
+                                                   uint64_t changed_rows, uint64_t total_rows,
+                                                   uint64_t hamming, uint64_t max_hamming,
+                                                   semq_floor_t** out, semq_error_t* err);
 SEMQ_API void semq_floor_free(semq_floor_t* floor);
 /** Envelope of `k ≥ 1` null diffs; every input diff is within the result.
  *  All nulls MUST share config, id kind and reference state_id
@@ -422,6 +432,9 @@ SEMQ_API uint64_t semq_floor_nulls(const semq_floor_t* floor);
 SEMQ_API uint64_t semq_floor_changed_rows(const semq_floor_t* floor);
 SEMQ_API uint64_t semq_floor_total_rows(const semq_floor_t* floor);
 SEMQ_API uint64_t semq_floor_hamming(const semq_floor_t* floor);
+/** Largest hamming of any changed row across the nulls, or ::SEMQ_NONE for
+ *  a floor made by ::semq_floor_create, which does not record it. */
+SEMQ_API uint64_t semq_floor_max_hamming(const semq_floor_t* floor);
 /** `*out = 1` iff the diff is within the floor (exact integer arithmetic):
  *  rows in common, nothing removed, changed ratio and p99 hamming at most
  *  the floor's, and no change to `encoder` or `encoder_revision`. The
@@ -429,6 +442,52 @@ SEMQ_API uint64_t semq_floor_hamming(const semq_floor_t* floor);
  *  (`Incompatible` otherwise). */
 SEMQ_API semq_status_t semq_diff_within(const semq_diff_t* diff, const semq_floor_t* floor,
                                         int* out, semq_error_t* err);
+
+/* -------------------------------------------------------------------------- */
+/*  Gate evaluation                                                           */
+/* -------------------------------------------------------------------------- */
+
+/** Why a verdict failed: flags combined with `|`. Values are pinned. */
+typedef enum {
+    SEMQ_REASON_NO_COMMON_ROWS = 1,   /**< no row in common with the reference */
+    SEMQ_REASON_REMOVED_ROWS   = 2,   /**< the candidate removed rows */
+    SEMQ_REASON_CHANGED_RATIO  = 4,   /**< more of the shared rows changed than the floor's ratio */
+    SEMQ_REASON_HAMMING        = 8,   /**< the p99 hamming is above the floor's */
+    SEMQ_REASON_ENCODER        = 16,  /**< `encoder` or `encoder_revision` changed */
+    SEMQ_REASON_ROW_ABOVE_MAX  = 32   /**< per-row check: a row changed more than any null row */
+} semq_reason_t;
+
+/** Which checks an evaluation applies beyond those of ::semq_diff_within.
+ *  Created with every check off; a new check is a new setter, so existing
+ *  code keeps its verdicts. Not thread-safe while being set. */
+typedef struct semq_gate_options semq_gate_options_t;
+SEMQ_API semq_status_t semq_gate_options_create(semq_gate_options_t** out, semq_error_t* err);
+SEMQ_API void semq_gate_options_free(semq_gate_options_t* options);
+/** Per-row check: also fail when a changed row's hamming exceeds the floor's
+ *  `max_hamming`, and list those rows. Requires a floor that records
+ *  `max_hamming`. */
+SEMQ_API void semq_gate_options_set_per_row(semq_gate_options_t* options, int enabled);
+
+/** The result of an evaluation. Immutable; may be shared between threads. */
+typedef struct semq_verdict semq_verdict_t;
+/** Evaluate a diff against a floor. With `options` NULL or with every check
+ *  off, `passed` equals ::semq_diff_within. The floor MUST match the diff's
+ *  config, id kind and reference state_id (`Incompatible` otherwise), and
+ *  the per-row check needs a floor with `max_hamming` (`Incompatible`
+ *  otherwise). */
+SEMQ_API semq_status_t semq_diff_evaluate(const semq_diff_t* diff, const semq_floor_t* floor,
+                                          const semq_gate_options_t* options,
+                                          semq_verdict_t** out, semq_error_t* err);
+SEMQ_API void semq_verdict_free(semq_verdict_t* verdict);
+/** 1 iff no check failed (`reasons == 0`). */
+SEMQ_API int semq_verdict_passed(const semq_verdict_t* verdict);
+/** The failed checks, as ::semq_reason_t flags; 0 when the verdict passed. */
+SEMQ_API uint32_t semq_verdict_reasons(const semq_verdict_t* verdict);
+/** Rows the per-row check flagged (0 when it is off). */
+SEMQ_API uint64_t semq_verdict_row_count(const semq_verdict_t* verdict);
+/** Index in the diff's ::SEMQ_LIST_CHANGED list of flagged row `i`, in
+ *  canonical id order; ::SEMQ_NONE when `i` is out of range. */
+SEMQ_API uint64_t semq_verdict_row(const semq_verdict_t* verdict, uint64_t i);
 
 /* -------------------------------------------------------------------------- */
 /*  Build information and utilities                                           */

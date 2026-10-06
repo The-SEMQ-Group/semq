@@ -53,9 +53,10 @@ semq floor reference.semq null-1.semq null-2.semq null-3.semq > floor.json
 cat floor.json
 ```
 
-`floor.json` records the three counts (`changed_rows`, `total_rows`,
-`hamming`: the floor takes the worst ratio and the largest p99 hamming over
-the nulls) and where they were measured: the config, the id kind, the
+`floor.json` records four counts (`changed_rows`, `total_rows`, `hamming`,
+`max_hamming`: the floor takes the worst ratio, the largest p99 hamming and
+the largest hamming of any changed row over the nulls) and where they were
+measured: the config, the id kind, the
 reference's `state_id` and how many nulls went in. The floor applies only to
 diffs against that reference; measure a new one when the reference changes.
 `semq floor` requires three nulls by default because one null only shows what
@@ -75,9 +76,13 @@ Exit `0` means the candidate is within the floor. Exit `1` means it is not;
 a changed `encoder` or `encoder_revision` is never within. Exit `2` means the
 gate could not be evaluated (invalid file, invalid floor, or a floor measured
 against another reference, config or id kind).
-Changed manifest keys are listed on stderr; `within` is computed by the core. Add `--json` for
+Changed manifest keys are listed on stderr; the verdict is computed by the core. Add `--json` for
 the complete report; without `--floor`, `semq diff` is a report and always
 exits `0`.
+
+Add `--per-row` to also fail when any changed row moved more than any row of
+any null did. The p99 ignores the most changed 1% of rows, so a few rows
+with a large change can pass without it; with it, stderr lists those rows.
 
 The same verdict is available in code:
 
@@ -91,6 +96,8 @@ print(floor)
 diff = reference.diff(Encoding.load("candidate.semq"))
 print(diff)
 print(diff.within(floor))
+verdict = diff.evaluate(floor, per_row=True)
+print(verdict.passed, verdict.reasons, verdict.rows)  # every failed check, and the rows above max_hamming
 print(diff.units(0)[:3])  # the first units of row 0 that moved: (unit, before, after)
 ```
 
@@ -141,4 +148,4 @@ same state as a single `encode` call.
 ## Next steps
 
 - [CLI reference](../reference/cli.md): every command, option and exit code.
-- [Core contracts](../reference/contracts.md): the exact definitions of `diff`, `within` and `measure`.
+- [Core contracts](../reference/contracts.md): the exact definitions of `diff`, `within`, `evaluate` and `measure`.

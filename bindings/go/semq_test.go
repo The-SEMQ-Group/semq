@@ -981,6 +981,81 @@ func TestFloorMeasureAndWithin(t *testing.T) {
 	}
 }
 
+// 200 rows; the null changes rows 0..99 by 2 units. The candidate changes
+// rows 0..98 by 2 and row 150 by 10: its p99 ignores row 150, so it is
+// within the floor, and only the per-row check catches it.
+func TestEvaluateNamesEveryFailedCheckAndTheRowsAboveMax(t *testing.T) {
+	ref := rowsWithChanges(t, 200, 0, 0, 4)
+	null := rowsWithChanges(t, 200, 100, 2, 4)
+	defer ref.Close()
+	defer null.Close()
+	f, err := MeasureFloor([]*Diff{mustDiff(t, ref, null)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if m, ok := f.MaxHamming(); !ok || m != 2 || f.Hamming() != 2 {
+		t.Fatalf("floor: %v", f.Report())
+	}
+	c := ref.Config()
+	bpv := int(c.BytesPerVector())
+	ids := make([]uint64, 200)
+	rows := make([]byte, 0, 200*bpv)
+	for i := range ids {
+		sym := make([]uint8, 16)
+		flip := 0
+		if i < 99 {
+			flip = 2
+		} else if i == 150 {
+			flip = 10
+		}
+		for u := range sym {
+			sym[u] = 4
+			if u < flip {
+				sym[u] = 5
+			}
+		}
+		ids[i] = uint64(i)
+		rows = append(rows, packQuant(sym, 3, bpv)...)
+	}
+	cand := mustEncoding(t, U64IDs(ids...), rows, c, nil)
+	defer cand.Close()
+	d := mustDiff(t, ref, cand)
+	if w, err := d.Within(f); err != nil || !w {
+		t.Fatalf("within: %v %v", w, err)
+	}
+	plain, err := d.Evaluate(f, GateOptions{})
+	if err != nil || !plain.Passed || len(plain.Reasons) != 0 || len(plain.Rows) != 0 {
+		t.Fatalf("plain: %+v %v", plain, err)
+	}
+	strict, err := d.Evaluate(f, GateOptions{PerRow: true})
+	if err != nil || strict.Passed || !reflect.DeepEqual(strict.Reasons, []Reason{ReasonRowAboveMax}) ||
+		!reflect.DeepEqual(strict.Rows, []ID{U64ID(150)}) {
+		t.Fatalf("per row: %+v %v", strict, err)
+	}
+	// Every failed check is named, not only the first.
+	tight, err := NewFloor(c, IDU64, ref.StateID(), 1, 1, 200, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tight.Close()
+	tightMax, err := tight.WithMaxHamming(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tightMax.Close()
+	all, err := d.Evaluate(tightMax, GateOptions{PerRow: true})
+	if err != nil || !reflect.DeepEqual(all.Reasons, []Reason{ReasonChangedRatio, ReasonHamming, ReasonRowAboveMax}) || len(all.Rows) != 100 {
+		t.Fatalf("tight: %+v %v", all.Reasons, err)
+	}
+	// A floor without MaxHamming refuses the per-row check and keeps its plain verdict.
+	if v, err := d.Evaluate(tight, GateOptions{}); err != nil || v.Passed {
+		t.Fatalf("plain on a floor without max: %+v %v", v, err)
+	}
+	_, err = d.Evaluate(tight, GateOptions{PerRow: true})
+	asIncompatible(t, err)
+}
+
 func TestFloorReportAndInverse(t *testing.T) {
 	ref := rowsWithChanges(t, 100, 0, 0, 4)
 	a := rowsWithChanges(t, 100, 1, 1, 4)
@@ -996,10 +1071,27 @@ func TestFloorReportAndInverse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `{"version":"semq-floor/1","config":{"operator":"quant","dim":16,"bins":4,"rule_revision":0},` +
-		`"id_kind":"u64","reference_id":"` + hexOf(ref.StateID()) + `","nulls":1,"changed_rows":1,"total_rows":100,"hamming":1}`
+	want := `{"version":"semq-floor/2","config":{"operator":"quant","dim":16,"bins":4,"rule_revision":0},` +
+		`"id_kind":"u64","reference_id":"` + hexOf(ref.StateID()) + `","nulls":1,"changed_rows":1,"total_rows":100,"hamming":1,"max_hamming":1}`
 	if string(raw) != want {
 		t.Fatalf("report\n got %s\nwant %s", raw, want)
+	}
+	if m, ok := f.MaxHamming(); !ok || m != 1 {
+		t.Fatalf("MaxHamming: %d %v", m, ok)
+	}
+	// A semq-floor/1 report reads back without max_hamming and writes back as semq-floor/1.
+	v1 := f.Report()
+	v1.Version, v1.MaxHamming = FloorVersion, 0
+	old, err := FloorFromReport(v1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(old.Close)
+	if _, ok := old.MaxHamming(); ok || old.Report() != v1 {
+		t.Fatalf("semq-floor/1: %+v", old.Report())
+	}
+	if raw1, _ := json.Marshal(v1); strings.Contains(string(raw1), "max_hamming") {
+		t.Fatalf("semq-floor/1 marshals max_hamming: %s", raw1)
 	}
 	// The inverse, from the report and from its JSON, yields the same floor.
 	var decoded FloorReport
@@ -1025,7 +1117,10 @@ func TestFloorReportAndInverse(t *testing.T) {
 		name   string
 		mutate func(*FloorReport)
 	}{
-		{"version", func(r *FloorReport) { r.Version = "semq-floor/2" }},
+		{"version", func(r *FloorReport) { r.Version = "semq-floor/3" }},
+		{"semq-floor/1 with max_hamming", func(r *FloorReport) { r.Version = FloorVersion }},
+		{"max_hamming < hamming", func(r *FloorReport) { r.MaxHamming = 0 }},
+		{"max_hamming > units", func(r *FloorReport) { r.MaxHamming = 17 }},
 		{"id_kind", func(r *FloorReport) { r.IDKind = "unknown" }},
 		{"empty reference_id", func(r *FloorReport) { r.ReferenceID = "" }},
 		{"short reference_id", func(r *FloorReport) { r.ReferenceID = r.ReferenceID[:63] }},

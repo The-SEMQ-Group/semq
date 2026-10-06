@@ -9,6 +9,35 @@ surface.
 
 ## [Unreleased]
 
+### Added
+
+- **`Diff.evaluate(floor, options)`**, a verdict that names every failed
+  check (`reasons`) instead of a single boolean. With no options it agrees
+  with `within`. Options are off by default, so a new one never changes an
+  existing verdict. Python `diff.evaluate(floor, per_row=...)`, Rust
+  `diff.evaluate(&floor, &GateOptions::new().per_row(...))`, Go
+  `d.Evaluate(f, semq.GateOptions{PerRow: ...})`, TypeScript
+  `diff.evaluate(floor, { perRow })`; C `semq_diff_evaluate` with
+  `semq_gate_options_t` and `semq_verdict_t`.
+- **Per-row check.** `per_row` also fails the verdict when any changed row
+  has a hamming distance above the floor's new `max_hamming`, the largest
+  of any changed row of any null, and lists those rows. The p99 check
+  ignores the most changed 1% of rows; this one ignores none. `semq diff
+  --floor F --per-row` applies it from the command line.
+- **`Floor.max_hamming`**, recorded by `measure`, and the `semq-floor/2`
+  schema that carries it. C `semq_floor_create_with_max` and
+  `semq_floor_max_hamming`; Rust `Floor::with_max_hamming`,
+  `Floor::as_report_v2`, `Floor::from_report_v2` and `FloorReportV2`; Go
+  `Floor.WithMaxHamming`, `Floor.MaxHamming` and `FloorVersion2`.
+
+### Changed
+
+- `Floor.measure` and `semq floor` write `semq-floor/2`. Every binding still
+  reads `semq-floor/1`; such a floor gives the same `within` verdicts as
+  before, refuses the per-row check and writes back as `semq-floor/1`. In
+  Rust, `Floor::as_report` keeps returning the `semq-floor/1` form.
+- `semq diff --floor --json` adds a `verdict` object next to `within`.
+
 ## [1.0.0] - 2026-10-05
 
 First public release.

@@ -6,9 +6,10 @@ import { hex, ID_U64, ID_UTF8, isUint8Array, kindName } from "./convert.js";
 import { Diff } from "./diff.js";
 import { InvalidInput } from "./errors.js";
 import { scoped } from "./module.js";
-import { call, rt, type Runtime } from "./runtime.js";
+import { NONE, call, rt, type Runtime } from "./runtime.js";
 
 const FLOOR_VERSION = "semq-floor/1";
+const FLOOR_VERSION_2 = "semq-floor/2";
 const KEYS = [
   "version",
   "config",
@@ -19,6 +20,7 @@ const KEYS = [
   "total_rows",
   "hamming",
 ] as const;
+const KEYS_2 = [...KEYS, "max_hamming"] as const;
 /** Operator ABI value and parameter name, by report name. */
 const OPERATORS = new Map<string, { code: Operator; parameter: "bins" | "sectors" | "scale" }>([
   ["orbit", { code: Operator.Orbit, parameter: "scale" }],
@@ -38,6 +40,10 @@ const OPERATORS = new Map<string, { code: Operator; parameter: "bins" | "sectors
  * another config, id kind or reference throws `Incompatible`. No
  * probabilistic coverage is claimed.
  *
+ * A floor from {@link Floor.measure} also records `maxHamming`, the largest
+ * hamming of any changed row of any null, for the per-row check of
+ * {@link Diff.evaluate}.
+ *
  * Owns a native handle: call {@link Floor.dispose} when done, or let the
  * finalizer free it.
  */
@@ -50,7 +56,9 @@ export class Floor {
    * A floor from its fields. `referenceId` is the `stateId` of the reference
    * (32 bytes); counts are numbers. The core validates the rest: `nulls >= 1`,
    * `totalRows >= 1`, `changedRows <= totalRows` and
-   * `hamming <= config.unitsPerRow`; anything else is InvalidInput.
+   * `hamming <= config.unitsPerRow`, and `hamming <= maxHamming <=
+   * config.unitsPerRow` when `maxHamming` is given; anything else is
+   * InvalidInput. Without `maxHamming` the floor does not record it.
    */
   constructor(fields: {
     config: CodecConfig;
@@ -60,6 +68,7 @@ export class Floor {
     changedRows: number;
     totalRows: number;
     hamming: number;
+    maxHamming?: number;
   }) {
     const r = rt();
     if (fields === null || typeof fields !== "object") {
@@ -75,23 +84,18 @@ export class Floor {
     const changedRows = count(fields.changedRows, "changedRows");
     const totalRows = count(fields.totalRows, "totalRows");
     const hamming = count(fields.hamming, "hamming");
+    const maxHamming = fields.maxHamming === undefined ? undefined : count(fields.maxHamming, "maxHamming");
     this.r = r;
     this.ptr = scoped(r.w, (a) => {
       const cfg = config.write(a);
       const rid = a.u8(referenceId);
       const out = a.alloc(4);
+      const kind = idKind === "u64" ? ID_U64 : ID_UTF8;
+      const counts = [BigInt(nulls), BigInt(changedRows), BigInt(totalRows), BigInt(hamming)] as const;
       call(r, "floor", (err) =>
-        r.core.floorCreate(
-          cfg,
-          idKind === "u64" ? ID_U64 : ID_UTF8,
-          rid,
-          BigInt(nulls),
-          BigInt(changedRows),
-          BigInt(totalRows),
-          BigInt(hamming),
-          out,
-          err,
-        ),
+        maxHamming === undefined
+          ? r.core.floorCreate(cfg, kind, rid, ...counts, out, err)
+          : r.core.floorCreateWithMax(cfg, kind, rid, ...counts, BigInt(maxHamming), out, err),
       );
       return r.w.getU32(out);
     });
@@ -182,7 +186,15 @@ export class Floor {
     return Number(this.r.core.floorHamming(this.handle));
   }
 
-  /** True when `other` has the same seven fields. */
+  /** The largest hamming of any changed row of any null (`0` when no null
+   * changed a row); `undefined` for a floor that does not record it, one
+   * built without `maxHamming` or read from `semq-floor/1`. */
+  get maxHamming(): number | undefined {
+    const v = this.r.core.floorMaxHamming(this.handle);
+    return v === NONE ? undefined : Number(v);
+  }
+
+  /** True when `other` has the same eight fields. */
   equals(other: Floor): boolean {
     return (
       other instanceof Floor &&
@@ -192,24 +204,37 @@ export class Floor {
       this.nulls === other.nulls &&
       this.changedRows === other.changedRows &&
       this.totalRows === other.totalRows &&
-      this.hamming === other.hamming
+      this.hamming === other.hamming &&
+      this.maxHamming === other.maxHamming
     );
   }
 
-  /** The `semq-floor/1` report form: the config as in diff reports, the
-   * reference id as lowercase hex, counts as numbers. */
-  asDict(): {
-    version: typeof FLOOR_VERSION;
-    config: Record<string, string | number>;
-    id_kind: "u64" | "utf8";
-    reference_id: string;
-    nulls: number;
-    changed_rows: number;
-    total_rows: number;
-    hamming: number;
-  } {
-    return {
-      version: FLOOR_VERSION,
+  /** The report form: the config as in diff reports, the reference id as
+   * lowercase hex, counts as numbers. `semq-floor/2` with `max_hamming` when
+   * the floor records it, `semq-floor/1` otherwise. */
+  asDict():
+    | {
+        version: typeof FLOOR_VERSION;
+        config: Record<string, string | number>;
+        id_kind: "u64" | "utf8";
+        reference_id: string;
+        nulls: number;
+        changed_rows: number;
+        total_rows: number;
+        hamming: number;
+      }
+    | {
+        version: typeof FLOOR_VERSION_2;
+        config: Record<string, string | number>;
+        id_kind: "u64" | "utf8";
+        reference_id: string;
+        nulls: number;
+        changed_rows: number;
+        total_rows: number;
+        hamming: number;
+        max_hamming: number;
+      } {
+    const fields = {
       config: this.config.asDict(),
       id_kind: this.idKind,
       reference_id: hex(this.referenceId),
@@ -218,18 +243,26 @@ export class Floor {
       total_rows: this.totalRows,
       hamming: this.hamming,
     };
+    const maxHamming = this.maxHamming;
+    return maxHamming === undefined
+      ? { version: FLOOR_VERSION, ...fields }
+      : { version: FLOOR_VERSION_2, ...fields, max_hamming: maxHamming };
   }
 
   /**
-   * The inverse of {@link Floor.asDict}, strictly: exactly those keys, that
-   * version, `id_kind` `"u64"` or `"utf8"`, `reference_id` 64 hex characters,
-   * counts as integers. Anything else is InvalidInput.
+   * The inverse of {@link Floor.asDict}, strictly: version `semq-floor/1` or
+   * `semq-floor/2`, exactly the keys of that version, `id_kind` `"u64"` or
+   * `"utf8"`, `reference_id` 64 hex characters, counts as integers. Anything
+   * else is InvalidInput.
    */
   static fromDict(data: unknown): Floor {
-    if (!isRecord(data) || !hasExactKeys(data, KEYS)) {
-      throw new InvalidInput(`floor must have exactly the keys ${KEYS.join(", ")}`);
+    if (!isRecord(data) || (data.version !== FLOOR_VERSION && data.version !== FLOOR_VERSION_2)) {
+      throw new InvalidInput(`floor.version must be "${FLOOR_VERSION}" or "${FLOOR_VERSION_2}"`);
     }
-    if (data.version !== FLOOR_VERSION) throw new InvalidInput(`floor.version must be "${FLOOR_VERSION}"`);
+    const keys = data.version === FLOOR_VERSION ? KEYS : KEYS_2;
+    if (!hasExactKeys(data, keys)) {
+      throw new InvalidInput(`floor must have exactly the keys ${keys.join(", ")}`);
+    }
     const idKind = data.id_kind;
     if (idKind !== "u64" && idKind !== "utf8") throw new InvalidInput('floor.id_kind must be "u64" or "utf8"');
     const rid = data.reference_id;
@@ -244,6 +277,7 @@ export class Floor {
       changedRows: count(data.changed_rows, "changed_rows"),
       totalRows: count(data.total_rows, "total_rows"),
       hamming: count(data.hamming, "hamming"),
+      ...(data.version === FLOOR_VERSION ? {} : { maxHamming: count(data.max_hamming, "max_hamming") }),
     });
   }
 

@@ -433,9 +433,14 @@ describe.skipIf(!AVAILABLE)("conformance", () => {
         }
         const ref = Encoding.fromBytes(file("12-floor", i.reference));
         const d = ref.diff(Encoding.fromBytes(file("12-floor", i.candidate)));
-        // The five `floor-*` cases are rejected by `fromDict` before `within` runs.
-        const result = runExpecting(e, () => d.within(Floor.fromDict(i.floor)));
-        if (result !== undefined) expect(result).toBe(e.within);
+        // The `floor-*` cases are rejected by `fromDict` before the floor is applied.
+        const verdict = runExpecting(e, () => d.evaluate(Floor.fromDict(i.floor), { perRow: i.per_row === true }));
+        if (verdict !== undefined) {
+          const floor = Floor.fromDict(i.floor);
+          expect(floor.asDict()).toEqual(i.floor);
+          expect({ ...verdict, rows: verdict.rows.map(String) }).toEqual(e.evaluate);
+          expect(d.within(floor)).toBe(e.within);
+        }
       });
     }
   });

@@ -192,9 +192,9 @@ static void js_config(const semq_config_t* c) {
 
 /* The floor report: the fields of a floor as every host's `as_dict` emits them. */
 static void js_floor_fields(const semq_config_t* c, uint32_t kind, const uint8_t rid[32], uint64_t nulls,
-                            uint64_t changed, uint64_t total, uint64_t hamming) {
+                            uint64_t changed, uint64_t total, uint64_t hamming, uint64_t max_hamming) {
     js_begin_object();
-    js_kv_str("version", "semq-floor/1");
+    js_kv_str("version", max_hamming == SEMQ_NONE ? "semq-floor/1" : "semq-floor/2");
     js_key("config"); js_config(c);
     js_kv_str("id_kind", kind == SEMQ_ID_U64 ? "u64" : kind == SEMQ_ID_UTF8 ? "utf8" : "unknown");
     js_kv_hex("reference_id", rid, 32u);
@@ -202,13 +202,14 @@ static void js_floor_fields(const semq_config_t* c, uint32_t kind, const uint8_t
     js_kv_u64("changed_rows", changed);
     js_kv_u64("total_rows", total);
     js_kv_u64("hamming", hamming);
+    if (max_hamming != SEMQ_NONE) js_kv_u64("max_hamming", max_hamming);
     js_end_object();
 }
 static void js_floor(const semq_floor_t* f) {
     uint8_t rid[32];
     semq_floor_reference_id(f, rid);
     js_floor_fields(semq_floor_config(f), semq_floor_id_kind(f), rid, semq_floor_nulls(f), semq_floor_changed_rows(f),
-                    semq_floor_total_rows(f), semq_floor_hamming(f));
+                    semq_floor_total_rows(f), semq_floor_hamming(f), semq_floor_max_hamming(f));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1320,7 +1321,9 @@ static void js_diff_report(const semq_diff_t* d) {
 
 /* quant(16, 4) rows with `n_changed` rows differing from the base in the
  * first `flip` units. */
-static semq_encoding_t* rows_with_changes(uint64_t n, uint64_t n_changed, uint32_t flip, uint8_t base) {
+/* Rows 0..n_changed-1 flip `flip` units; row `outlier` (when < n) flips `outlier_flip` units. */
+static semq_encoding_t* rows_with_outlier(uint64_t n, uint64_t n_changed, uint32_t flip, uint64_t outlier,
+                                          uint32_t outlier_flip, uint8_t base) {
     semq_config_t c = cfg_of(SEMQ_QUANT, 16u, 4u);
     const uint32_t bpv = semq_config_bytes_per_vector(&c);
     uint64_t* ids = (uint64_t*)xmalloc((size_t)n * sizeof(uint64_t));
@@ -1330,16 +1333,39 @@ static semq_encoding_t* rows_with_changes(uint64_t n, uint64_t n_changed, uint32
         ids[i] = i;
         uint64_t pos = 0u;
         for (uint32_t u = 0u; u < 16u; u++) {
-            const uint8_t sym = (i < n_changed && u < flip) ? (uint8_t)(base + 1u) : base;
+            const uint32_t k = i == outlier ? outlier_flip : i < n_changed ? flip : 0u;
+            const uint8_t sym = u < k ? (uint8_t)(base + 1u) : base;
             for (uint32_t b = 0u; b < 3u; b++, pos++) if ((sym >> b) & 1u) rows[i * bpv + (pos >> 3)] |= (uint8_t)(1u << (pos & 7u));
         }
     }
     semq_ids_t in = { SEMQ_ID_U64, n, ids, NULL, NULL };
     semq_error_t err;
     semq_encoding_t* e = create_rows(&c, &in, rows, NULL, 0u, &err);
-    if (e == NULL) die("rows_with_changes");
+    if (e == NULL) die("rows_with_outlier");
     free(ids); free(rows);
     return e;
+}
+static semq_encoding_t* rows_with_changes(uint64_t n, uint64_t n_changed, uint32_t flip, uint8_t base) {
+    return rows_with_outlier(n, n_changed, flip, UINT64_MAX, 0u, base);
+}
+
+/* The verdict of evaluate: passed, the failed checks by name, and the ids of the rows above max_hamming. */
+static void js_verdict(const semq_diff_t* d, const semq_verdict_t* v) {
+    static const char* const names[6] = { "no_common_rows", "removed_rows", "changed_ratio", "hamming", "encoder", "row_above_max" };
+    const int u64 = semq_diff_id_kind(d) == SEMQ_ID_U64;
+    js_begin_object();
+    js_kv_bool("passed", semq_verdict_passed(v));
+    js_key("reasons"); js_begin_array();
+    for (uint32_t b = 0u; b < 6u; b++) if (semq_verdict_reasons(v) & (1u << b)) js_str(names[b]);
+    js_end_array();
+    js_key("rows"); js_begin_array();
+    for (uint64_t i = 0u; i < semq_verdict_row_count(v); i++) {
+        uint64_t id = 0u, l = 0u; const uint8_t* b = NULL;
+        semq_diff_id(d, SEMQ_LIST_CHANGED, semq_verdict_row(v, i), &id, &b, &l, NULL);
+        if (u64) js_u64_str(id); else js_strn(b, (size_t)l);
+    }
+    js_end_array();
+    js_end_object();
 }
 
 static semq_diff_t* g_null_a;
@@ -1435,15 +1461,22 @@ static void vector_11_13(void) {
     semq_encoding_t* removed = rows_with_changes(99u, 0u, 0u, 4u);
     semq_encoding_t* added = rows_with_changes(101u, 0u, 0u, 4u);
     semq_encoding_t* nothing = rows_with_changes(0u, 0u, 0u, 4u);
-    struct { const char* name; semq_encoding_t* e; } ffiles[8] = {
+    /* 200 rows: a null that changes rows 0..99 by 2 units, and a candidate that changes rows 0..98 by 2
+     * and row 150 by 10. The candidate's p99 is 2: it ignores its one most-changed row. */
+    semq_encoding_t* base200 = rows_with_changes(200u, 0u, 0u, 4u);
+    semq_encoding_t* null200 = rows_with_changes(200u, 100u, 2u, 4u);
+    semq_encoding_t* hidden = rows_with_outlier(200u, 99u, 2u, 150u, 10u, 4u);
+    struct { const char* name; semq_encoding_t* e; } ffiles[11] = {
         { "base100.semq", g_base100 }, { "null-a.semq", a1 }, { "two-changed.semq", a2 }, { "base1.semq", b0 },
-        { "null-b.semq", b1 }, { "removed.semq", removed }, { "added.semq", added }, { "empty.semq", nothing } };
-    for (int i = 0; i < 8; i++) { uint64_t len; uint8_t* img = image_of(ffiles[i].e, &len); write_file(ffiles[i].name, img, (size_t)len); free(img); }
+        { "null-b.semq", b1 }, { "removed.semq", removed }, { "added.semq", added }, { "empty.semq", nothing },
+        { "base200.semq", base200 }, { "null-200.semq", null200 }, { "hidden.semq", hidden } };
+    for (int i = 0; i < 11; i++) { uint64_t len; uint8_t* img = image_of(ffiles[i].e, &len); write_file(ffiles[i].name, img, (size_t)len); free(img); }
     semq_encoding_diff(g_base100, a1, &g_null_a, &err);
     semq_encoding_diff(g_base100, a2, &g_null_a2, &err);
     semq_encoding_diff(b0, b1, &g_null_b, &err);
-    uint8_t rid100[32], rid1[32], rid_ref[32], rid_empty[32];
+    uint8_t rid100[32], rid1[32], rid_ref[32], rid_empty[32], rid200[32];
     semq_encoding_state_id(g_base100, rid100);
+    semq_encoding_state_id(base200, rid200);
     semq_encoding_state_id(b0, rid1);
     semq_encoding_state_id(ref, rid_ref);
     semq_encoding_state_id(nothing, rid_empty);
@@ -1454,13 +1487,17 @@ static void vector_11_13(void) {
         const semq_diff_t* one[1] = { g_null_a };
         const semq_diff_t* two[2] = { g_null_a, g_null_a2 };
         const semq_diff_t* mixed[2] = { g_null_a, g_null_b };
-        semq_floor_t* f_a = NULL; semq_floor_t* f_two = NULL; semq_floor_t* f_none = NULL;
+        semq_floor_t* f_a = NULL; semq_floor_t* f_two = NULL; semq_floor_t* f_hidden = NULL; semq_floor_t* f_none = NULL;
+        semq_diff_t* d_hidden = NULL; semq_encoding_diff(base200, hidden, &d_hidden, &err);
+        const semq_diff_t* hid[1] = { d_hidden };
         semq_floor_measure(one, 1u, &f_a, &err);
         semq_floor_measure(two, 2u, &f_two, &err);
-        struct { const char* id; const char* nulls[2][2]; uint32_t k; const semq_floor_t* f; } ms[2] = {
+        semq_floor_measure(hid, 1u, &f_hidden, &err);
+        struct { const char* id; const char* nulls[2][2]; uint32_t k; const semq_floor_t* f; } ms[3] = {
             { "measure-a", { { "base100.semq", "null-a.semq" }, { NULL, NULL } }, 1u, f_a },
-            { "measure-a-and-two-changed", { { "base100.semq", "null-a.semq" }, { "base100.semq", "two-changed.semq" } }, 2u, f_two } };
-        for (int i = 0; i < 2; i++) {
+            { "measure-a-and-two-changed", { { "base100.semq", "null-a.semq" }, { "base100.semq", "two-changed.semq" } }, 2u, f_two },
+            { "measure-records-max-hamming", { { "base200.semq", "hidden.semq" }, { NULL, NULL } }, 1u, f_hidden } };
+        for (int i = 0; i < 3; i++) {
             js_begin_object(); js_kv_str("id", ms[i].id);
             js_key("input"); js_begin_object(); js_key("null_diffs"); js_begin_array();
             for (uint32_t k = 0u; k < ms[i].k; k++) { js_begin_array(); js_str(ms[i].nulls[k][0]); js_str(ms[i].nulls[k][1]); js_end_array(); }
@@ -1479,43 +1516,69 @@ static void vector_11_13(void) {
         const semq_config_t* cq = semq_encoding_config(g_base100);
         semq_config_t orbit16; semq_config_orbit(16u, 50u, &orbit16, NULL);
         struct { const char* id; const char* ref; const char* cand; semq_encoding_t* r; semq_encoding_t* c;
-                 const semq_config_t* fc; uint32_t kind; const uint8_t* rid; uint64_t nulls, changed, total, hamming; } ws[11] = {
-            { "null-a-within-a", "base100.semq", "null-a.semq", g_base100, a1, cq, SEMQ_ID_U64, rid100, 1u, 1u, 100u, 1u },
-            { "two-changed-within-both", "base100.semq", "two-changed.semq", g_base100, a2, cq, SEMQ_ID_U64, rid100, 2u, 2u, 100u, 1u },
-            { "two-changed-at-boundary-fails", "base100.semq", "two-changed.semq", g_base100, a2, cq, SEMQ_ID_U64, rid100, 1u, 1u, 100u, 1u },
-            { "two-changed-at-boundary-passes", "base100.semq", "two-changed.semq", g_base100, a2, cq, SEMQ_ID_U64, rid100, 1u, 2u, 100u, 1u },
-            { "removed-never-passes", "base100.semq", "removed.semq", g_base100, removed, cq, SEMQ_ID_U64, rid100, 1u, 100u, 100u, 16u },
-            { "added-does-not-affect", "base100.semq", "added.semq", g_base100, added, cq, SEMQ_ID_U64, rid100, 1u, 0u, 100u, 0u },
-            { "encoder-change-never-passes", "../11-diff/ref.semq", "../11-diff/encoder-changed.semq", ref, enc_changed, semq_encoding_config(ref), SEMQ_ID_U64, rid_ref, 1u, 4u, 4u, 4u },
-            { "no-common-rows-never-passes", "empty.semq", "empty.semq", nothing, nothing, cq, SEMQ_ID_U64, rid_empty, 1u, 1u, 1u, 16u },
-            { "within-rejects-other-reference", "base1.semq", "null-b.semq", b0, b1, cq, SEMQ_ID_U64, rid100, 1u, 1u, 1u, 16u },
-            { "within-rejects-other-config", "base100.semq", "null-a.semq", g_base100, a1, &orbit16, SEMQ_ID_U64, rid100, 1u, 1u, 100u, 1u },
-            { "within-rejects-other-id-kind", "base100.semq", "null-a.semq", g_base100, a1, cq, SEMQ_ID_UTF8, rid100, 1u, 1u, 100u, 1u } };
-        for (int i = 0; i < 11; i++) {
+                 const semq_config_t* fc; uint32_t kind; const uint8_t* rid; uint64_t nulls, changed, total, hamming, max_hamming;
+                 int per_row; } ws[15] = {
+            { "null-a-within-a", "base100.semq", "null-a.semq", g_base100, a1, cq, SEMQ_ID_U64, rid100, 1u, 1u, 100u, 1u, SEMQ_NONE, 0 },
+            { "two-changed-within-both", "base100.semq", "two-changed.semq", g_base100, a2, cq, SEMQ_ID_U64, rid100, 2u, 2u, 100u, 1u, SEMQ_NONE, 0 },
+            { "two-changed-at-boundary-fails", "base100.semq", "two-changed.semq", g_base100, a2, cq, SEMQ_ID_U64, rid100, 1u, 1u, 100u, 1u, SEMQ_NONE, 0 },
+            { "two-changed-at-boundary-passes", "base100.semq", "two-changed.semq", g_base100, a2, cq, SEMQ_ID_U64, rid100, 1u, 2u, 100u, 1u, SEMQ_NONE, 0 },
+            { "removed-never-passes", "base100.semq", "removed.semq", g_base100, removed, cq, SEMQ_ID_U64, rid100, 1u, 100u, 100u, 16u, SEMQ_NONE, 0 },
+            { "added-does-not-affect", "base100.semq", "added.semq", g_base100, added, cq, SEMQ_ID_U64, rid100, 1u, 0u, 100u, 0u, SEMQ_NONE, 0 },
+            { "encoder-change-never-passes", "../11-diff/ref.semq", "../11-diff/encoder-changed.semq", ref, enc_changed, semq_encoding_config(ref), SEMQ_ID_U64, rid_ref, 1u, 4u, 4u, 4u, SEMQ_NONE, 0 },
+            { "no-common-rows-never-passes", "empty.semq", "empty.semq", nothing, nothing, cq, SEMQ_ID_U64, rid_empty, 1u, 1u, 1u, 16u, SEMQ_NONE, 0 },
+            { "within-rejects-other-reference", "base1.semq", "null-b.semq", b0, b1, cq, SEMQ_ID_U64, rid100, 1u, 1u, 1u, 16u, SEMQ_NONE, 0 },
+            { "within-rejects-other-config", "base100.semq", "null-a.semq", g_base100, a1, &orbit16, SEMQ_ID_U64, rid100, 1u, 1u, 100u, 1u, SEMQ_NONE, 0 },
+            { "within-rejects-other-id-kind", "base100.semq", "null-a.semq", g_base100, a1, cq, SEMQ_ID_UTF8, rid100, 1u, 1u, 100u, 1u, SEMQ_NONE, 0 },
+            /* per-row: the floor of null-200 records max_hamming 2 */
+            { "per-row-flags-row-hidden-by-p99", "base200.semq", "hidden.semq", base200, hidden, cq, SEMQ_ID_U64, rid200, 1u, 100u, 200u, 2u, 2u, 1 },
+            { "per-row-passes-at-max", "base200.semq", "hidden.semq", base200, hidden, cq, SEMQ_ID_U64, rid200, 1u, 100u, 200u, 2u, 10u, 1 },
+            { "per-row-null-within-its-floor", "base200.semq", "null-200.semq", base200, null200, cq, SEMQ_ID_U64, rid200, 1u, 100u, 200u, 2u, 2u, 1 },
+            { "per-row-needs-max-hamming", "base200.semq", "hidden.semq", base200, hidden, cq, SEMQ_ID_U64, rid200, 1u, 100u, 200u, 2u, SEMQ_NONE, 1 } };
+        /* The expected error is that of evaluate; within is given when evaluate succeeds. */
+        semq_gate_options_t* per_row = NULL;
+        if (semq_gate_options_create(&per_row, &err) != SEMQ_OK) die("gate options");
+        semq_gate_options_set_per_row(per_row, 1);
+        for (int i = 0; i < 15; i++) {
             semq_floor_t* f = NULL;
-            if (semq_floor_create(ws[i].fc, ws[i].kind, ws[i].rid, ws[i].nulls, ws[i].changed, ws[i].total, ws[i].hamming, &f, &err) != SEMQ_OK) die("floor");
+            const semq_status_t fs = ws[i].max_hamming == SEMQ_NONE
+                ? semq_floor_create(ws[i].fc, ws[i].kind, ws[i].rid, ws[i].nulls, ws[i].changed, ws[i].total, ws[i].hamming, &f, &err)
+                : semq_floor_create_with_max(ws[i].fc, ws[i].kind, ws[i].rid, ws[i].nulls, ws[i].changed, ws[i].total, ws[i].hamming, ws[i].max_hamming, &f, &err);
+            if (fs != SEMQ_OK) die("floor");
             semq_diff_t* d = NULL; semq_encoding_diff(ws[i].r, ws[i].c, &d, &err);
-            int w = 0; const semq_status_t st = semq_diff_within(d, f, &w, &err);
+            semq_verdict_t* v = NULL;
+            const semq_status_t st = semq_diff_evaluate(d, f, ws[i].per_row ? per_row : NULL, &v, &err);
             js_begin_object(); js_kv_str("id", ws[i].id);
             js_key("input"); js_begin_object(); js_kv_str("reference", ws[i].ref); js_kv_str("candidate", ws[i].cand);
-            js_key("floor"); js_floor(f); js_end_object();
-            js_key("expect");
-            if (st == SEMQ_OK) { js_begin_object(); js_kv_bool("within", w); js_end_object(); } else { js_error(&err); }
+            js_key("floor"); js_floor(f);
+            if (ws[i].per_row) js_kv_bool("per_row", 1);
             js_end_object();
+            js_key("expect");
+            if (st == SEMQ_OK) {
+                int w = 0; if (semq_diff_within(d, f, &w, &err) != SEMQ_OK) die("within");
+                js_begin_object(); js_kv_bool("within", w); js_key("evaluate"); js_verdict(d, v); js_end_object();
+            } else { js_error(&err); }
+            js_end_object();
+            semq_verdict_free(v);
             semq_diff_free(d);
             semq_floor_free(f);
         }
+        semq_gate_options_free(per_row);
         /* invalid floors are rejected at construction */
-        struct { const char* id; uint32_t kind; uint64_t nulls, changed, total, hamming; } bad[5] = {
-            { "floor-changed-exceeds-total", SEMQ_ID_U64, 1u, 5u, 4u, 1u }, { "floor-total-zero", SEMQ_ID_U64, 1u, 0u, 0u, 1u },
-            { "floor-hamming-exceeds-units", SEMQ_ID_U64, 1u, 1u, 1u, 17u }, { "floor-nulls-zero", SEMQ_ID_U64, 0u, 1u, 1u, 1u },
-            { "floor-unknown-id-kind", 2u, 1u, 1u, 1u, 1u } };
-        for (int i = 0; i < 5; i++) {
+        struct { const char* id; uint32_t kind; uint64_t nulls, changed, total, hamming, max_hamming; } bad[7] = {
+            { "floor-changed-exceeds-total", SEMQ_ID_U64, 1u, 5u, 4u, 1u, SEMQ_NONE }, { "floor-total-zero", SEMQ_ID_U64, 1u, 0u, 0u, 1u, SEMQ_NONE },
+            { "floor-hamming-exceeds-units", SEMQ_ID_U64, 1u, 1u, 1u, 17u, SEMQ_NONE }, { "floor-nulls-zero", SEMQ_ID_U64, 0u, 1u, 1u, 1u, SEMQ_NONE },
+            { "floor-unknown-id-kind", 2u, 1u, 1u, 1u, 1u, SEMQ_NONE },
+            { "floor-max-below-hamming", SEMQ_ID_U64, 1u, 1u, 1u, 3u, 2u }, { "floor-max-exceeds-units", SEMQ_ID_U64, 1u, 1u, 1u, 3u, 17u } };
+        for (int i = 0; i < 7; i++) {
             semq_floor_t* f = NULL;
-            semq_floor_create(cq, bad[i].kind, rid100, bad[i].nulls, bad[i].changed, bad[i].total, bad[i].hamming, &f, &err);
+            if (bad[i].max_hamming == SEMQ_NONE)
+                semq_floor_create(cq, bad[i].kind, rid100, bad[i].nulls, bad[i].changed, bad[i].total, bad[i].hamming, &f, &err);
+            else
+                semq_floor_create_with_max(cq, bad[i].kind, rid100, bad[i].nulls, bad[i].changed, bad[i].total, bad[i].hamming, bad[i].max_hamming, &f, &err);
+            if (f != NULL) die("bad floor accepted");
             js_begin_object(); js_kv_str("id", bad[i].id);
             js_key("input"); js_begin_object(); js_kv_str("reference", "base100.semq"); js_kv_str("candidate", "null-a.semq");
-            js_key("floor"); js_floor_fields(cq, bad[i].kind, rid100, bad[i].nulls, bad[i].changed, bad[i].total, bad[i].hamming); js_end_object();
+            js_key("floor"); js_floor_fields(cq, bad[i].kind, rid100, bad[i].nulls, bad[i].changed, bad[i].total, bad[i].hamming, bad[i].max_hamming); js_end_object();
             js_key("expect"); js_error(&err); js_end_object();
         }
         /* invalid nulls */
@@ -1535,7 +1598,7 @@ static void vector_11_13(void) {
             js_key("expect"); js_error(&err); js_end_object();
             semq_diff_free(d);
         }
-        semq_floor_free(f_a); semq_floor_free(f_two);
+        semq_floor_free(f_a); semq_floor_free(f_two); semq_floor_free(f_hidden); semq_diff_free(d_hidden);
     }
     js_footer();
 
@@ -1565,6 +1628,7 @@ static void vector_11_13(void) {
     semq_diff_free(g_null_a); semq_diff_free(g_null_a2); semq_diff_free(g_null_b);
     semq_encoding_free(a1); semq_encoding_free(a2); semq_encoding_free(b0); semq_encoding_free(b1);
     semq_encoding_free(removed); semq_encoding_free(added); semq_encoding_free(nothing); semq_encoding_free(g_base100);
+    semq_encoding_free(base200); semq_encoding_free(null200); semq_encoding_free(hidden);
     semq_encoding_free(ref); semq_encoding_free(cand); semq_encoding_free(same); semq_encoding_free(enc_changed); semq_encoding_free(empty_ref);
 }
 

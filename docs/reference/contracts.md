@@ -171,12 +171,14 @@ A floor is the envelope of variation seen in rebuilds that changed nothing
 on purpose, bound to where it was measured: `config`, `id_kind`,
 `reference_id` (the `state_id` of the reference every null was taken
 against), `nulls` (how many null diffs went in), `changed_rows`,
-`total_rows` and `hamming`.
+`total_rows`, `hamming` and `max_hamming`. A floor read from the
+`semq-floor/1` schema has no `max_hamming`.
 
 **Construction.** Every rule is checked when a floor is built or loaded, not
 when it is applied: the config is valid, `id_kind` is `u64` or `utf8`,
-`nulls >= 1`, `total_rows >= 1`, `changed_rows <= total_rows`, and
-`hamming <= units_per_row` of the config. Otherwise `InvalidInput`.
+`nulls >= 1`, `total_rows >= 1`, `changed_rows <= total_rows`,
+`hamming <= units_per_row` of the config, and, when present,
+`hamming <= max_hamming <= units_per_row`. Otherwise `InvalidInput`.
 
 **`Floor.measure(null_diffs)`.** Every null must share the config, the id
 kind and the reference of the first (else `Incompatible`, naming the index),
@@ -185,7 +187,9 @@ change to `encoder` or `encoder_revision` (else `InvalidInput`, naming the
 index). Then `(changed_rows, total_rows)` is the pair
 `(len(changed), n_common)` with the largest ratio among the nulls, compared
 exactly by cross-multiplication; `hamming` is the largest per-null p99 of
-the hamming distances; `nulls` is the count of nulls.
+the hamming distances; `max_hamming` is the largest hamming distance of any
+changed row of any null (`0` when no null changed a row); `nulls` is the
+count of nulls.
 
 `p99` of `m` integers is `0` when `m = 0`, and otherwise the `k`-th smallest
 with `k = m - floor(m / 100)`: nearest rank, with no product that can
@@ -211,11 +215,26 @@ describes what was observed; it makes no probabilistic claim about the next
 rebuild. The core accepts a single null; the `semq` command asks for three
 by default, because one null only shows what that rebuild happened to do.
 
+**`diff.evaluate(floor, options)`.** The same checks as `within`, and a
+verdict that names every one that failed, not only the first. With no
+options, `passed` equals `within`. The options select further checks; each
+is off by default, so a new one never changes an existing verdict:
+
+- **per row:** the verdict also fails when any changed row has a hamming
+  distance above `floor.max_hamming`, and `rows` lists those ids in
+  canonical order. It needs a floor with `max_hamming`; otherwise
+  `Incompatible`. The p99 of check 4 ignores the `floor(m / 100)` most
+  changed rows; this check does not ignore any.
+
+The verdict is `passed`, `reasons` and `rows`. `reasons` uses these names,
+in this order: `no_common_rows`, `removed_rows`, `changed_ratio`,
+`hamming`, `encoder` (checks 1 to 5), `row_above_max` (per row).
+
 ### Floor schema
 
 ```
 {
-  "version":      "semq-floor/1",
+  "version":      "semq-floor/2",
   "config":       { "operator": "quant" | "phase" | "orbit", "dim": int,
                     "bins" | "sectors" | "scale": int, "rule_revision": int },
   "id_kind":      "u64" | "utf8",
@@ -223,7 +242,8 @@ by default, because one null only shows what that rebuild happened to do.
   "nulls":        int,
   "changed_rows": int,
   "total_rows":   int,
-  "hamming":      int
+  "hamming":      int,
+  "max_hamming":  int
 }
 ```
 
@@ -232,3 +252,8 @@ schema. Bindings write it from a floor and read it back strictly: exactly
 these keys, this `version`, integers only (no booleans, floats or numeric
 strings) and a 64-character hex `reference_id`; any deviation is
 `InvalidInput`.
+
+Bindings also read `semq-floor/1`: the same keys without `max_hamming`. A
+floor read from it applies as before, refuses the per-row check, and writes
+back as `semq-floor/1`. In Rust, `Floor::as_report` keeps the
+`semq-floor/1` form and `Floor::as_report_v2` gives `semq-floor/2`.

@@ -165,6 +165,22 @@ uint64_t      semq_floor_changed_rows(const semq_floor_t* floor);
 uint64_t      semq_floor_total_rows(const semq_floor_t* floor);
 uint64_t      semq_floor_hamming(const semq_floor_t* floor);
 semq_status_t semq_diff_within(const semq_diff_t* diff, const semq_floor_t* floor, int* out, semq_error_t* err);
+semq_status_t semq_floor_create_with_max(const semq_config_t* config, uint32_t id_kind, const uint8_t* reference_id,
+                                   uint64_t nulls, uint64_t changed_rows, uint64_t total_rows, uint64_t hamming,
+                                   uint64_t max_hamming, semq_floor_t** out, semq_error_t* err);
+uint64_t      semq_floor_max_hamming(const semq_floor_t* floor);
+typedef struct semq_gate_options semq_gate_options_t;
+typedef struct semq_verdict      semq_verdict_t;
+semq_status_t semq_gate_options_create(semq_gate_options_t** out, semq_error_t* err);
+void          semq_gate_options_free(semq_gate_options_t* options);
+void          semq_gate_options_set_per_row(semq_gate_options_t* options, int enabled);
+semq_status_t semq_diff_evaluate(const semq_diff_t* diff, const semq_floor_t* floor,
+                                 const semq_gate_options_t* options, semq_verdict_t** out, semq_error_t* err);
+void          semq_verdict_free(semq_verdict_t* verdict);
+int           semq_verdict_passed(const semq_verdict_t* verdict);
+uint32_t      semq_verdict_reasons(const semq_verdict_t* verdict);
+uint64_t      semq_verdict_row_count(const semq_verdict_t* verdict);
+uint64_t      semq_verdict_row(const semq_verdict_t* verdict, uint64_t i);
 
 const char*   semq_core_version(void);
 const char*   semq_build_id(void);

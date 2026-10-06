@@ -315,9 +315,12 @@ def test_12_floor(case: dict[str, Any]) -> None:
                 assert d.within(floor)
         return
     d = Encoding.load(ROOT / "12-floor" / i["reference"]).diff(Encoding.load(ROOT / "12-floor" / i["candidate"]))
-    result = run_expecting(e, lambda: d.within(Floor.from_dict(i["floor"])))
-    if result is not None:
-        assert result == e["within"]
+    verdict = run_expecting(e, lambda: d.evaluate(Floor.from_dict(i["floor"]), per_row=i.get("per_row", False)))
+    if verdict is not None:
+        floor = Floor.from_dict(i["floor"])
+        assert floor.as_dict() == i["floor"]
+        assert verdict.as_dict() == e["evaluate"]
+        assert d.within(floor) == e["within"]
 
 
 @pytest.mark.parametrize("case", cases("13-report"))
@@ -345,5 +348,5 @@ def test_15_fp_environment(case: dict[str, Any]) -> None:
 
 
 def test_root_surface_is_generated_from_the_host_table() -> None:
-    assert len(semq.__all__) == 15
+    assert len(semq.__all__) == 16
     assert math.isfinite(CodecConfig.quant(4, 4).max_magnitude)

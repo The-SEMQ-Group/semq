@@ -32,7 +32,7 @@
 export { buildInfo, type BuildInfo } from "./build.js";
 export { Codec } from "./codec.js";
 export { CodecConfig, Operator } from "./config.js";
-export { Diff } from "./diff.js";
+export { Diff, type GateOptions, type Reason, type Verdict } from "./diff.js";
 export { Encoding } from "./encoding.js";
 export { FormatError, Incompatible, IntegrityError, InvalidInput, Native, Unsupported } from "./errors.js";
 export { Floor } from "./floor.js";

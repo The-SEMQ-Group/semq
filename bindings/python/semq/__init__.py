@@ -20,7 +20,7 @@ Errors: :class:`InvalidInput`, :class:`Incompatible`, :class:`FormatError`,
 from .build import BuildInfo, build_info
 from .codec import Codec
 from .config import CodecConfig, Operator
-from .diff import Diff
+from .diff import Diff, Verdict
 from .encoding import Encoding
 from .errors import (
     FormatError,
@@ -54,6 +54,7 @@ __all__ = [
     "Native",
     "Operator",
     "Unsupported",
+    "Verdict",
     "__version__",
     "build_info",
 ]

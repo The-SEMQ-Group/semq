@@ -26,8 +26,13 @@ use crate::ids::{ptr_or_null, IdKind};
 /// diff of another config, id kind or reference is `Incompatible`. No
 /// probabilistic coverage is claimed.
 ///
+/// A floor from [`measure`](Self::measure) also records
+/// [`max_hamming`](Self::max_hamming), the largest hamming of any changed
+/// row of any null, for the per-row check of
+/// [`Diff::evaluate`](crate::Diff::evaluate).
+///
 /// Immutable, freed on drop and safe to share between threads. Equality
-/// and hashing are those of the seven fields.
+/// and hashing are those of the eight fields.
 pub struct Floor {
     ptr: NonNull<sys::semq_floor_t>,
     config: CodecConfig,
@@ -73,6 +78,32 @@ impl Floor {
                 changed_rows,
                 total_rows,
                 hamming,
+                &mut out,
+                &mut err,
+            )
+        };
+        check(status, &err, "floor")?;
+        Self::from_raw(out, "floor")
+    }
+
+    /// This floor, also recording `max_hamming`: `hamming <= max_hamming <=
+    /// config.units_per_row()`, else `InvalidInput`.
+    pub fn with_max_hamming(&self, max_hamming: u64) -> Result<Floor> {
+        let mut out: *mut sys::semq_floor_t = ptr::null_mut();
+        let mut err = new_error();
+        let reference_id = self.reference_id();
+        // SAFETY: the config is a validated struct, `reference_id` holds 32
+        // readable bytes and every out-pointer is live for the call.
+        let status = unsafe {
+            sys::semq_floor_create_with_max(
+                self.config.as_raw(),
+                self.id_kind.as_raw(),
+                reference_id.as_ptr(),
+                self.nulls(),
+                self.changed_rows(),
+                self.total_rows(),
+                self.hamming(),
+                max_hamming,
                 &mut out,
                 &mut err,
             )
@@ -187,7 +218,18 @@ impl Floor {
         unsafe { sys::semq_floor_hamming(self.ptr.as_ptr()) }
     }
 
+    /// The largest hamming of any changed row of any null (`0` when no null
+    /// changed a row). `None` for a floor built without it, by
+    /// [`new`](Self::new) or from a `semq-floor/1` report.
+    pub fn max_hamming(&self) -> Option<u64> {
+        // SAFETY: the handle is live.
+        let v = unsafe { sys::semq_floor_max_hamming(self.ptr.as_ptr()) };
+        (v != sys::SEMQ_NONE).then_some(v)
+    }
+
     /// The `semq-floor/1` report as plain data, ready for any serializer.
+    /// It does not carry `max_hamming`; [`as_report_v2`](Self::as_report_v2)
+    /// does.
     pub fn as_report(&self) -> FloorReport {
         FloorReport {
             version: FloorReport::VERSION.to_owned(),
@@ -230,7 +272,61 @@ impl Floor {
         )
     }
 
-    fn fields(&self) -> (CodecConfig, IdKind, [u8; 32], u64, u64, u64, u64) {
+    /// The `semq-floor/2` report, with `max_hamming`; `None` for a floor
+    /// that does not record it.
+    pub fn as_report_v2(&self) -> Option<FloorReportV2> {
+        let r = self.as_report();
+        Some(FloorReportV2 {
+            version: FloorReportV2::VERSION.to_owned(),
+            config: r.config,
+            id_kind: r.id_kind,
+            reference_id: r.reference_id,
+            nulls: r.nulls,
+            changed_rows: r.changed_rows,
+            total_rows: r.total_rows,
+            hamming: r.hamming,
+            max_hamming: self.max_hamming()?,
+        })
+    }
+
+    /// The inverse of [`as_report_v2`](Self::as_report_v2), strictly:
+    /// `version` must be [`FloorReportV2::VERSION`] and the fields must
+    /// satisfy [`from_report`](Self::from_report) and
+    /// [`with_max_hamming`](Self::with_max_hamming); otherwise
+    /// `InvalidInput`.
+    pub fn from_report_v2(report: &FloorReportV2) -> Result<Floor> {
+        if report.version != FloorReportV2::VERSION {
+            return Err(Error::invalid(format!(
+                "floor.version must be {:?}",
+                FloorReportV2::VERSION
+            )));
+        }
+        let v1 = FloorReport {
+            version: FloorReport::VERSION.to_owned(),
+            config: report.config,
+            id_kind: report.id_kind.clone(),
+            reference_id: report.reference_id.clone(),
+            nulls: report.nulls,
+            changed_rows: report.changed_rows,
+            total_rows: report.total_rows,
+            hamming: report.hamming,
+        };
+        Floor::from_report(&v1)?.with_max_hamming(report.max_hamming)
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn fields(
+        &self,
+    ) -> (
+        CodecConfig,
+        IdKind,
+        [u8; 32],
+        u64,
+        u64,
+        u64,
+        u64,
+        Option<u64>,
+    ) {
         (
             self.config,
             self.id_kind,
@@ -239,6 +335,7 @@ impl Floor {
             self.changed_rows(),
             self.total_rows(),
             self.hamming(),
+            self.max_hamming(),
         )
     }
 }
@@ -282,6 +379,7 @@ impl fmt::Debug for Floor {
             .field("changed_rows", &self.changed_rows())
             .field("total_rows", &self.total_rows())
             .field("hamming", &self.hamming())
+            .field("max_hamming", &self.max_hamming())
             .finish()
     }
 }
@@ -319,6 +417,37 @@ pub struct FloorReport {
 impl FloorReport {
     /// The schema version every report carries.
     pub const VERSION: &'static str = "semq-floor/1";
+}
+
+/// A [`Floor`] as plain data in the `semq-floor/2` schema: the fields of
+/// [`FloorReport`] in the same order, then `max_hamming`, an integer.
+/// `version` is `"semq-floor/2"`. [`Floor::from_report_v2`] is the strict
+/// inverse.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FloorReportV2 {
+    /// The schema version, [`VERSION`](Self::VERSION).
+    pub version: String,
+    /// The config the nulls were measured under.
+    pub config: CodecConfig,
+    /// `"u64"` or `"utf8"`.
+    pub id_kind: String,
+    /// The reference's `state_id`, hex.
+    pub reference_id: String,
+    /// How many null diffs the floor was measured from.
+    pub nulls: u64,
+    /// Numerator of the admitted fraction of changed rows.
+    pub changed_rows: u64,
+    /// Denominator of the admitted fraction of changed rows.
+    pub total_rows: u64,
+    /// Largest admitted p99 hamming distance over changed rows.
+    pub hamming: u64,
+    /// Largest hamming of any changed row of any null.
+    pub max_hamming: u64,
+}
+
+impl FloorReportV2 {
+    /// The schema version every report carries.
+    pub const VERSION: &'static str = "semq-floor/2";
 }
 
 /// Exactly 64 hex digits (either case) as 32 bytes.

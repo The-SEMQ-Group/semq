@@ -1029,6 +1029,119 @@ static void test_p99_nearest_rank(void) {
     free(cand);
 }
 
+/* An encoding of n rows of quant(128, 4) where row i flips `flips[i]` units. */
+static semq_encoding_t* rows_flipped(uint64_t n, const uint32_t* flips) {
+    semq_config_t c;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_config_quant(128u, 4u, &c, NULL));
+    const uint32_t bpv = semq_config_bytes_per_vector(&c);
+    uint64_t* ids = (uint64_t*)malloc((size_t)n * sizeof(uint64_t));
+    uint8_t* rows = (uint8_t*)calloc((size_t)n, bpv);
+    TEST_ASSERT_NOT_NULL(ids);
+    TEST_ASSERT_NOT_NULL(rows);
+    for (uint64_t i = 0u; i < n; i++) {
+        uint8_t sym[128];
+        memset(sym, 4, sizeof(sym));
+        for (uint32_t u = 0u; flips != NULL && u < flips[i]; u++) sym[u] = 5u;
+        ids[i] = i;
+        pack_quant(sym, 128u, 3u, rows + i * bpv, bpv);
+    }
+    semq_encoding_t* e = create_u64(&c, ids, n, rows, NULL, 0u);
+    free(ids);
+    free(rows);
+    return e;
+}
+
+static void test_evaluate_per_row(void) {
+    /* Null: rows 0..99 of 200 change by 2 units. Candidate: rows 0..98 change
+     * by 2 and row 150 by 90. The candidate's p99 ignores its one most-changed
+     * row, so it is within; the per-row check flags row 150. */
+    uint32_t null_flips[200] = { 0 }, cand_flips[200] = { 0 };
+    for (uint32_t i = 0u; i < 100u; i++) null_flips[i] = 2u;
+    for (uint32_t i = 0u; i < 99u; i++) cand_flips[i] = 2u;
+    cand_flips[150] = 90u;
+    semq_encoding_t* ref = rows_flipped(200u, NULL);
+    semq_encoding_t* nul = rows_flipped(200u, null_flips);
+    semq_encoding_t* cand = rows_flipped(200u, cand_flips);
+    semq_diff_t* dn = NULL; semq_diff_t* dc = NULL;
+    semq_error_t err;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_encoding_diff(ref, nul, &dn, &err));
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_encoding_diff(ref, cand, &dc, &err));
+    const semq_diff_t* nulls[1] = { dn };
+    semq_floor_t* f = NULL;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_measure(nulls, 1u, &f, &err));
+    TEST_ASSERT_EQUAL_UINT64(2u, semq_floor_hamming(f));
+    TEST_ASSERT_EQUAL_UINT64(2u, semq_floor_max_hamming(f));
+
+    int w = 0;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_diff_within(dc, f, &w, &err));
+    TEST_ASSERT_TRUE(w);
+    /* No options: the same verdict as within, and no rows. */
+    semq_verdict_t* v = NULL;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_diff_evaluate(dc, f, NULL, &v, &err));
+    TEST_ASSERT_TRUE(semq_verdict_passed(v));
+    TEST_ASSERT_EQUAL_UINT32(0u, semq_verdict_reasons(v));
+    TEST_ASSERT_EQUAL_UINT64(0u, semq_verdict_row_count(v));
+    semq_verdict_free(v);
+    /* Per-row: fails on row 150, the 100th changed row in canonical order. */
+    semq_gate_options_t* o = NULL;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_gate_options_create(&o, &err));
+    semq_gate_options_set_per_row(o, 1);
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_diff_evaluate(dc, f, o, &v, &err));
+    TEST_ASSERT_FALSE(semq_verdict_passed(v));
+    TEST_ASSERT_EQUAL_UINT32((uint32_t)SEMQ_REASON_ROW_ABOVE_MAX, semq_verdict_reasons(v));
+    TEST_ASSERT_EQUAL_UINT64(1u, semq_verdict_row_count(v));
+    TEST_ASSERT_EQUAL_UINT64(99u, semq_verdict_row(v, 0u));
+    TEST_ASSERT_EQUAL_UINT64(SEMQ_NONE, semq_verdict_row(v, 1u));
+    uint64_t id = 0u;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_diff_id(dc, SEMQ_LIST_CHANGED, 99u, &id, NULL, NULL, &err));
+    TEST_ASSERT_EQUAL_UINT64(150u, id);
+    semq_verdict_free(v);
+    /* Every null is within its floor under the per-row check too. */
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_diff_evaluate(dn, f, o, &v, &err));
+    TEST_ASSERT_TRUE(semq_verdict_passed(v));
+    semq_verdict_free(v);
+
+    /* A floor without max_hamming (semq-floor/1) refuses the per-row check
+     * and keeps its verdicts otherwise. */
+    uint8_t rid[32];
+    semq_diff_reference_id(dc, rid);
+    semq_floor_t* f1 = NULL;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_create(semq_diff_config(dc), SEMQ_ID_U64, rid, 1u, 100u, 200u, 2u, &f1, &err));
+    TEST_ASSERT_EQUAL_UINT64(SEMQ_NONE, semq_floor_max_hamming(f1));
+    TEST_ASSERT_EQUAL_INT(SEMQ_ERR_INCOMPATIBLE, semq_diff_evaluate(dc, f1, o, &v, &err));
+    TEST_ASSERT_NULL(v);
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_diff_evaluate(dc, f1, NULL, &v, &err));
+    TEST_ASSERT_TRUE(semq_verdict_passed(v));
+    semq_verdict_free(v);
+
+    /* Every failed check is reported, not only the first. */
+    semq_floor_t* tight = NULL;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_create_with_max(semq_diff_config(dc), SEMQ_ID_U64, rid, 1u, 1u, 200u, 1u, 1u, &tight, &err));
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_diff_evaluate(dc, tight, o, &v, &err));
+    TEST_ASSERT_EQUAL_UINT32((uint32_t)(SEMQ_REASON_CHANGED_RATIO | SEMQ_REASON_HAMMING | SEMQ_REASON_ROW_ABOVE_MAX),
+                             semq_verdict_reasons(v));
+    TEST_ASSERT_EQUAL_UINT64(100u, semq_verdict_row_count(v));
+    semq_verdict_free(v);
+    semq_floor_free(tight);
+
+    /* Construction rules of a floor with max_hamming. */
+    semq_floor_t* none = NULL;
+    const semq_config_t* c = semq_diff_config(dc);
+    TEST_ASSERT_EQUAL_INT(SEMQ_ERR_INVALID_INPUT, semq_floor_create_with_max(c, SEMQ_ID_U64, rid, 1u, 1u, 1u, 3u, 2u, &none, &err));
+    TEST_ASSERT_EQUAL_INT(SEMQ_ERR_INVALID_INPUT, semq_floor_create_with_max(c, SEMQ_ID_U64, rid, 1u, 1u, 1u, 3u, 129u, &none, &err));
+    TEST_ASSERT_EQUAL_INT(SEMQ_ERR_INVALID_INPUT, semq_floor_create_with_max(c, SEMQ_ID_U64, rid, 1u, 1u, 1u, 3u, SEMQ_NONE, &none, &err));
+    TEST_ASSERT_NULL(none);
+
+    semq_gate_options_free(o);
+    semq_floor_free(f1);
+    semq_floor_free(f);
+    semq_diff_free(dc);
+    semq_diff_free(dn);
+    semq_encoding_free(cand);
+    semq_encoding_free(nul);
+    semq_encoding_free(ref);
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Build info                                                                */
 /* -------------------------------------------------------------------------- */
@@ -1093,6 +1206,7 @@ int main(void) {
     RUN_TEST(test_diff_lists_units_and_manifest);
     RUN_TEST(test_floor_measure_and_within);
     RUN_TEST(test_p99_nearest_rank);
+    RUN_TEST(test_evaluate_per_row);
     RUN_TEST(test_build_info);
     return UNITY_END();
 }

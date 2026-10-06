@@ -14,6 +14,30 @@ const LIST_ADDED = ABI.constants.SEMQ_LIST_ADDED;
 const LIST_REMOVED = ABI.constants.SEMQ_LIST_REMOVED;
 const LIST_CHANGED = ABI.constants.SEMQ_LIST_CHANGED;
 
+/** A check that failed in a {@link Verdict}; the same names in every binding. */
+export type Reason = "no_common_rows" | "removed_rows" | "changed_ratio" | "hamming" | "encoder" | "row_above_max";
+
+/** The reasons by bit of `semq_reason_t`, in the order a verdict lists them. */
+const REASONS: readonly Reason[] = ["no_common_rows", "removed_rows", "changed_ratio", "hamming", "encoder", "row_above_max"];
+
+/** Which checks {@link Diff.evaluate} applies beyond those of {@link Diff.within}; every check is off by default. */
+export interface GateOptions {
+  /** Also fail when any changed row has a hamming above the floor's `maxHamming`, and list those rows. */
+  perRow?: boolean;
+}
+
+/** The result of {@link Diff.evaluate}. */
+export interface Verdict {
+  /** True iff no check failed. */
+  passed: boolean;
+  /** Every failed check, in the order `no_common_rows`, `removed_rows`,
+   * `changed_ratio`, `hamming`, `encoder`, `row_above_max`. */
+  reasons: Reason[];
+  /** Ids of the changed rows above the floor's `maxHamming`, canonical order;
+   * empty unless the per-row check ran. */
+  rows: Array<bigint | string>;
+}
+
 /**
  * The result of `reference.diff(candidate)`. Keeps the rows it needs alive
  * until {@link Diff.dispose} or the finalizer runs, even after the caller
@@ -226,6 +250,45 @@ export class Diff {
       call(r, "within", (err) => r.core.diffWithin(h, f, out, err));
       return r.w.getU32(out) !== 0;
     });
+  }
+
+  /**
+   * The verdict of `floor` on this diff, with every check that failed.
+   *
+   * With no options, `passed` equals {@link Diff.within}. With
+   * `perRow: true` the verdict also fails when any changed row has a hamming
+   * above `floor.maxHamming`, and `rows` lists those ids. `Incompatible` for
+   * a floor of another config, id kind or reference, and for the per-row
+   * check on a floor without `maxHamming`.
+   */
+  evaluate(floor: Floor, options: GateOptions = {}): Verdict {
+    const h = this.handle;
+    const r = this.r;
+    if (!(floor instanceof Floor)) throw new InvalidInput("evaluate takes a Floor");
+    if (options === null || typeof options !== "object") throw new InvalidInput("evaluate options must be an object");
+    const f = floor.handle;
+    const { reasons, rows } = scoped(r.w, (a) => {
+      const out = a.alloc(4);
+      call(r, "evaluate", (err) => r.core.gateOptionsCreate(out, err));
+      const opts = r.w.getU32(out);
+      try {
+        r.core.gateOptionsSetPerRow(opts, options.perRow === true ? 1 : 0);
+        call(r, "evaluate", (err) => r.core.diffEvaluate(h, f, opts, out, err));
+      } finally {
+        r.core.gateOptionsFree(opts);
+      }
+      const v = r.w.getU32(out);
+      try {
+        const n = Number(r.core.verdictRowCount(v));
+        const indices = Array.from({ length: n }, (_, i) => Number(r.core.verdictRow(v, BigInt(i))));
+        return { reasons: r.core.verdictReasons(v), rows: indices };
+      } finally {
+        r.core.verdictFree(v);
+      }
+    });
+    const changed: Array<bigint | string> = rows.length > 0 ? this.list(LIST_CHANGED) : [];
+    const names = REASONS.filter((_, bit) => (reasons & (1 << bit)) !== 0);
+    return { passed: names.length === 0, reasons: names, rows: rows.map((i) => changed[i]!) };
   }
 
   /** The report schema: digests as lowercase hex, `u64` ids as decimal
