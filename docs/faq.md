@@ -42,6 +42,14 @@ id kind, reference, number of nulls) and applies only to diffs against that
 reference. It is an envelope of observation, not a probability. See
 [Gate a rebuild](guides/gate-a-rebuild.md).
 
+## Does the gate detect a single altered document?
+
+Not always. `within` judges a candidate as a whole, and its p99 ignores the
+1% most-changed rows, so a few heavily changed documents can pass it. The
+diff lists every changed row with its hamming distance; see
+[what the verdict does not catch](guides/gate-a-rebuild.md#what-the-verdict-does-not-catch)
+for how to flag them.
+
 ## Why does `within` ignore added rows?
 
 A rebuild may ingest new documents. The gate cannot judge rows that have no

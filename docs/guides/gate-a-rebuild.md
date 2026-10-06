@@ -104,6 +104,42 @@ you can judge them. The floor is an envelope of what you observed, taken
 component-wise over the nulls; it does not estimate the probability of the
 next rebuild.
 
+### What the verdict does not catch
+
+`within` judges the candidate as a whole. Its hamming check uses the p99,
+which ignores the `floor(m / 100)` most-changed rows of a diff with `m`
+changed rows, so that one unusual row of noise does not fail the gate. A few
+rows that changed far more than any noise can therefore still be within:
+for example, two documents replaced entirely among about 230 rows moved by
+noise. The diff still lists them: `changed` holds every changed row with its
+hamming distance.
+
+To flag individual rows, keep the null diffs, or the null states that
+produce them; `floor.json` does not record them. Then compare each changed
+row of the candidate with the largest hamming any null showed:
+
+```python
+from semq import Encoding
+
+reference = Encoding.load("reference.semq")
+null_diffs = [reference.diff(Encoding.load(f"null-{k}.semq")) for k in (1, 2, 3)]
+diff = reference.diff(Encoding.load("candidate.semq"))
+
+noise = max((h for null in null_diffs for _, h in null.changed), default=0)
+suspects = [id for id, h in diff.changed if h > noise]
+print(suspects)
+```
+
+That bound is also the largest value of a few rebuilds. When the noise
+varies, an unchanged row can exceed it too, so use as many nulls as
+[How many null rebuilds](#how-many-null-rebuilds) suggests. A change no
+larger than the noise cannot be told apart from noise by any check.
+
+When the pipeline is deterministic, a rebuild with no change has the same
+`state_id` as the reference, so every changed row is a real change. Compare
+`state_id` values, or require a diff with no changed rows; no floor is
+needed.
+
 ## Encode a large corpus in batches
 
 For a corpus that does not fit in memory as one float32 matrix, encode
