@@ -432,16 +432,17 @@ SEMQ_API semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_fl
             case K_CONFIG: ok = config(&r, &cfg); break;
             case K_ID_KIND: ok = choice(&r, kinds, 2, &kind, "floor.id_kind must be \"u64\" or \"utf8\""); break;
             case K_REFERENCE_ID: {
-                uint8_t text[64];
-                size_t n;
+                uint8_t text[64] = { 0 };
+                size_t n = 0u;
                 ws(&r);
                 ok = r.p < r.end && *r.p == '"' ? string(&r, text, sizeof(text), &n)
                                                  : fail(&r, "floor.reference_id must be 64 hex characters");
+                if (ok && n != 64u) ok = fail(&r, "floor.reference_id must be 64 hex characters");
                 for (size_t i = 0u; ok && i < 64u; i++) {
                     const uint8_t c = text[i];
                     const int d = c >= '0' && c <= '9' ? c - '0' : c >= 'a' && c <= 'f' ? c - 'a' + 10
                                 : c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1;
-                    if (n != 64u || d < 0) {
+                    if (d < 0) {
                         ok = fail(&r, "floor.reference_id must be 64 hex characters");
                         break;
                     }
@@ -449,8 +450,12 @@ SEMQ_API semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_fl
                 }
                 break;
             }
-            case -1: ok = skip(&r, 1); break;
-            default: ok = count(&r, &counts[k], COUNT_ERRORS[k]); break;
+            case K_NULLS:
+            case K_CHANGED_ROWS:
+            case K_TOTAL_ROWS:
+            case K_HAMMING:
+            case K_MAX_HAMMING: ok = count(&r, &counts[k], COUNT_ERRORS[k]); break;
+            default: ok = skip(&r, 1); break; /* unknown key */
             }
             if (ok) ok = next(&r, &more);
         }
