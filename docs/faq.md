@@ -39,8 +39,11 @@ The variation your own rebuilds show when nothing changed on purpose: the
 worst ratio of changed rows and the largest p99 hamming across the null
 rebuilds you measured. The floor remembers where it was measured (config,
 id kind, reference, number of nulls) and applies only to diffs against that
-reference. It is an envelope of observation, not a probability. See
-[Gate a rebuild](guides/gate-a-rebuild.md).
+reference. It is an envelope of observation, not a probability. If your
+rebuilds vary from run to run, a floor measured from few of them rejects
+unchanged rebuilds often; see
+[how many null rebuilds](guides/gate-a-rebuild.md#how-many-null-rebuilds) in
+Gate a rebuild.
 
 ## Why does `within` ignore added rows?
 

@@ -64,6 +64,33 @@ explicitly. It exits `2` and prints nothing on stdout when an input is not a
 valid null diff (rows added or removed, the encoder keys changed, or a null
 of another reference).
 
+### How many null rebuilds
+
+First check whether your rebuilds vary at all: rebuild the unchanged corpus
+twice and compare the two `state_id` values. If they are equal, the pipeline
+is deterministic. Every rebuild with no change then reproduces the reference
+exactly, three nulls are enough, and the floor admits no changed rows.
+
+If they differ, the noise varies from one rebuild to the next, for example
+with non-deterministic GPU kernels, inference servers that batch requests
+dynamically, or external embedding APIs. The floor keeps the largest ratio
+and the largest p99 hamming seen in the nulls. With `n` nulls, a new rebuild
+with no change is the largest of the `n + 1` for each of those two numbers
+with probability `1 / (n + 1)`, so the gate rejects it with probability up
+to `2 / (n + 1)`:
+
+| Null rebuilds | Unchanged rebuilds rejected, at most |
+| --- | --- |
+| 3 | 50% |
+| 5 | 33% |
+| 10 | 18% |
+| 20 | 10% |
+| 40 | 5% |
+
+Produce the nulls in the environment that produces candidates, and use as
+many as your tolerance for rejected unchanged rebuilds requires.
+`semq floor --min-nulls N` refuses to measure from fewer than `N`.
+
 ## 3. Gate the candidate
 
 ```sh
