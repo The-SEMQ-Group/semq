@@ -83,6 +83,8 @@ exits `0`.
 Add `--per-row` to also fail when any changed row moved more than any row of
 any null did. The p99 ignores the most changed 1% of rows, so a few rows
 with a large change can pass without it; with it, stderr lists those rows.
+It also rejects clean rebuilds a little more often, so measure more nulls
+(about 20) when you use it.
 
 The same verdict is available in code:
 
