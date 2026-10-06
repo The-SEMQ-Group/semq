@@ -133,6 +133,7 @@ set(SEMQ_CORE_SOURCES
     src/semq_encoding.c
     src/semq_file.c
     src/semq_floor.c
+    src/semq_floor_json.c
     src/semq_ids.c
     src/semq_manifest.c
     src/semq_sha256.c
@@ -280,7 +281,7 @@ if(EMSCRIPTEN)
         "-sALLOW_MEMORY_GROWTH=1"
         "-sEXPORT_NAME=createSemqModule"
         "-sEXPORTED_RUNTIME_METHODS=ccall,cwrap,getValue,setValue,UTF8ToString,HEAPU8,HEAPF32,HEAPF64,HEAPU32,HEAP32"
-        "-sEXPORTED_FUNCTIONS=_malloc,_free,_semq_config_orbit,_semq_config_phase,_semq_config_quant,_semq_config_validate,_semq_config_to_bytes,_semq_config_from_bytes,_semq_config_bytes_per_vector,_semq_config_units_per_row,_semq_config_max_magnitude,_semq_config_equal,_semq_codec_create,_semq_codec_free,_semq_codec_config,_semq_codec_backend,_semq_codec_encode,_semq_codec_decode,_semq_codec_unpack,_semq_encoding_create,_semq_encoding_free,_semq_encoding_config,_semq_encoding_id_kind,_semq_encoding_len,_semq_encoding_rows,_semq_encoding_ids_u64,_semq_encoding_ids_utf8_offsets,_semq_encoding_ids_utf8_bytes,_semq_encoding_manifest_len,_semq_encoding_manifest_pair,_semq_encoding_content_digest,_semq_encoding_state_id,_semq_encoding_find_u64,_semq_encoding_find_utf8,_semq_encoding_file_size,_semq_encoding_save_parts,_semq_encoding_save,_semq_encoding_load,_semq_encoding_concat,_semq_encoding_diff,_semq_diff_free,_semq_diff_config,_semq_diff_id_kind,_semq_diff_reference_id,_semq_diff_candidate_id,_semq_diff_count,_semq_diff_n_unchanged,_semq_diff_id,_semq_diff_hamming,_semq_diff_manifest_changes,_semq_diff_manifest_change,_semq_diff_units_u64,_semq_diff_units_utf8,_semq_floor_create,_semq_floor_create_with_max,_semq_floor_free,_semq_floor_measure,_semq_floor_config,_semq_floor_id_kind,_semq_floor_reference_id,_semq_floor_nulls,_semq_floor_changed_rows,_semq_floor_total_rows,_semq_floor_hamming,_semq_floor_max_hamming,_semq_diff_within,_semq_gate_options_create,_semq_gate_options_free,_semq_gate_options_set_per_row,_semq_diff_evaluate,_semq_verdict_free,_semq_verdict_passed,_semq_verdict_reasons,_semq_verdict_row_count,_semq_verdict_row,_semq_core_version,_semq_build_id,_semq_backend_name,_semq_status_name,_semq_sha256")
+        "-sEXPORTED_FUNCTIONS=_malloc,_free,_semq_config_orbit,_semq_config_phase,_semq_config_quant,_semq_config_validate,_semq_config_to_bytes,_semq_config_from_bytes,_semq_config_bytes_per_vector,_semq_config_units_per_row,_semq_config_max_magnitude,_semq_config_equal,_semq_codec_create,_semq_codec_free,_semq_codec_config,_semq_codec_backend,_semq_codec_encode,_semq_codec_decode,_semq_codec_unpack,_semq_encoding_create,_semq_encoding_free,_semq_encoding_config,_semq_encoding_id_kind,_semq_encoding_len,_semq_encoding_rows,_semq_encoding_ids_u64,_semq_encoding_ids_utf8_offsets,_semq_encoding_ids_utf8_bytes,_semq_encoding_manifest_len,_semq_encoding_manifest_pair,_semq_encoding_content_digest,_semq_encoding_state_id,_semq_encoding_find_u64,_semq_encoding_find_utf8,_semq_encoding_file_size,_semq_encoding_save_parts,_semq_encoding_save,_semq_encoding_load,_semq_encoding_concat,_semq_encoding_diff,_semq_diff_free,_semq_diff_config,_semq_diff_id_kind,_semq_diff_reference_id,_semq_diff_candidate_id,_semq_diff_count,_semq_diff_n_unchanged,_semq_diff_id,_semq_diff_hamming,_semq_diff_manifest_changes,_semq_diff_manifest_change,_semq_diff_units_u64,_semq_diff_units_utf8,_semq_floor_create,_semq_floor_create_with_max,_semq_floor_free,_semq_floor_measure,_semq_floor_config,_semq_floor_id_kind,_semq_floor_reference_id,_semq_floor_nulls,_semq_floor_changed_rows,_semq_floor_total_rows,_semq_floor_hamming,_semq_floor_max_hamming,_semq_floor_json_size,_semq_floor_save,_semq_floor_load,_semq_diff_within,_semq_gate_options_create,_semq_gate_options_free,_semq_gate_options_set_per_row,_semq_diff_evaluate,_semq_verdict_free,_semq_verdict_passed,_semq_verdict_reasons,_semq_verdict_row_count,_semq_verdict_row,_semq_core_version,_semq_build_id,_semq_backend_name,_semq_status_name,_semq_sha256")
 endif()
 
 # ---------------------------------------------------------------------------
@@ -338,7 +339,7 @@ if(SEMQ_BUILD_TESTS)
     add_executable(fuzz_load_smoke tests/fuzz/load.c tests/fuzz/smoke.c)
     target_include_directories(fuzz_load_smoke PRIVATE include src)
     target_link_libraries(fuzz_load_smoke PRIVATE semq_static)
-    file(GLOB_RECURSE SEMQ_FUZZ_SEEDS CONFIGURE_DEPENDS "tests/conformance/*.semq")
+    file(GLOB_RECURSE SEMQ_FUZZ_SEEDS CONFIGURE_DEPENDS "tests/conformance/*.semq" "tests/conformance/*/floor-*.json")
     add_test(NAME fuzz.reader_smoke COMMAND fuzz_load_smoke ${SEMQ_FUZZ_SEEDS})
 
     add_executable(test_core tests/unit/test_core.c)

@@ -1142,6 +1142,113 @@ static void test_evaluate_per_row(void) {
     semq_encoding_free(ref);
 }
 
+static semq_status_t load_text(const char* text, semq_floor_t** out) {
+    semq_error_t err;
+    return semq_floor_load((const uint8_t*)text, strlen(text), out, &err);
+}
+
+static void test_floor_json(void) {
+    uint32_t flips[200] = { 0 };
+    for (uint32_t i = 0u; i < 100u; i++) flips[i] = 2u;
+    flips[7] = 9u;
+    semq_encoding_t* ref = rows_flipped(200u, NULL);
+    semq_encoding_t* nul = rows_flipped(200u, flips);
+    semq_diff_t* d = NULL;
+    semq_error_t err;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_encoding_diff(ref, nul, &d, &err));
+    const semq_diff_t* nulls[1] = { d };
+    semq_floor_t* f = NULL;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_measure(nulls, 1u, &f, &err));
+
+    /* Written form: one object, schema key order, no whitespace. */
+    char text[512];
+    const uint64_t n = semq_floor_json_size(f);
+    TEST_ASSERT_TRUE(n < sizeof(text));
+    TEST_ASSERT_EQUAL_INT(SEMQ_ERR_INVALID_INPUT, semq_floor_save(f, (uint8_t*)text, n - 1u, &err));
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_save(f, (uint8_t*)text, n, &err));
+    text[n] = '\0';
+    uint8_t rid[32];
+    semq_floor_reference_id(f, rid);
+    char want[512] = "{\"version\":\"semq-floor/1\",\"config\":{\"operator\":\"quant\",\"dim\":128,\"bins\":4,"
+                     "\"rule_revision\":0},\"id_kind\":\"u64\",\"reference_id\":\"";
+    for (int i = 0; i < 32; i++) snprintf(want + strlen(want), 3, "%02x", rid[i]);
+    strcat(want, "\",\"nulls\":1,\"changed_rows\":100,\"total_rows\":200,\"hamming\":2,\"max_hamming\":9}");
+    TEST_ASSERT_EQUAL_STRING(want, text);
+
+    /* It reads back as the same floor, through whitespace and unknown keys. */
+    semq_floor_t* g = NULL;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, load_text(text, &g));
+    TEST_ASSERT_EQUAL_UINT64(9u, semq_floor_max_hamming(g));
+    TEST_ASSERT_EQUAL_UINT64(2u, semq_floor_hamming(g));
+    semq_floor_free(g);
+    char extra[1024];
+    snprintf(extra, sizeof(extra), " { \"note\" : {\"a\": [1, -2.5e3, \"\\u00e9\\ud83d\\ude00\", true, null, {}]},%s ",
+             text + 1);
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, load_text(extra, &g));
+    TEST_ASSERT_EQUAL_UINT64(9u, semq_floor_max_hamming(g));
+    semq_floor_free(g);
+
+    /* max_hamming is optional: without it the floor does not record it, and saves without it. */
+    char* cut = strstr(text, ",\"max_hamming\"");
+    TEST_ASSERT_NOT_NULL(cut);
+    strcpy(cut, "}");
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, load_text(text, &g));
+    TEST_ASSERT_EQUAL_UINT64(SEMQ_NONE, semq_floor_max_hamming(g));
+    char back[512];
+    const uint64_t m = semq_floor_json_size(g);
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_save(g, (uint8_t*)back, m, &err));
+    back[m] = '\0';
+    TEST_ASSERT_EQUAL_STRING(text, back);
+    semq_floor_free(g);
+
+    /* Every violation is InvalidInput and allocates nothing. */
+    const char* body = text + 1; /* "version":... without the opening brace */
+    const char* replace[][2] = {
+        { "\"nulls\":1", "\"nulls\":1.0" }, { "\"nulls\":1", "\"nulls\":1e0" }, { "\"nulls\":1", "\"nulls\":-1" },
+        { "\"nulls\":1", "\"nulls\":\"1\"" }, { "\"nulls\":1", "\"nulls\":true" }, { "\"nulls\":1", "\"nulls\":null" },
+        { "\"nulls\":1", "\"nulls\":01" }, { "\"nulls\":1", "\"nulls\":18446744073709551616" },
+        { "\"nulls\":1", "\"nulls\":0" }, { "\"hamming\":2", "\"hamming\":129" },
+        { "\"hamming\":2}", "\"hamming\":2,\"max_hamming\":1}" }, { "\"hamming\":2}", "\"hamming\":2,\"max_hamming\":129}" },
+        { "\"hamming\":2}", "\"hamming\":2,\"max_hamming\":18446744073709551615}" },
+        { "\"hamming\":2}", "\"hamming\":2,\"nulls\":1}" }, { "semq-floor/1", "semq-floor/2" },
+        { "\"bins\":4", "\"bins\":4,\"sectors\":4" }, { "\"bins\":4", "\"sectors\":4" },
+        { "\"rule_revision\":0", "\"rule_revision\":1" }, { "\"dim\":128", "\"dim\":4294967296" },
+        { "\"u64\"", "\"u32\"" }, { "\"reference_id\":\"", "\"reference_id\":\"0" },
+        { "\"hamming\":2}", "\"hamming\":2} x" }, { "\"hamming\":2}", "\"hamming\":2,}" },
+        { "\"hamming\":2}", "\"hamming\":2,\"x\":\"\\ud800\"}" }, { "\"hamming\":2}", "\"hamming\":2,\"x\":\"\xff\"}" },
+        { "\"hamming\":2}", "\"hamming\":2,\"x\":\"\x01\"}" }, { ",\"hamming\":2", "" },
+    };
+    for (size_t i = 0u; i < sizeof(replace) / sizeof(replace[0]); i++) {
+        char bad[1024];
+        const char* at = strstr(text, replace[i][0]);
+        TEST_ASSERT_NOT_NULL_MESSAGE(at, replace[i][0]);
+        const size_t head = (size_t)(at - text);
+        snprintf(bad, sizeof(bad), "%.*s%s%s", (int)head, text, replace[i][1], at + strlen(replace[i][0]));
+        g = (semq_floor_t*)1;
+        TEST_ASSERT_EQUAL_INT_MESSAGE(SEMQ_ERR_INVALID_INPUT, load_text(bad, &g), bad);
+        TEST_ASSERT_NULL(g);
+    }
+    /* An ignored value nests up to 64 levels, the floor object included. */
+    for (int arrays = 63; arrays <= 64; arrays++) {
+        char nested[1024] = "{\"x\":";
+        for (int i = 0; i < arrays; i++) strcat(nested, "[");
+        for (int i = 0; i < arrays; i++) strcat(nested, "]");
+        strcat(nested, ",");
+        strcat(nested, body);
+        TEST_ASSERT_EQUAL_INT_MESSAGE(arrays == 63 ? SEMQ_OK : SEMQ_ERR_INVALID_INPUT, load_text(nested, &g), nested);
+        if (arrays == 63) semq_floor_free(g);
+    }
+    const char* garbage[] = { "", "[]", "{}", "null", "{\"version\":\"semq-floor/1\"}", "{" };
+    for (size_t i = 0u; i < sizeof(garbage) / sizeof(garbage[0]); i++) {
+        TEST_ASSERT_EQUAL_INT_MESSAGE(SEMQ_ERR_INVALID_INPUT, load_text(garbage[i], &g), garbage[i]);
+    }
+
+    semq_floor_free(f);
+    semq_diff_free(d);
+    semq_encoding_free(nul);
+    semq_encoding_free(ref);
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Build info                                                                */
 /* -------------------------------------------------------------------------- */
@@ -1207,6 +1314,7 @@ int main(void) {
     RUN_TEST(test_floor_measure_and_within);
     RUN_TEST(test_p99_nearest_rank);
     RUN_TEST(test_evaluate_per_row);
+    RUN_TEST(test_floor_json);
     RUN_TEST(test_build_info);
     return UNITY_END();
 }

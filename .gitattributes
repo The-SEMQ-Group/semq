@@ -9,6 +9,8 @@
 # The conformance manifests are compared byte for byte with the generator's
 # output, which writes LF; a checkout must not convert their line endings.
 tests/conformance/**/*.json text eol=lf
+# Floor JSON fixtures include invalid UTF-8 and control bytes on purpose.
+tests/conformance/**/floor-*.json binary
 
 # The Go module's copy of the C core, written by tools/gen_go_core.py from
 # include/ and src/. Marked generated so reviews collapse it; edit src/ instead.

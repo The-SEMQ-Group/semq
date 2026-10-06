@@ -33,8 +33,8 @@ use std::panic::{self, AssertUnwindSafe};
 use std::path::{Path, PathBuf};
 
 use semq::{
-    Codec, CodecConfig, Diff, DiffReport, Encoding, Error, Floor, FloorReport, FloorReportV2,
-    GateOptions, Id, Ids, Manifest, Which,
+    Codec, CodecConfig, Diff, DiffReport, Encoding, Error, Floor, GateOptions, Id, Ids, Manifest,
+    Which,
 };
 use serde_json::{json, Map, Value};
 
@@ -522,19 +522,6 @@ fn diff_report_value(report: &DiffReport) -> Value {
     })
 }
 
-fn floor_report_value(report: &FloorReport) -> Value {
-    json!({
-        "version": report.version,
-        "config": config_value(&report.config),
-        "id_kind": report.id_kind,
-        "reference_id": report.reference_id,
-        "nulls": report.nulls,
-        "changed_rows": report.changed_rows,
-        "total_rows": report.total_rows,
-        "hamming": report.hamming,
-    })
-}
-
 /// Compare the report form of `diff` with the expected object.
 fn assert_report(diff: &Diff, want: &Value) -> Result<(), String> {
     let got = diff_report_value(&diff.as_report());
@@ -542,56 +529,22 @@ fn assert_report(diff: &Diff, want: &Value) -> Result<(), String> {
     Ok(())
 }
 
-/// The report form of `floor`: `semq-floor/2` when it records
-/// `max_hamming`, `semq-floor/1` otherwise.
+/// The floor's JSON form, parsed.
 fn floor_value(floor: &Floor) -> Value {
-    let mut value = floor_report_value(&floor.as_report());
-    if let Some(v2) = floor.as_report_v2() {
-        value["version"] = json!(v2.version);
-        value["max_hamming"] = json!(v2.max_hamming);
-    }
-    value
+    serde_json::from_str(&floor.to_json()).expect("the core writes valid JSON")
 }
 
-/// Compare the report form of `floor` with the expected object.
+/// Compare the JSON form of `floor` with the expected object.
 fn assert_floor(floor: &Floor, want: &Value) -> Result<(), String> {
     let got = floor_value(floor);
     ensure!(&got == want, "floor:\n got {got}\nwant {want}");
     Ok(())
 }
 
-/// The floor a manifest gives in the report form; the inner result is the
-/// host's verdict on that form.
+/// The floor a manifest gives as a JSON object, read by the core; the inner
+/// result is its verdict on that object.
 fn floor_of(raw: &Value) -> Result<semq::Result<Floor>, String> {
-    let config = match try_config(field(raw, "config")?)? {
-        Ok(config) => config,
-        Err(err) => return Ok(Err(err)),
-    };
-    if has(raw, "max_hamming") {
-        let report = FloorReportV2 {
-            version: str_field(raw, "version")?.to_owned(),
-            config,
-            id_kind: str_field(raw, "id_kind")?.to_owned(),
-            reference_id: str_field(raw, "reference_id")?.to_owned(),
-            nulls: u64_field(raw, "nulls")?,
-            changed_rows: u64_field(raw, "changed_rows")?,
-            total_rows: u64_field(raw, "total_rows")?,
-            hamming: u64_field(raw, "hamming")?,
-            max_hamming: u64_field(raw, "max_hamming")?,
-        };
-        return Ok(Floor::from_report_v2(&report));
-    }
-    let report = FloorReport {
-        version: str_field(raw, "version")?.to_owned(),
-        config,
-        id_kind: str_field(raw, "id_kind")?.to_owned(),
-        reference_id: str_field(raw, "reference_id")?.to_owned(),
-        nulls: u64_field(raw, "nulls")?,
-        changed_rows: u64_field(raw, "changed_rows")?,
-        total_rows: u64_field(raw, "total_rows")?,
-        hamming: u64_field(raw, "hamming")?,
-    };
-    Ok(Floor::from_report(&report))
+    Ok(Floor::from_json(raw.to_string()))
 }
 
 /// The first index where `got` and `want` differ by more than `ulps`,
@@ -1032,6 +985,20 @@ fn vector_11(dir: &Path, case: &Value) -> CaseResult {
 
 fn vector_12(dir: &Path, case: &Value) -> CaseResult {
     let (input, expect) = parts(case)?;
+    if has(input, "floor_json") {
+        let bytes = read_file(dir, str_field(input, "floor_json")?)?;
+        let Some(floor) = verdict(expect, Floor::from_json(&bytes))? else {
+            return Ok(Outcome::Pass);
+        };
+        assert_floor(&floor, field(expect, "floor")?)?;
+        let want = str_field(expect, "json")?;
+        ensure!(
+            floor.to_json() == want,
+            "json:\n got {}\nwant {want}",
+            floor.to_json()
+        );
+        return Ok(Outcome::Pass);
+    }
     if has(input, "null_diffs") {
         let diffs = null_diffs(dir, array_field(input, "null_diffs")?)?;
         let Some(floor) = verdict(expect, Floor::measure(&diffs))? else {
@@ -1095,8 +1062,8 @@ fn vector_13(dir: &Path, case: &Value) -> CaseResult {
     let want = field(expect, "floor")?;
     assert_floor(&floor, want)?;
     // The report form reads back as the same floor.
-    let back = floor_of(want)?.context("from_report")?;
-    ensure!(back == floor, "from_report: got {back:?}, want {floor:?}");
+    let back = floor_of(want)?.context("from_json")?;
+    ensure!(back == floor, "from_json: got {back:?}, want {floor:?}");
     Ok(Outcome::Pass)
 }
 

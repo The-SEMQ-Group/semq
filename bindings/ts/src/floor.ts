@@ -1,32 +1,17 @@
 // Copyright (c) 2026 The SEMQ Group Inc.
 // Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
 
-import { CodecConfig, Operator } from "./config.js";
-import { hex, ID_U64, ID_UTF8, isUint8Array, kindName } from "./convert.js";
+import { CodecConfig } from "./config.js";
+import { hex, ID_U64, ID_UTF8, isUint8Array, isWellFormed, kindName, text } from "./convert.js";
 import { Diff } from "./diff.js";
 import { InvalidInput } from "./errors.js";
 import { scoped } from "./module.js";
 import { NONE, call, rt, type Runtime } from "./runtime.js";
 
+// The schema version, named in the public type of `asDict`.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const FLOOR_VERSION = "semq-floor/1";
-const FLOOR_VERSION_2 = "semq-floor/2";
-const KEYS = [
-  "version",
-  "config",
-  "id_kind",
-  "reference_id",
-  "nulls",
-  "changed_rows",
-  "total_rows",
-  "hamming",
-] as const;
-const KEYS_2 = [...KEYS, "max_hamming"] as const;
-/** Operator ABI value and parameter name, by report name. */
-const OPERATORS = new Map<string, { code: Operator; parameter: "bins" | "sectors" | "scale" }>([
-  ["orbit", { code: Operator.Orbit, parameter: "scale" }],
-  ["phase", { code: Operator.Phase, parameter: "sectors" }],
-  ["quant", { code: Operator.Quant, parameter: "bins" }],
-]);
+const encoder = new TextEncoder();
 
 /**
  * An envelope of observed variation, `(changedRows, totalRows, hamming)`
@@ -40,9 +25,11 @@ const OPERATORS = new Map<string, { code: Operator; parameter: "bins" | "sectors
  * another config, id kind or reference throws `Incompatible`. No
  * probabilistic coverage is claimed.
  *
- * A floor from {@link Floor.measure} also records `maxHamming`, the largest
- * hamming of any changed row of any null, for the per-row check of
- * {@link Diff.evaluate}.
+ * A measured floor also records `maxHamming`, the largest hamming of any
+ * changed row of any null, for the per-row check of {@link Diff.evaluate}.
+ * The JSON form ({@link Floor.toJson}, {@link Floor.fromJson},
+ * {@link Floor.asDict}, {@link Floor.fromDict}) is written and read by the
+ * core, with the same rules in every binding.
  *
  * Owns a native handle: call {@link Floor.dispose} when done, or let the
  * finalizer free it.
@@ -187,8 +174,8 @@ export class Floor {
   }
 
   /** The largest hamming of any changed row of any null (`0` when no null
-   * changed a row); `undefined` for a floor that does not record it, one
-   * built without `maxHamming` or read from `semq-floor/1`. */
+   * changed a row); `undefined` for a floor that does not record it: one
+   * built without `maxHamming` or read from JSON without it. */
   get maxHamming(): number | undefined {
     const v = this.r.core.floorMaxHamming(this.handle);
     return v === NONE ? undefined : Number(v);
@@ -209,76 +196,77 @@ export class Floor {
     );
   }
 
-  /** The report form: the config as in diff reports, the reference id as
-   * lowercase hex, counts as numbers. `semq-floor/2` with `max_hamming` when
-   * the floor records it, `semq-floor/1` otherwise. */
-  asDict():
-    | {
-        version: typeof FLOOR_VERSION;
-        config: Record<string, string | number>;
-        id_kind: "u64" | "utf8";
-        reference_id: string;
-        nulls: number;
-        changed_rows: number;
-        total_rows: number;
-        hamming: number;
-      }
-    | {
-        version: typeof FLOOR_VERSION_2;
-        config: Record<string, string | number>;
-        id_kind: "u64" | "utf8";
-        reference_id: string;
-        nulls: number;
-        changed_rows: number;
-        total_rows: number;
-        hamming: number;
-        max_hamming: number;
-      } {
-    const fields = {
-      config: this.config.asDict(),
-      id_kind: this.idKind,
-      reference_id: hex(this.referenceId),
-      nulls: this.nulls,
-      changed_rows: this.changedRows,
-      total_rows: this.totalRows,
-      hamming: this.hamming,
-    };
-    const maxHamming = this.maxHamming;
-    return maxHamming === undefined
-      ? { version: FLOOR_VERSION, ...fields }
-      : { version: FLOOR_VERSION_2, ...fields, max_hamming: maxHamming };
+  /** The floor's JSON form, written by the core: the floor schema with
+   * `max_hamming` when the floor records it, keys in schema order, no
+   * whitespace. The same text in every binding. */
+  toJson(): string {
+    const h = this.handle;
+    const r = this.r;
+    const n = Number(r.core.floorJsonSize(h));
+    return scoped(r.w, (a) => {
+      const out = a.alloc(Math.max(n, 1));
+      call(r, "save", (err) => r.core.floorSave(h, out, BigInt(n), err));
+      return text(r, "save", r.w.readU8(out, n));
+    });
   }
 
   /**
-   * The inverse of {@link Floor.asDict}, strictly: version `semq-floor/1` or
-   * `semq-floor/2`, exactly the keys of that version, `id_kind` `"u64"` or
-   * `"utf8"`, `reference_id` 64 hex characters, counts as integers. Anything
-   * else is InvalidInput.
+   * Read a floor from its JSON form, by the core's rules: the schema's keys
+   * strictly (each at most once, integer counts, `max_hamming` optional),
+   * other keys ignored, and the construction rules. Anything else is
+   * InvalidInput.
+   */
+  static fromJson(json: string | Uint8Array): Floor {
+    const r = rt();
+    let bytes: Uint8Array;
+    if (typeof json === "string") {
+      if (!isWellFormed(json)) throw new InvalidInput("floor is not valid UTF-8");
+      bytes = encoder.encode(json);
+    } else if (isUint8Array(json)) {
+      bytes = json;
+    } else {
+      throw new InvalidInput("fromJson takes a string or a Uint8Array");
+    }
+    const ptr = scoped(r.w, (a) => {
+      const buf = a.u8(bytes);
+      const out = a.alloc(4);
+      call(r, "load", (err) => r.core.floorLoad(buf, BigInt(bytes.length), out, err));
+      return r.w.getU32(out);
+    });
+    return Floor.fromHandle(r, ptr);
+  }
+
+  /** The floor schema as a plain object (`JSON.parse` of {@link Floor.toJson}):
+   * the config as in diff reports, the reference id as lowercase hex,
+   * counts as numbers. */
+  asDict(): {
+    version: typeof FLOOR_VERSION;
+    config: Record<string, string | number>;
+    id_kind: "u64" | "utf8";
+    reference_id: string;
+    nulls: number;
+    changed_rows: number;
+    total_rows: number;
+    hamming: number;
+    max_hamming?: number;
+  } {
+    return JSON.parse(this.toJson()) as ReturnType<Floor["asDict"]>;
+  }
+
+  /**
+   * The inverse of {@link Floor.asDict}, by the core's rules
+   * ({@link Floor.fromJson} of `JSON.stringify(data)`). Anything else is
+   * InvalidInput.
    */
   static fromDict(data: unknown): Floor {
-    if (!isRecord(data) || (data.version !== FLOOR_VERSION && data.version !== FLOOR_VERSION_2)) {
-      throw new InvalidInput(`floor.version must be "${FLOOR_VERSION}" or "${FLOOR_VERSION_2}"`);
+    let json: string | undefined;
+    try {
+      json = JSON.stringify(data);
+    } catch (e) {
+      throw new InvalidInput(`floor is not a JSON value: ${String(e)}`);
     }
-    const keys = data.version === FLOOR_VERSION ? KEYS : KEYS_2;
-    if (!hasExactKeys(data, keys)) {
-      throw new InvalidInput(`floor must have exactly the keys ${keys.join(", ")}`);
-    }
-    const idKind = data.id_kind;
-    if (idKind !== "u64" && idKind !== "utf8") throw new InvalidInput('floor.id_kind must be "u64" or "utf8"');
-    const rid = data.reference_id;
-    if (typeof rid !== "string" || !/^[0-9a-fA-F]{64}$/.test(rid)) {
-      throw new InvalidInput("floor.reference_id must be 64 hex characters");
-    }
-    return new Floor({
-      config: configFromDict(data.config),
-      idKind,
-      referenceId: unhex(rid),
-      nulls: count(data.nulls, "nulls"),
-      changedRows: count(data.changed_rows, "changed_rows"),
-      totalRows: count(data.total_rows, "total_rows"),
-      hamming: count(data.hamming, "hamming"),
-      ...(data.version === FLOOR_VERSION ? {} : { maxHamming: count(data.max_hamming, "max_hamming") }),
-    });
+    if (json === undefined) throw new InvalidInput("floor is not a JSON value");
+    return Floor.fromJson(json);
   }
 
   /** `Floor(1 of 3 rows, hamming 1, from 3 nulls)`; the same text in every binding. */
@@ -293,45 +281,4 @@ function count(value: unknown, name: string): number {
     throw new InvalidInput(`floor.${name} must be an integer in [0, 2^53)`);
   }
   return value;
-}
-
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null && !Array.isArray(v);
-}
-
-function hasExactKeys(v: Record<string, unknown>, keys: readonly string[]): boolean {
-  return Object.keys(v).length === keys.length && keys.every((k) => Object.prototype.hasOwnProperty.call(v, k));
-}
-
-function unhex(s: string): Uint8Array {
-  const out = new Uint8Array(s.length >>> 1);
-  for (let i = 0; i < out.length; i++) out[i] = parseInt(s.slice(2 * i, 2 * i + 2), 16);
-  return out;
-}
-
-/** A config field on this surface: an integer in [0, 2^32), the ABI's u32. */
-function u32(value: unknown, name: string): number {
-  if (typeof value !== "number" || !Number.isInteger(value) || value < 0 || value > 0xffffffff) {
-    throw new InvalidInput(`floor.${name} must be an integer in [0, 2^32)`);
-  }
-  return value;
-}
-
-/**
- * The report form of a config back into a CodecConfig, strictly. The host
- * checks the shape (exactly `operator`, `dim`, the operator's parameter and
- * `rule_revision`; a known operator name; u32 integers) and hands the four
- * fields to the core as a semq_config_t, so the core validates
- * every value, the rule revision included.
- */
-function configFromDict(data: unknown): CodecConfig {
-  if (!isRecord(data) || typeof data.operator !== "string") {
-    throw new InvalidInput("floor.config must be a config report");
-  }
-  const operator = OPERATORS.get(data.operator);
-  if (operator === undefined || !hasExactKeys(data, ["operator", "dim", operator.parameter, "rule_revision"])) {
-    throw new InvalidInput("floor.config must be a config report");
-  }
-  return CodecConfig.fromFields(operator.code, u32(data.dim, "config.dim"),
-    u32(data[operator.parameter], `config.${operator.parameter}`), u32(data.rule_revision, "config.rule_revision"));
 }

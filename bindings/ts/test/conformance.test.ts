@@ -422,6 +422,14 @@ describe.skipIf(!AVAILABLE)("conformance", () => {
   describe("12-floor", () => {
     for (const { id, input: i, expect: e } of cases("12-floor")) {
       it(id, () => {
+        if ("floor_json" in i) {
+          const floor = runExpecting(e, () => Floor.fromJson(file("12-floor", i.floor_json)));
+          if (floor !== undefined) {
+            expectFloorReport(floor, e.floor);
+            expect(floor.toJson()).toBe(e.json);
+          }
+          return;
+        }
         if ("null_diffs" in i) {
           const diffs = nullDiffs("12-floor", i.null_diffs);
           const floor = runExpecting(e, () => Floor.measure(diffs));
@@ -433,7 +441,7 @@ describe.skipIf(!AVAILABLE)("conformance", () => {
         }
         const ref = Encoding.fromBytes(file("12-floor", i.reference));
         const d = ref.diff(Encoding.fromBytes(file("12-floor", i.candidate)));
-        // The `floor-*` cases are rejected by `fromDict` before the floor is applied.
+        // Invalid floors are rejected by `fromDict` before the floor is applied.
         const verdict = runExpecting(e, () => d.evaluate(Floor.fromDict(i.floor), { perRow: i.per_row === true }));
         if (verdict !== undefined) {
           const floor = Floor.fromDict(i.floor);

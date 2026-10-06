@@ -169,6 +169,9 @@ semq_status_t semq_floor_create_with_max(const semq_config_t* config, uint32_t i
                                    uint64_t nulls, uint64_t changed_rows, uint64_t total_rows, uint64_t hamming,
                                    uint64_t max_hamming, semq_floor_t** out, semq_error_t* err);
 uint64_t      semq_floor_max_hamming(const semq_floor_t* floor);
+uint64_t      semq_floor_json_size(const semq_floor_t* floor);
+semq_status_t semq_floor_save(const semq_floor_t* floor, uint8_t* out, uint64_t cap, semq_error_t* err);
+semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_floor_t** out, semq_error_t* err);
 typedef struct semq_gate_options semq_gate_options_t;
 typedef struct semq_verdict      semq_verdict_t;
 semq_status_t semq_gate_options_create(semq_gate_options_t** out, semq_error_t* err);

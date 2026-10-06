@@ -74,6 +74,18 @@ static void write_file(const char* name, const void* data, size_t len) {
     fclose(f);
 }
 
+/* `base` with the first occurrence of `from` replaced by `to`, NUL-terminated. */
+static char* splice(const char* base, const char* from, const char* to) {
+    const char* at = strstr(base, from);
+    if (at == NULL) die("splice: pattern not found");
+    const size_t head = (size_t)(at - base), n = strlen(base) - strlen(from) + strlen(to);
+    char* out = (char*)xmalloc(n + 1u);
+    memcpy(out, base, head);
+    memcpy(out + head, to, strlen(to));
+    strcpy(out + head + strlen(to), at + strlen(from));
+    return out;
+}
+
 static FILE* g_json = NULL;
 static int   g_first[32];
 static int   g_depth = 0;
@@ -194,7 +206,7 @@ static void js_config(const semq_config_t* c) {
 static void js_floor_fields(const semq_config_t* c, uint32_t kind, const uint8_t rid[32], uint64_t nulls,
                             uint64_t changed, uint64_t total, uint64_t hamming, uint64_t max_hamming) {
     js_begin_object();
-    js_kv_str("version", max_hamming == SEMQ_NONE ? "semq-floor/1" : "semq-floor/2");
+    js_kv_str("version", "semq-floor/1");
     js_key("config"); js_config(c);
     js_kv_str("id_kind", kind == SEMQ_ID_U64 ? "u64" : kind == SEMQ_ID_UTF8 ? "utf8" : "unknown");
     js_kv_hex("reference_id", rid, 32u);
@@ -1597,6 +1609,77 @@ static void vector_11_13(void) {
             js_key("input"); js_begin_object(); js_key("null_diffs"); js_begin_array(); js_begin_array(); js_str("../11-diff/ref.semq"); js_str("../11-diff/encoder-changed.semq"); js_end_array(); js_end_array(); js_end_object();
             js_key("expect"); js_error(&err); js_end_object();
             semq_diff_free(d);
+        }
+        /* The JSON form, read by the core in every binding: accepted texts give
+         * the floor and its saved form; the others are InvalidInput. */
+        {
+            const uint64_t n = semq_floor_json_size(f_hidden);
+            char* base = (char*)xmalloc((size_t)n + 1u);
+            if (semq_floor_save(f_hidden, (uint8_t*)base, n, &err) != SEMQ_OK) die("floor save");
+            base[n] = '\0';
+            char deep[4096] = "{\"nested\":";
+            for (int i = 0; i < 63; i++) strcat(deep, "[");
+            for (int i = 0; i < 63; i++) strcat(deep, "]");
+            strcat(deep, ",");
+            char too_deep[4096] = "{\"nested\":[";
+            strcat(too_deep, deep + strlen("{\"nested\":"));
+            too_deep[strlen(too_deep) - 1] = '\0';
+            strcat(too_deep, "],");
+            char* unknown = splice(base, "\"rule_revision\":0", "\"rule_revision\":0, \"note\": [1.5e-3, -0, true]");
+            struct { const char* id; char* text; } texts[] = {
+                { "floor-saved", splice(base, "{", "{") },
+                { "floor-without-max-hamming", splice(base, ",\"max_hamming\":10", "") },
+                { "floor-ignores-unknown-keys", splice(unknown, "{\"version\"",
+                  " {\n  \"comment\": {\"a\": [null, false, \"\\u00e9\\ud83d\\ude00\\n\"]},\n  \"version\"") },
+                { "floor-escaped-key", splice(base, "\"version\"", "\"\\u0076ersion\"") },
+                { "floor-uppercase-reference-id", splice(base, "\"reference_id\":\"69eb", "\"reference_id\":\"69EB") },
+                { "floor-nesting-at-limit", splice(base, "{", deep) },
+                { "floor-nesting-above-limit", splice(base, "{", too_deep) },
+                { "floor-duplicate-key", splice(base, "\"hamming\":2", "\"hamming\":2,\"hamming\":2") },
+                { "floor-duplicate-config-key", splice(base, "\"dim\":16", "\"dim\":16,\"dim\":16") },
+                { "floor-other-version", splice(base, "semq-floor/1", "semq-floor/2") },
+                { "floor-float-count", splice(base, "\"nulls\":1", "\"nulls\":1.0") },
+                { "floor-exponent-count", splice(base, "\"nulls\":1", "\"nulls\":1e0") },
+                { "floor-negative-count", splice(base, "\"hamming\":2", "\"hamming\":-2") },
+                { "floor-string-count", splice(base, "\"nulls\":1", "\"nulls\":\"1\"") },
+                { "floor-bool-count", splice(base, "\"nulls\":1", "\"nulls\":true") },
+                { "floor-count-overflow", splice(base, "\"total_rows\":200", "\"total_rows\":18446744073709551616") },
+                { "floor-missing-key", splice(base, "\"hamming\":2,", "") },
+                { "floor-max-below-hamming", splice(base, "\"max_hamming\":10", "\"max_hamming\":1") },
+                { "floor-other-operator-parameter", splice(base, "\"bins\":4", "\"bins\":4,\"sectors\":4") },
+                { "floor-trailing-data", splice(base, "\"max_hamming\":10}", "\"max_hamming\":10} {}") },
+                { "floor-trailing-comma", splice(base, "\"max_hamming\":10}", "\"max_hamming\":10,}") },
+                { "floor-lone-surrogate", splice(base, "{", "{\"x\":\"\\ud800\",") },
+                { "floor-invalid-utf8", splice(base, "{", "{\"x\":\"\xc3\x28\",") },
+                { "floor-control-character", splice(base, "{", "{\"x\":\"\x01\",") },
+                { "floor-nan", splice(base, "{", "{\"x\":NaN,") },
+                { "floor-not-an-object", splice("[]", "[]", "[]") },
+            };
+            for (size_t i = 0u; i < sizeof(texts) / sizeof(texts[0]); i++) {
+                char file[96];
+                snprintf(file, sizeof(file), "%s.json", texts[i].id);
+                write_file(file, texts[i].text, strlen(texts[i].text));
+                semq_floor_t* g = NULL;
+                const semq_status_t st = semq_floor_load((const uint8_t*)texts[i].text, strlen(texts[i].text), &g, &err);
+                js_begin_object(); js_kv_str("id", texts[i].id);
+                js_key("input"); js_begin_object(); js_kv_str("floor_json", file); js_end_object();
+                js_key("expect");
+                if (st == SEMQ_OK) {
+                    const uint64_t m = semq_floor_json_size(g);
+                    char* saved = (char*)xmalloc((size_t)m + 1u);
+                    if (semq_floor_save(g, (uint8_t*)saved, m, &err) != SEMQ_OK) die("floor save");
+                    saved[m] = '\0';
+                    js_begin_object(); js_key("floor"); js_floor(g); js_kv_str("json", saved); js_end_object();
+                    free(saved);
+                    semq_floor_free(g);
+                } else {
+                    js_error(&err);
+                }
+                js_end_object();
+                free(texts[i].text);
+            }
+            free(unknown);
+            free(base);
         }
         semq_floor_free(f_a); semq_floor_free(f_two); semq_floor_free(f_hidden); semq_diff_free(d_hidden);
     }

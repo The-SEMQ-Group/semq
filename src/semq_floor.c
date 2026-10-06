@@ -67,13 +67,11 @@ static const uint8_t* reference_state_id(const semq_diff_t* d) {
     return d->ref->footer + SEMQ_DIGEST_BYTES;
 }
 
-/* The construction rules of both creators; `max_hamming` is SEMQ_NONE when
- * the floor does not record it. */
-static semq_status_t floor_create(const semq_config_t* config, uint32_t id_kind,
-                                  const uint8_t reference_id[32], uint64_t nulls,
-                                  uint64_t changed_rows, uint64_t total_rows,
-                                  uint64_t hamming, uint64_t max_hamming, semq_floor_t** out,
-                                  semq_error_t* err) {
+semq_status_t semqi_floor_create(const semq_config_t* config, uint32_t id_kind,
+                                 const uint8_t reference_id[32], uint64_t nulls,
+                                 uint64_t changed_rows, uint64_t total_rows,
+                                 uint64_t hamming, uint64_t max_hamming, semq_floor_t** out,
+                                 semq_error_t* err) {
     if (out == NULL) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "output is NULL");
     *out = NULL;
     if (config == NULL || reference_id == NULL) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "NULL argument");
@@ -116,8 +114,8 @@ SEMQ_API semq_status_t semq_floor_create(const semq_config_t* config, uint32_t i
                                          uint64_t changed_rows, uint64_t total_rows,
                                          uint64_t hamming, semq_floor_t** out,
                                          semq_error_t* err) {
-    return floor_create(config, id_kind, reference_id, nulls, changed_rows, total_rows, hamming,
-                        SEMQ_NONE, out, err);
+    return semqi_floor_create(config, id_kind, reference_id, nulls, changed_rows, total_rows, hamming,
+                              SEMQ_NONE, out, err);
 }
 
 SEMQ_API semq_status_t semq_floor_create_with_max(const semq_config_t* config, uint32_t id_kind,
@@ -129,8 +127,8 @@ SEMQ_API semq_status_t semq_floor_create_with_max(const semq_config_t* config, u
         if (out != NULL) *out = NULL;
         return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "floor.max_hamming exceeds units_per_row");
     }
-    return floor_create(config, id_kind, reference_id, nulls, changed_rows, total_rows, hamming,
-                        max_hamming, out, err);
+    return semqi_floor_create(config, id_kind, reference_id, nulls, changed_rows, total_rows, hamming,
+                              max_hamming, out, err);
 }
 
 SEMQ_API void semq_floor_free(semq_floor_t* f) { semqi_free(f); }

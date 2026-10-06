@@ -614,7 +614,7 @@ def test_floor_report_form_round_trips_and_is_strict(tmp_path) -> None:
     assert list(d) == [
         "version", "config", "id_kind", "reference_id", "nulls", "changed_rows", "total_rows", "hamming", "max_hamming",
     ]
-    assert d["version"] == "semq-floor/2" and d["reference_id"] == base.state_id.hex()
+    assert d["version"] == "semq-floor/1" and d["reference_id"] == base.state_id.hex()
     assert Floor.from_dict(json.loads(json.dumps(d))) == floor
     floor.save(tmp_path / "floor.json")
     assert Floor.load(tmp_path / "floor.json") == floor
@@ -623,11 +623,9 @@ def test_floor_report_form_round_trips_and_is_strict(tmp_path) -> None:
         assert Floor.load(f) == floor
     for mutate in (
         lambda x: x.pop("nulls"),
-        lambda x: x.update(extra=1),
-        lambda x: x.update(version="semq-floor/3"),
-        lambda x: x.update(version="semq-floor/1"),
-        lambda x: x.pop("max_hamming"),
+        lambda x: x.update(version="semq-floor/2"),
         lambda x: x.update(max_hamming=None),
+        lambda x: x.update(max_hamming=0),
         lambda x: x.update(nulls="1"),
         lambda x: x.update(hamming=1.0),
         lambda x: x.update(changed_rows=True),
@@ -642,10 +640,16 @@ def test_floor_report_form_round_trips_and_is_strict(tmp_path) -> None:
             Floor.from_dict(bad)
     with pytest.raises(InvalidInput):
         Floor.load(b"not json")
-    # A semq-floor/1 floor still reads, records no max_hamming, and writes back as semq-floor/1.
-    v1 = {k: v for k, v in d.items() if k != "max_hamming"} | {"version": "semq-floor/1"}
-    old = Floor.from_dict(v1)
-    assert old.max_hamming is None and old.as_dict() == v1 and old != floor
+    with pytest.raises(InvalidInput):
+        Floor.from_dict({"nulls": float("nan")})
+    with pytest.raises(InvalidInput):
+        Floor.from_dict({1: object()})
+    # Unknown keys are ignored. Without max_hamming, as SEMQ 1.0 saved it,
+    # the floor reads, records none, and writes back without it.
+    assert Floor.from_dict(d | {"extra": [1, {"a": None}]}) == floor
+    without = {k: v for k, v in d.items() if k != "max_hamming"}
+    old = Floor.from_dict(without)
+    assert old.max_hamming is None and old.as_dict() == without and old != floor
     # Invalid UTF-8 is InvalidInput through every source, never a decode error.
     (tmp_path / "bad.json").write_bytes(b"\xff")
     with pytest.raises(InvalidInput):

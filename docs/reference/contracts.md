@@ -171,8 +171,8 @@ A floor is the envelope of variation seen in rebuilds that changed nothing
 on purpose, bound to where it was measured: `config`, `id_kind`,
 `reference_id` (the `state_id` of the reference every null was taken
 against), `nulls` (how many null diffs went in), `changed_rows`,
-`total_rows`, `hamming` and `max_hamming`. A floor read from the
-`semq-floor/1` schema has no `max_hamming`.
+`total_rows`, `hamming` and `max_hamming`. A floor read from JSON without
+`max_hamming`, such as one saved by SEMQ 1.0, does not record it.
 
 **Construction.** Every rule is checked when a floor is built or loaded, not
 when it is applied: the config is valid, `id_kind` is `u64` or `utf8`,
@@ -234,7 +234,7 @@ in this order: `no_common_rows`, `removed_rows`, `changed_ratio`,
 
 ```
 {
-  "version":      "semq-floor/2",
+  "version":      "semq-floor/1",
   "config":       { "operator": "quant" | "phase" | "orbit", "dim": int,
                     "bins" | "sectors" | "scale": int, "rule_revision": int },
   "id_kind":      "u64" | "utf8",
@@ -243,17 +243,27 @@ in this order: `no_common_rows`, `removed_rows`, `changed_ratio`,
   "changed_rows": int,
   "total_rows":   int,
   "hamming":      int,
-  "max_hamming":  int
+  "max_hamming":  int            (optional)
 }
 ```
 
-Keys in this order, counts as JSON integers, the config as in the report
-schema. Bindings write it from a floor and read it back strictly: exactly
-these keys, this `version`, integers only (no booleans, floats or numeric
-strings) and a 64-character hex `reference_id`; any deviation is
-`InvalidInput`.
+The core writes and reads this form (`semq_floor_save`, `semq_floor_load`);
+every binding calls it, so the rules below are the same everywhere.
 
-Bindings also read `semq-floor/1`: the same keys without `max_hamming`. A
-floor read from it applies as before, refuses the per-row check, and writes
-back as `semq-floor/1`. In Rust, `Floor::as_report` keeps the
-`semq-floor/1` form and `Floor::as_report_v2` gives `semq-floor/2`.
+**Writing.** One object, keys in this order, no whitespace, the config as in
+the report schema, `reference_id` as lowercase hex. `max_hamming` is written
+only when the floor records it.
+
+**Reading.** Valid JSON in valid UTF-8, one object, nesting at most 64
+levels deep. The keys above are read strictly: each at most once, `version`
+exactly `"semq-floor/1"`, counts as JSON integers in `[0, 2^64)` without
+sign, fraction or exponent (no booleans, strings or `null`), `reference_id`
+as 64 hex characters in either case, and the config with exactly its
+operator's parameter. `max_hamming` is optional. Any other key is ignored,
+at the top level and inside `config`. Then the construction rules apply.
+Any violation is `InvalidInput`.
+
+**Evolution.** A key added later is optional, so older readers ignore it and
+newer readers accept files without it. `version` changes only when the
+meaning of an existing key changes. SEMQ 1.0 read this schema with no other
+keys allowed, so it rejects a file that carries `max_hamming`.

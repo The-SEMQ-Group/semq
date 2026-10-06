@@ -16,13 +16,8 @@ import (
 	"unsafe"
 )
 
-// FloorVersion is the version string of the floor report form without
-// max_hamming.
+// FloorVersion is the version string of the floor report form.
 const FloorVersion = "semq-floor/1"
-
-// FloorVersion2 is the version string of the floor report form with
-// max_hamming, the form a measured Floor reports.
-const FloorVersion2 = "semq-floor/2"
 
 // Floor is an envelope of observed variation, bound to the context it was
 // measured in: the config, the id kind and the StateID of the reference
@@ -33,9 +28,11 @@ const FloorVersion2 = "semq-floor/2"
 // encoder_revision. No probabilistic coverage is claimed.
 //
 // A Floor from MeasureFloor also records MaxHamming, the largest hamming of
-// any changed row of any null, for the per-row check of Diff.Evaluate.
+// any changed row of any null, for the per-row check of Diff.Evaluate. Its
+// JSON form, from json.Marshal or LoadFloor, carries it; FloorReport does
+// not.
 //
-// Build one with NewFloor, MeasureFloor or FloorFromReport. It is immutable
+// Build one with NewFloor, MeasureFloor, LoadFloor or FloorFromReport. It is immutable
 // and safe for concurrent use. Call Close when done; a finalizer is the
 // fallback. Close must not race with another method. The accessors are
 // cached and stay valid after Close; Diff.Within on a closed Floor returns
@@ -54,16 +51,13 @@ type Floor struct {
 	hasMax      bool
 }
 
-// FloorReport is the report form of a Floor: the config as in a Diff
-// Report, the id kind by name, the reference StateID as lowercase hex and
-// the counts as integers. Version "semq-floor/2" carries MaxHamming;
-// version "semq-floor/1" does not: MaxHamming is 0 and is not marshaled.
-// It marshals with the keys in this order. Decoding JSON into it is strict: exactly the keys
-// of its version (eight, or nine with max_hamming),
-// version, id_kind and reference_id as strings, config as ConfigReport
-// reads it and the counts as non-negative JSON integers (no null,
-// booleans, floats, exponents or numeric strings); any other shape is
-// InvalidInputError naming the key. FloorFromReport checks the values.
+// FloorReport is the report form of a Floor, version "semq-floor/1": the
+// config as in a Diff Report, the id kind by name, the reference StateID as
+// lowercase hex and the counts as integers. It marshals with the keys in
+// this order. It does not carry MaxHamming; marshal the Floor itself for
+// the complete JSON form. Decoding JSON into it applies the core's rules
+// for the floor schema, as LoadFloor does; any violation is
+// InvalidInputError.
 type FloorReport struct {
 	Version     string       `json:"version"`
 	Config      ConfigReport `json:"config"`
@@ -73,78 +67,17 @@ type FloorReport struct {
 	ChangedRows uint64       `json:"changed_rows"`
 	TotalRows   uint64       `json:"total_rows"`
 	Hamming     uint64       `json:"hamming"`
-	MaxHamming  uint64       `json:"max_hamming"`
 }
 
-// MarshalJSON writes the keys of the report's version, in order.
-func (r FloorReport) MarshalJSON() ([]byte, error) {
-	type plain FloorReport
-	if r.Version == FloorVersion2 {
-		return json.Marshal(plain(r))
-	}
-	return json.Marshal(struct {
-		Version     string       `json:"version"`
-		Config      ConfigReport `json:"config"`
-		IDKind      string       `json:"id_kind"`
-		ReferenceID string       `json:"reference_id"`
-		Nulls       uint64       `json:"nulls"`
-		ChangedRows uint64       `json:"changed_rows"`
-		TotalRows   uint64       `json:"total_rows"`
-		Hamming     uint64       `json:"hamming"`
-	}{r.Version, r.Config, r.IDKind, r.ReferenceID, r.Nulls, r.ChangedRows, r.TotalRows, r.Hamming})
-}
-
-// floorReportKeys are the keys of the floor schema, in marshal order.
-var floorReportKeys = []string{"version", "config", "id_kind", "reference_id", "nulls", "changed_rows", "total_rows", "hamming"}
-
-// UnmarshalJSON reads the floor schema as the type's documentation says.
-// On error r is left as it was.
+// UnmarshalJSON reads the floor schema by the core's rules, as LoadFloor
+// does. On error r is left as it was.
 func (r *FloorReport) UnmarshalJSON(b []byte) error {
-	const what = "floor report"
-	fields, err := reportObject(b, what)
+	f, err := LoadFloor(b)
 	if err != nil {
 		return err
 	}
-	var out FloorReport
-	if _, ok := fields["version"]; ok {
-		if out.Version, err = reportString(fields, what, "version"); err != nil {
-			return err
-		}
-	}
-	keys := floorReportKeys
-	if out.Version == FloorVersion2 {
-		keys = append(keys[:len(keys):len(keys)], "max_hamming")
-	}
-	if err := reportKeys(fields, what, keys...); err != nil {
-		return err
-	}
-	if err = json.Unmarshal(fields["config"], &out.Config); err != nil {
-		return err
-	}
-	if out.IDKind, err = reportString(fields, what, "id_kind"); err != nil {
-		return err
-	}
-	if out.ReferenceID, err = reportString(fields, what, "reference_id"); err != nil {
-		return err
-	}
-	if out.Nulls, err = reportUint(fields, what, "nulls", 64); err != nil {
-		return err
-	}
-	if out.ChangedRows, err = reportUint(fields, what, "changed_rows", 64); err != nil {
-		return err
-	}
-	if out.TotalRows, err = reportUint(fields, what, "total_rows", 64); err != nil {
-		return err
-	}
-	if out.Hamming, err = reportUint(fields, what, "hamming", 64); err != nil {
-		return err
-	}
-	if out.Version == FloorVersion2 {
-		if out.MaxHamming, err = reportUint(fields, what, "max_hamming", 64); err != nil {
-			return err
-		}
-	}
-	*r = out
+	defer f.Close()
+	*r = f.Report()
 	return nil
 }
 
@@ -176,27 +109,6 @@ func NewFloor(config CodecConfig, kind IDKind, referenceID [32]byte, nulls, chan
 	)
 	s := C.semq_floor_create(&cc, C.uint32_t(kind), (*C.uint8_t)(unsafe.Pointer(&referenceID[0])),
 		C.uint64_t(nulls), C.uint64_t(changedRows), C.uint64_t(totalRows), C.uint64_t(hamming), &out, &e)
-	if err := check(s, &e, "floor"); err != nil {
-		return nil, err
-	}
-	return newFloor(out), nil
-}
-
-// WithMaxHamming returns this floor also recording maxHamming:
-// Hamming() <= maxHamming <= Config().UnitsPerRow(), else InvalidInputError.
-func (f *Floor) WithMaxHamming(maxHamming uint64) (*Floor, error) {
-	if _, err := f.handle(); err != nil {
-		return nil, err
-	}
-	defer runtime.KeepAlive(f)
-	cc := f.cfg.toC()
-	var (
-		out *C.semq_floor_t
-		e   C.semq_error_t
-	)
-	s := C.semq_floor_create_with_max(&cc, C.uint32_t(f.kind), (*C.uint8_t)(unsafe.Pointer(&f.reference[0])),
-		C.uint64_t(f.nulls), C.uint64_t(f.changedRows), C.uint64_t(f.totalRows), C.uint64_t(f.hamming),
-		C.uint64_t(maxHamming), &out, &e)
 	if err := check(s, &e, "floor"); err != nil {
 		return nil, err
 	}
@@ -239,41 +151,53 @@ func MeasureFloor(nulls []*Diff) (*Floor, error) {
 	return newFloor(out), nil
 }
 
-// FloorFromReport is the inverse of Report, strictly: Version must be
-// FloorVersion (with MaxHamming 0) or FloorVersion2, IDKind "u64" or "utf8", ReferenceID 64 hex characters, Config a valid
-// config, and the counts as NewFloor and WithMaxHamming require. Any
-// violation is InvalidInputError.
+// FloorFromReport is the inverse of Report: the report's JSON form, read
+// by the core as LoadFloor does. Any violation is InvalidInputError.
 func FloorFromReport(r FloorReport) (*Floor, error) {
-	if r.Version != FloorVersion2 && (r.Version != FloorVersion || r.MaxHamming != 0) {
-		return nil, &InvalidInputError{Message: "floor version must be \"" + FloorVersion2 + "\", or \"" + FloorVersion + "\" without max_hamming"}
+	b, err := json.Marshal(r)
+	if err != nil {
+		return nil, &InvalidInputError{Message: "floor report does not marshal: " + err.Error()}
 	}
-	var kind IDKind
-	switch r.IDKind {
-	case IDU64.String():
-		kind = IDU64
-	case IDUTF8.String():
-		kind = IDUTF8
-	default:
-		return nil, &InvalidInputError{Message: "floor id_kind must be \"u64\" or \"utf8\""}
+	return LoadFloor(b)
+}
+
+// LoadFloor reads a Floor from its JSON form by the core's rules: the keys
+// of the floor schema strictly (each at most once, counts as JSON integers,
+// max_hamming optional), other keys ignored, and the rules of NewFloor. Any
+// violation is InvalidInputError.
+func LoadFloor(b []byte) (*Floor, error) {
+	var (
+		out *C.semq_floor_t
+		e   C.semq_error_t
+	)
+	var p *C.uint8_t
+	if len(b) > 0 {
+		p = (*C.uint8_t)(unsafe.Pointer(&b[0]))
 	}
-	// The length is checked before decoding into the fixed-size array.
-	var reference [32]byte
-	if len(r.ReferenceID) != hex.EncodedLen(len(reference)) {
-		return nil, &InvalidInputError{Message: "floor reference_id must be 64 hex characters"}
+	s := C.semq_floor_load(p, C.uint64_t(len(b)), &out, &e)
+	runtime.KeepAlive(b)
+	if err := check(s, &e, "load"); err != nil {
+		return nil, err
 	}
-	if _, err := hex.Decode(reference[:], []byte(r.ReferenceID)); err != nil {
-		return nil, &InvalidInputError{Message: "floor reference_id must be 64 hex characters"}
-	}
-	cfg, err := r.Config.config()
+	return newFloor(out), nil
+}
+
+// MarshalJSON writes the floor's JSON form, as the core writes it: the
+// floor schema with max_hamming when the floor records it, the same bytes
+// in every binding. A closed Floor is InvalidInputError.
+func (f *Floor) MarshalJSON() ([]byte, error) {
+	h, err := f.handle()
 	if err != nil {
 		return nil, err
 	}
-	f, err := NewFloor(cfg, kind, reference, r.Nulls, r.ChangedRows, r.TotalRows, r.Hamming)
-	if err != nil || r.Version == FloorVersion {
-		return f, err
+	defer runtime.KeepAlive(f)
+	n := uint64(C.semq_floor_json_size(h))
+	out := make([]byte, n)
+	var e C.semq_error_t
+	if err := check(C.semq_floor_save(h, (*C.uint8_t)(unsafe.Pointer(&out[0])), C.uint64_t(n), &e), &e, "save"); err != nil {
+		return nil, err
 	}
-	defer f.Close()
-	return f.WithMaxHamming(r.MaxHamming)
+	return out, nil
 }
 
 // Close releases the native handle. Idempotent.
@@ -317,13 +241,12 @@ func (f *Floor) Hamming() uint64 { return f.hamming }
 
 // MaxHamming is the largest hamming of any changed row of any null (0 when
 // no null changed a row). ok is false for a floor that does not record it:
-// one from NewFloor or from a "semq-floor/1" report.
+// one from NewFloor or FloorFromReport, or read from JSON without it.
 func (f *Floor) MaxHamming() (maxHamming uint64, ok bool) { return f.maxHamming, f.hasMax }
 
-// Report renders the Floor in the report form: FloorVersion2 with
-// MaxHamming when the floor records it, FloorVersion otherwise.
+// Report renders the Floor in the report form, without MaxHamming.
 func (f *Floor) Report() FloorReport {
-	r := FloorReport{
+	return FloorReport{
 		Version:     FloorVersion,
 		Config:      f.cfg.report(),
 		IDKind:      f.kind.String(),
@@ -333,10 +256,6 @@ func (f *Floor) Report() FloorReport {
 		TotalRows:   f.totalRows,
 		Hamming:     f.hamming,
 	}
-	if f.hasMax {
-		r.Version, r.MaxHamming = FloorVersion2, f.maxHamming
-	}
-	return r
 }
 
 // String is "Floor(1 of 3 rows, hamming 1, from 3 nulls)", the same text as

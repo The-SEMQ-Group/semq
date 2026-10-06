@@ -831,7 +831,7 @@ describe("core", () => {
       expect(Object.keys(d)).toEqual(REPORT_KEYS);
       expect(Object.keys(d.config)).toEqual(["operator", "dim", "bins", "rule_revision"]);
       expect(d).toEqual({
-        version: "semq-floor/2",
+        version: "semq-floor/1",
         config: { operator: "quant", dim: 16, bins: 4, rule_revision: 0 },
         id_kind: "u64",
         reference_id: hex(a0.stateId),
@@ -841,13 +841,22 @@ describe("core", () => {
         hamming: 1,
         max_hamming: 1,
       });
-      // A semq-floor/1 report reads back without max_hamming and writes back as semq-floor/1.
-      const v1: Record<string, unknown> = { ...d, version: "semq-floor/1" };
-      delete v1.max_hamming;
-      const old = Floor.fromDict(v1);
+      expect(f.toJson()).toBe(JSON.stringify(d));
+      expect(Floor.fromJson(f.toJson()).equals(f)).toBe(true);
+      expect(Floor.fromJson(new TextEncoder().encode(f.toJson())).equals(f)).toBe(true);
+      // Unknown keys are ignored. Without max_hamming, as SEMQ 1.0 saved it,
+      // the floor reads, records none, and writes back without it.
+      expect(Floor.fromDict({ ...d, extra: [1, { a: null }] }).equals(f)).toBe(true);
+      const without: Record<string, unknown> = { ...d };
+      delete without.max_hamming;
+      const old = Floor.fromDict(without);
       expect(old.maxHamming).toBeUndefined();
-      expect(old.asDict()).toEqual(v1);
+      expect(old.asDict()).toEqual(without);
       expect(old.equals(f)).toBe(false);
+      expect(() => Floor.fromJson("\ud800")).toThrow(InvalidInput);
+      expect(() => Floor.fromJson(1 as never)).toThrow(InvalidInput);
+      expect(() => Floor.fromDict(undefined)).toThrow(InvalidInput);
+      expect(() => Floor.fromDict({ nulls: 1n })).toThrow(InvalidInput);
       const back = Floor.fromDict(JSON.parse(JSON.stringify(d)));
       expect(back.equals(f)).toBe(true);
       expect(back.asDict()).toEqual(d);
@@ -873,11 +882,8 @@ describe("core", () => {
         for (const k of Object.keys(patch)) if (patch[k] === undefined) delete doc[k];
         expect(() => Floor.fromDict(doc), label).toThrow(InvalidInput);
       };
-      reject({ extra: 1 }, "extra key");
       reject({ hamming: undefined }, "missing key");
-      reject({ version: "semq-floor/3" }, "other version");
-      reject({ version: "semq-floor/1" }, "semq-floor/1 with max_hamming");
-      reject({ max_hamming: undefined }, "semq-floor/2 without max_hamming");
+      reject({ version: "semq-floor/2" }, "other version");
       reject({ max_hamming: null }, "null max_hamming");
       reject({ max_hamming: 0 }, "max_hamming below hamming");
       reject({ max_hamming: 17 }, "max_hamming exceeds units");
@@ -907,7 +913,7 @@ describe("core", () => {
       reject({ config: { operator: "quant", dim: 16, bins: 4, rule_revision: 2 ** 32 } }, "rule revision u32");
       reject({ config: { operator: "quant", dim: 2 ** 32, bins: 4, rule_revision: 0 } }, "dim u32");
       reject({ config: { operator: "quant", dim: 16, bins: 4 } }, "missing rule revision");
-      reject({ config: { operator: "quant", dim: 16, bins: 4, rule_revision: 0, extra: 1 } }, "extra config key");
+      reject({ config: { operator: "quant", dim: 16, bins: 4, sectors: 4, rule_revision: 0 } }, "parameter of another operator");
       reject({ config: { operator: "cube", dim: 16, bins: 4, rule_revision: 0 } }, "unknown operator");
       reject({ config: { operator: "constructor", dim: 16, bins: 4, rule_revision: 0 } }, "prototype operator");
       reject({ config: { operator: "quant", dim: 16, bins: 99, rule_revision: 0 } }, "bins out of range");

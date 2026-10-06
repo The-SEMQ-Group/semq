@@ -296,33 +296,131 @@ def p99(values: list[int]) -> int:
     return sorted(values)[k - 1]
 
 
-FLOOR_KEYS = {
-    "semq-floor/1": ("version", "config", "id_kind", "reference_id", "nulls", "changed_rows", "total_rows", "hamming"),
-    "semq-floor/2": (
-        "version", "config", "id_kind", "reference_id", "nulls", "changed_rows", "total_rows", "hamming", "max_hamming",
-    ),
-}
+FLOOR_VERSION = "semq-floor/1"
+FLOOR_KEYS = ("version", "config", "id_kind", "reference_id", "nulls", "changed_rows", "total_rows", "hamming")
+COUNTS = ("nulls", "changed_rows", "total_rows", "hamming", "max_hamming")
+CONFIG_KEYS = ("operator", "dim", "scale", "sectors", "bins", "rule_revision")
+JSON_MAX_DEPTH = 64
 REASONS = ("no_common_rows", "removed_rows", "changed_ratio", "hamming", "encoder", "row_above_max")
+
+
+class _Pairs(list):  # type: ignore[type-arg]
+    """A JSON object as its (key, value) pairs, duplicates kept."""
+
+
+class _Number(str):
+    """A JSON number as its text."""
+
+
+def _reject_constant(name: str) -> None:
+    raise ValueError(f"floor: {name} is not JSON")
+
+
+def _check_tree(value: Any, depth: int) -> None:
+    """Strings hold no lone surrogate; containers nest at most JSON_MAX_DEPTH levels."""
+    if isinstance(value, str) and not isinstance(value, _Number):
+        if any(0xD800 <= ord(c) <= 0xDFFF for c in value):
+            raise ValueError("floor: lone surrogate")
+    elif isinstance(value, (_Pairs, list)):
+        if depth > JSON_MAX_DEPTH:
+            raise ValueError("floor: nested too deeply")
+        for item in value:
+            if isinstance(value, _Pairs):
+                _check_tree(item[0], depth)
+                item = item[1]
+            _check_tree(item, depth + 1)
+
+
+def _members(value: Any, known: tuple[str, ...]) -> dict[str, Any]:
+    """The known keys of an object, each at most once; other keys are ignored."""
+    pairs = value if isinstance(value, _Pairs) else list(value.items()) if isinstance(value, dict) else None
+    if pairs is None:
+        raise ValueError("floor: not an object")
+    out: dict[str, Any] = {}
+    for k, v in pairs:
+        if k in known:
+            if k in out:
+                raise ValueError(f"floor: duplicate {k}")
+            out[k] = v
+    return out
+
+
+def _count(value: Any, limit: int = 2**64) -> int:
+    if isinstance(value, _Number):
+        text = str(value)
+        if not text.isdigit() or (len(text) > 1 and text[0] == "0"):
+            raise ValueError("floor: count")
+        value = int(text)
+    if isinstance(value, bool) or not isinstance(value, int) or not 0 <= value < limit:
+        raise ValueError("floor: count")
+    return value
+
+
+def floor_from_value(value: Any) -> dict[str, Any]:
+    """A floor from a parsed JSON object: the construction rules, in schema order.
+
+    Unknown keys are ignored; known keys appear once; `max_hamming` is optional.
+    """
+    top = _members(value, FLOOR_KEYS + ("max_hamming",))
+    if any(k not in top for k in FLOOR_KEYS):
+        raise ValueError("floor: missing key")
+    if top["version"] != FLOOR_VERSION:
+        raise ValueError("floor: version")
+    cfg = _members(top["config"], CONFIG_KEYS)
+    operator = cfg.get("operator")
+    if not isinstance(operator, str) or operator not in PARAMETER:
+        raise ValueError("floor: operator")
+    parameter = PARAMETER[operator]
+    if any(k in cfg for k in ("scale", "sectors", "bins") if k != parameter):
+        raise ValueError("floor: parameter of another operator")
+    if any(k not in cfg for k in ("dim", parameter, "rule_revision")):
+        raise ValueError("floor: config incomplete")
+    dim, p1, revision = (_count(cfg[k], 2**32) for k in ("dim", parameter, "rule_revision"))
+    if config_valid(operator, dim, p1) is not None or revision != 0:
+        raise ValueError("floor: config")
+    if top["id_kind"] not in ("u64", "utf8"):
+        raise ValueError("floor: id_kind")
+    rid = top["reference_id"]
+    if not isinstance(rid, str) or len(rid) != 64 or any(c not in "0123456789abcdefABCDEF" for c in rid):
+        raise ValueError("floor: reference_id")
+    counts = {k: _count(top[k]) for k in COUNTS if k in top}
+    if counts["nulls"] == 0 or counts["total_rows"] == 0 or counts["changed_rows"] > counts["total_rows"]:
+        raise ValueError("floor: counts")
+    units = units_per_row(operator, dim)
+    if counts["hamming"] > units:
+        raise ValueError("floor: hamming")
+    if "max_hamming" in counts and not counts["hamming"] <= counts["max_hamming"] <= units:
+        raise ValueError("floor: max_hamming")
+    return {
+        "version": FLOOR_VERSION,
+        "config": {"operator": operator, "dim": dim, parameter: p1, "rule_revision": revision},
+        "id_kind": top["id_kind"],
+        "reference_id": rid.lower(),
+        **counts,
+    }
+
+
+def parse_floor_json(raw: bytes) -> dict[str, Any]:
+    """A floor from its JSON form: valid UTF-8 and JSON, then `floor_from_value`."""
+    try:
+        text = raw.decode("utf-8")
+        value = json.loads(
+            text, object_pairs_hook=_Pairs, parse_int=_Number, parse_float=_Number, parse_constant=_reject_constant,
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"floor: {exc}") from exc
+    _check_tree(value, 1)
+    return floor_from_value(value)
+
+
+def render_floor(floor: dict[str, Any]) -> str:
+    """The saved form: the schema keys in order, no whitespace."""
+    return json.dumps(floor, separators=(",", ":"))
 
 
 def validate_floor(floor: dict[str, Any]) -> None:
     """The construction rules: a floor that violates them is InvalidInput."""
-    if floor.get("version") not in FLOOR_KEYS or tuple(floor) != FLOOR_KEYS[floor["version"]]:
-        raise ValueError("floor: schema")
-    if floor["id_kind"] not in ("u64", "utf8"):
-        raise ValueError("floor: id_kind")
-    if len(bytes.fromhex(floor["reference_id"])) != 32:
-        raise ValueError("floor: reference_id")
-    for k in FLOOR_KEYS[floor["version"]][4:]:
-        if isinstance(floor[k], bool) or not isinstance(floor[k], int) or floor[k] < 0:
-            raise ValueError(f"floor: {k}")
-    if floor["nulls"] == 0 or floor["total_rows"] == 0 or floor["changed_rows"] > floor["total_rows"]:
-        raise ValueError("floor: counts")
-    units = units_per_row(floor["config"]["operator"], floor["config"]["dim"])
-    if floor["hamming"] > units:
-        raise ValueError("floor: hamming")
-    if "max_hamming" in floor and not floor["hamming"] <= floor["max_hamming"] <= units:
-        raise ValueError("floor: max_hamming")
+    floor_from_value(floor)
 
 
 def compatible(report: dict[str, Any], floor: dict[str, Any]) -> bool:
@@ -375,7 +473,7 @@ def measure(reports: list[dict[str, Any]]) -> dict[str, Any]:
         max_row = max([max_row] + [h for _, h in r["changed"]])
     assert best is not None
     return {
-        "version": "semq-floor/2",
+        "version": FLOOR_VERSION,
         "config": first["config"],
         "id_kind": first["id_kind"],
         "reference_id": first["reference_id"],
@@ -542,6 +640,15 @@ def check_11_13(root: Path) -> int:
     for case in load_manifest(root, "12-floor")["cases"]:
         e = case["expect"]
         d = root / "12-floor"
+        if "floor_json" in case["input"]:
+            try:
+                floor = parse_floor_json((d / case["input"]["floor_json"]).read_bytes())
+            except ValueError:
+                expect(e.get("error") == "InvalidInput", f"floor json rejected {case['id']}")
+            else:
+                expect(e.get("floor") == floor and e.get("json") == render_floor(floor), f"floor json {case['id']}")
+            n += 1
+            continue
         if "floor" in case["input"]:
             ref = parse((d / case["input"]["reference"]).read_bytes())
             cand = parse((d / case["input"]["candidate"]).read_bytes())

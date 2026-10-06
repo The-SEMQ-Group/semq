@@ -1,0 +1,1 @@
+{"version":"semq-floor/1","config":{"operator":"quant","dim":16,"bins":4,"rule_revision":0},"id_kind":"u64","reference_id":"69eb229d3dffb2ec1d76c0240d150ec35619a3d2be36f69176dc4f48af5c0a9c","nulls":1,"changed_rows":100,"total_rows":18446744073709551616,"hamming":2,"max_hamming":10}

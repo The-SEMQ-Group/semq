@@ -77,7 +77,7 @@ def main() -> int:
         print("conformance: the generated vectors differ from tests/conformance/:", file=sys.stderr)
         for p in problems:
             print(f"  {p}", file=sys.stderr)
-        print("bump SEMQ_FILE_VERSION, the rule revision or the floor schema version and run with --update if the change is intended", file=sys.stderr)
+        print("bump SEMQ_FILE_VERSION or the rule revision, or change the floor schema, and run with --update if the change is intended", file=sys.stderr)
         return 1
     print("conformance: generated vectors match the committed ones")
     return 0

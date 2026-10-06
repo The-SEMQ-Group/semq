@@ -9,8 +9,8 @@ use std::collections::{BTreeMap, HashSet};
 use std::io::{Cursor, ErrorKind};
 
 use semq::{
-    build_info, Codec, CodecConfig, Diff, Encoding, Error, Floor, FloorReport, FloorReportV2,
-    GateOptions, Id, IdKind, Ids, Manifest, Operator, Reason, Which,
+    build_info, Codec, CodecConfig, Diff, Encoding, Error, Floor, FloorReport, GateOptions, Id,
+    IdKind, Ids, Manifest, Operator, Reason, Which,
 };
 
 // --------------------------------------------------------------------------
@@ -709,6 +709,16 @@ fn diff_over_utf8_ids() {
 }
 
 /// A valid floor bound to `d`'s config, id kind and reference.
+/// `floor`, which records no `max_hamming`, read back from JSON with one.
+fn with_max(floor: &Floor, max_hamming: u64) -> Option<Floor> {
+    let json = floor.to_json();
+    Floor::from_json(format!(
+        "{},\"max_hamming\":{max_hamming}}}",
+        &json[..json.len() - 1]
+    ))
+    .ok()
+}
+
 fn floor_for(d: &Diff, nulls: u64, changed: u64, total: u64, hamming: u64) -> Floor {
     Floor::new(
         d.config(),
@@ -745,9 +755,9 @@ fn floor_measure_and_within() {
         (1, 1, 100, 1)
     );
     assert_eq!(f.max_hamming(), Some(1));
-    assert_eq!(f, floor_for(&da, 1, 1, 100, 1).with_max_hamming(1).unwrap());
+    assert_eq!(f, with_max(&floor_for(&da, 1, 1, 100, 1), 1).unwrap());
     assert_ne!(f, floor_for(&da, 1, 1, 100, 1));
-    assert_ne!(f, floor_for(&da, 2, 1, 100, 1).with_max_hamming(1).unwrap());
+    assert_ne!(f, with_max(&floor_for(&da, 2, 1, 100, 1), 1).unwrap());
     assert!(da.within(&f).unwrap());
 
     // Two nulls of the same reference: the envelope of both.
@@ -926,9 +936,7 @@ fn evaluate_names_every_failed_check_and_the_rows_above_max() {
     assert_eq!(strict.reasons(), &[Reason::RowAboveMax]);
     assert_eq!(strict.rows(), &[Id::U64(150)]);
     // Every failed check is named, not only the first.
-    let tight = floor_for(&hidden, 1, 1, 200, 1)
-        .with_max_hamming(1)
-        .unwrap();
+    let tight = with_max(&floor_for(&hidden, 1, 1, 200, 1), 1).unwrap();
     let all = hidden
         .evaluate(&tight, &GateOptions::new().per_row(true))
         .unwrap();
@@ -981,41 +989,48 @@ fn floor_report_and_its_strict_inverse() {
         )
     );
 
-    // The semq-floor/1 report drops max_hamming; the semq-floor/2 report
-    // gives back the same floor.
+    // The report does not carry max_hamming; the JSON form, written and
+    // read by the core, gives back the same floor.
     let back = Floor::from_report(&r).unwrap();
     assert_eq!(back.max_hamming(), None);
     assert_eq!(back.as_report(), r);
-    assert_eq!(back.as_report_v2(), None);
     assert!(da.within(&back).unwrap());
-    let r2 = f.as_report_v2().unwrap();
+    let json = f.to_json();
     assert_eq!(
-        (r2.version.as_str(), r2.hamming, r2.max_hamming),
-        (FloorReportV2::VERSION, 1, 1)
+        json,
+        format!(
+            "{{\"version\":\"semq-floor/1\",\"config\":{{\"operator\":\"quant\",\"dim\":16,\"bins\":4,\
+             \"rule_revision\":0}},\"id_kind\":\"u64\",\"reference_id\":\"{}\",\"nulls\":1,\
+             \"changed_rows\":1,\"total_rows\":100,\"hamming\":1,\"max_hamming\":1}}",
+            r.reference_id
+        )
     );
-    let back2 = Floor::from_report_v2(&r2).unwrap();
-    assert_eq!(back2, f);
-    assert_eq!(back2.as_report_v2(), Some(r2.clone()));
+    let from_json = Floor::from_json(&json).unwrap();
+    assert_eq!(from_json, f);
+    assert_eq!(from_json.to_json(), json);
+    assert_eq!(
+        Floor::from_json(back.to_json()).unwrap().max_hamming(),
+        None
+    );
+    assert_eq!(
+        Floor::from_json(json.replace('{', "{\"note\":[1,{}],")).unwrap(),
+        f
+    );
     for bad in [
-        FloorReportV2 {
-            version: FloorReport::VERSION.to_string(),
-            ..r2.clone()
-        },
-        FloorReportV2 {
-            max_hamming: 0,
-            ..r2.clone()
-        },
-        FloorReportV2 {
-            max_hamming: 17,
-            ..r2.clone()
-        },
+        json.replace("\"max_hamming\":1", "\"max_hamming\":0"),
+        json.replace("\"max_hamming\":1", "\"max_hamming\":17"),
+        json.replace("\"nulls\":1", "\"nulls\":1.0"),
+        json.replace("semq-floor/1", "semq-floor/2"),
+        json.replace("\"hamming\":1,", ""),
+        format!("{json} x"),
+        String::from("{}"),
     ] {
         assert!(
-            matches!(Floor::from_report_v2(&bad), Err(Error::InvalidInput { .. })),
-            "{bad:?}"
+            matches!(Floor::from_json(&bad), Err(Error::InvalidInput { .. })),
+            "{bad}"
         );
     }
-    let set: HashSet<Floor> = [f, back2, back].into_iter().collect();
+    let set: HashSet<Floor> = [f, from_json, back].into_iter().collect();
     assert_eq!(set.len(), 2);
 
     // Strict: version, id kind, reference id and every count.

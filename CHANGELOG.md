@@ -20,22 +20,28 @@ surface.
   `diff.evaluate(floor, { perRow })`; C `semq_diff_evaluate` with
   `semq_gate_options_t` and `semq_verdict_t`.
 - **Per-row check.** `per_row` also fails the verdict when any changed row
-  has a hamming distance above the floor's new `max_hamming`, the largest
-  of any changed row of any null, and lists those rows. The p99 check
-  ignores the most changed 1% of rows; this one ignores none. `semq diff
-  --floor F --per-row` applies it from the command line.
-- **`Floor.max_hamming`**, recorded by `measure`, and the `semq-floor/2`
-  schema that carries it. C `semq_floor_create_with_max` and
-  `semq_floor_max_hamming`; Rust `Floor::with_max_hamming`,
-  `Floor::as_report_v2`, `Floor::from_report_v2` and `FloorReportV2`; Go
-  `Floor.WithMaxHamming`, `Floor.MaxHamming` and `FloorVersion2`.
+  has a hamming distance above the floor's `max_hamming`, the largest of any
+  changed row of any null, and lists those rows. The p99 check ignores the
+  most changed 1% of rows; this one ignores none. `semq diff --floor F
+  --per-row` applies it from the command line.
+- **`Floor.max_hamming`**, recorded by `measure` and saved as an optional
+  key of the floor JSON. C `semq_floor_create_with_max` and
+  `semq_floor_max_hamming`.
+- **The floor JSON is written and read by the core** (`semq_floor_save`,
+  `semq_floor_load`), so every binding applies the same rules. Rust
+  `Floor::to_json` and `Floor::from_json`, Go `json.Marshal(floor)` and
+  `semq.LoadFloor`, TypeScript `floor.toJson()` and `Floor.fromJson`; Python
+  `save`, `load`, `as_dict` and `from_dict` now call the core.
 
 ### Changed
 
-- `Floor.measure` and `semq floor` write `semq-floor/2`. Every binding still
-  reads `semq-floor/1`; such a floor gives the same `within` verdicts as
-  before, refuses the per-row check and writes back as `semq-floor/1`. In
-  Rust, `Floor::as_report` keeps returning the `semq-floor/1` form.
+- Reading floor JSON ignores keys it does not know, at the top level and
+  inside `config`, so a floor saved by a later version with an added key
+  still reads. Known keys stay strict. `version` remains `semq-floor/1`; it
+  changes only when the meaning of a key changes. SEMQ 1.0 rejects a floor
+  that carries `max_hamming`: upgrade the readers before the writers.
+- Go `FloorReport.UnmarshalJSON` and `FloorFromReport` read through the
+  core, and so check every value, not only the shape.
 - `semq diff --floor --json` adds a `verdict` object next to `within`.
 
 ## [1.0.0] - 2026-10-05

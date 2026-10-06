@@ -55,8 +55,36 @@ static void try_image(const uint8_t* data, size_t size, int repair) {
     semq_encoding_free(enc);
 }
 
+/* The same bytes as floor JSON: an accepted floor saves to a canonical form
+ * that reads back and saves to the same bytes. */
+static void try_floor(const uint8_t* data, size_t size) {
+    semq_floor_t* f = NULL;
+    semq_error_t err;
+    const semq_status_t status = semq_floor_load(data, (uint64_t)size, &f, &err);
+    CHECK(err.status == (uint32_t)status);
+    if (status != SEMQ_OK) {
+        CHECK(f == NULL && status != SEMQ_ERR_INTERNAL);
+        return;
+    }
+    const uint64_t n = semq_floor_json_size(f);
+    uint8_t* a = (uint8_t*)malloc((size_t)n);
+    uint8_t* b = (uint8_t*)malloc((size_t)n);
+    if (a != NULL && b != NULL) {
+        CHECK(semq_floor_save(f, a, n, &err) == SEMQ_OK);
+        semq_floor_t* g = NULL;
+        CHECK(semq_floor_load(a, n, &g, &err) == SEMQ_OK);
+        CHECK(semq_floor_json_size(g) == n && semq_floor_save(g, b, n, &err) == SEMQ_OK);
+        CHECK(memcmp(a, b, (size_t)n) == 0);
+        semq_floor_free(g);
+    }
+    free(a);
+    free(b);
+    semq_floor_free(f);
+}
+
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size);
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     try_image(data, size, 1);
+    try_floor(data, size);
     return 0;
 }

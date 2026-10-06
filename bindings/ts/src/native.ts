@@ -149,6 +149,9 @@ export interface CoreExports {
   floorTotalRows: (floor: number) => bigint;
   floorHamming: (floor: number) => bigint;
   floorMaxHamming: (floor: number) => bigint;
+  floorJsonSize: (floor: number) => bigint;
+  floorSave: (floor: number, out: number, cap: bigint, err: number) => number;
+  floorLoad: (buf: number, len: bigint, out: number, err: number) => number;
   diffWithin: (diff: number, floor: number, out: number, err: number) => number;
   // Gate evaluation
   gateOptionsCreate: (out: number, err: number) => number;
@@ -256,6 +259,9 @@ export function bindCore(w: SemqWasm): CoreExports {
     floorTotalRows: big("semq_floor_total_rows"),
     floorHamming: big("semq_floor_hamming"),
     floorMaxHamming: big("semq_floor_max_hamming"),
+    floorJsonSize: big("semq_floor_json_size"),
+    floorSave: num("semq_floor_save"),
+    floorLoad: num("semq_floor_load"),
     diffWithin: num("semq_diff_within"),
     gateOptionsCreate: num("semq_gate_options_create"),
     gateOptionsFree: nil("semq_gate_options_free"),

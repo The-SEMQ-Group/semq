@@ -81,6 +81,6 @@ pub use convert::Manifest;
 pub use diff::{Diff, DiffReport};
 pub use encoding::Encoding;
 pub use error::{Error, Result, Which};
-pub use floor::{Floor, FloorReport, FloorReportV2};
+pub use floor::{Floor, FloorReport};
 pub use gate::{GateOptions, Reason, Verdict};
 pub use ids::{Id, IdKind, Ids};

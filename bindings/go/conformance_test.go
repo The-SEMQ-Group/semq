@@ -926,10 +926,10 @@ func conformance11(t *testing.T, dir string, c conformanceCase) {
 	}
 }
 
-// assertFloor compares the report form of f with the manifest's floor.
+// assertFloor compares the JSON form of f with the manifest's floor.
 func assertFloor(t *testing.T, f *semq.Floor, want json.RawMessage) {
 	t.Helper()
-	got, err := json.Marshal(f.Report())
+	got, err := json.Marshal(f)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -941,16 +941,11 @@ func assertFloor(t *testing.T, f *semq.Floor, want json.RawMessage) {
 	}
 }
 
-// floorOf reads the floor a manifest gives in the report form and
-// constructs it; the error, from the reader or the constructor, is the
-// host's verdict on that form.
+// floorOf reads the floor a manifest gives as a JSON object, by the core's
+// rules; the error is the host's verdict on that object.
 func floorOf(t *testing.T, raw json.RawMessage) (*semq.Floor, error) {
 	t.Helper()
-	var r semq.FloorReport
-	if err := json.Unmarshal(raw, &r); err != nil {
-		return nil, err
-	}
-	f, err := semq.FloorFromReport(r)
+	f, err := semq.LoadFloor(raw)
 	if err == nil {
 		t.Cleanup(f.Close)
 	}
@@ -973,8 +968,29 @@ func conformance12(t *testing.T, dir string, c conformanceCase) {
 		Candidate string          `json:"candidate"`
 		Floor     json.RawMessage `json:"floor"`
 		PerRow    bool            `json:"per_row"`
+		FloorJSON string          `json:"floor_json"`
 	}
 	decodeJSON(t, c.Input, &in)
+	if in.FloorJSON != "" {
+		b, err := os.ReadFile(filepath.Join(dir, in.FloorJSON))
+		if err != nil {
+			t.Fatal(err)
+		}
+		f, err := floorOf(t, b)
+		if outcome(t, c.Expect, err) {
+			return
+		}
+		var expect struct {
+			Floor json.RawMessage `json:"floor"`
+			JSON  string          `json:"json"`
+		}
+		decodeJSON(t, c.Expect, &expect)
+		assertFloor(t, f, expect.Floor)
+		if got, _ := json.Marshal(f); string(got) != expect.JSON {
+			t.Errorf("json:\n got %s\nwant %s", got, expect.JSON)
+		}
+		return
+	}
 	if in.NullDiffs != nil {
 		var expect struct {
 			Floor json.RawMessage `json:"floor"`

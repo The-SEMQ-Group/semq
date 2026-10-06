@@ -407,7 +407,7 @@ SEMQ_API semq_status_t semq_floor_create(const semq_config_t* config, uint32_t i
                                          uint64_t hamming, semq_floor_t** out,
                                          semq_error_t* err);
 /** Create a floor that also records `max_hamming`, the largest hamming of
- *  any changed row across the nulls (`semq-floor/2`). The rules of
+ *  any changed row across the nulls. The rules of
  *  ::semq_floor_create apply, and `hamming ≤ max_hamming ≤
  *  units_per_row(config)`; otherwise `InvalidInput`. A floor made by
  *  ::semq_floor_create has no `max_hamming`. */
@@ -435,6 +435,22 @@ SEMQ_API uint64_t semq_floor_hamming(const semq_floor_t* floor);
 /** Largest hamming of any changed row across the nulls, or ::SEMQ_NONE for
  *  a floor made by ::semq_floor_create, which does not record it. */
 SEMQ_API uint64_t semq_floor_max_hamming(const semq_floor_t* floor);
+/** Length in bytes of the floor's JSON form (::semq_floor_save). */
+SEMQ_API uint64_t semq_floor_json_size(const semq_floor_t* floor);
+/** Write the floor's JSON form into `out` (`cap` ≥ ::semq_floor_json_size):
+ *  one object, keys in the order of the floor schema, no whitespace, UTF-8
+ *  without a trailing newline. `max_hamming` is written only when the floor
+ *  records it. */
+SEMQ_API semq_status_t semq_floor_save(const semq_floor_t* floor, uint8_t* out, uint64_t cap,
+                                       semq_error_t* err);
+/** Read a floor from its JSON form. Strict on the keys of the floor schema
+ *  (each at most once, the version "semq-floor/1", counts as JSON integers
+ *  without sign, fraction or exponent, `max_hamming` optional) and on JSON
+ *  and UTF-8 validity; other keys are ignored, to a nesting depth of 64.
+ *  The construction rules of ::semq_floor_create apply. Any violation is
+ *  `InvalidInput`. The bytes are not retained. */
+SEMQ_API semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_floor_t** out,
+                                       semq_error_t* err);
 /** `*out = 1` iff the diff is within the floor (exact integer arithmetic):
  *  rows in common, nothing removed, changed ratio and p99 hamming at most
  *  the floor's, and no change to `encoder` or `encoder_revision`. The

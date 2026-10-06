@@ -501,6 +501,23 @@ extern "C" {
     pub fn semq_floor_hamming(floor: *const semq_floor_t) -> u64;
     /// `SEMQ_NONE` for a floor made by `semq_floor_create`.
     pub fn semq_floor_max_hamming(floor: *const semq_floor_t) -> u64;
+    /// Length in bytes of the floor's JSON form.
+    pub fn semq_floor_json_size(floor: *const semq_floor_t) -> u64;
+    /// Writes the floor's JSON form into `out` (`cap >= semq_floor_json_size`).
+    pub fn semq_floor_save(
+        floor: *const semq_floor_t,
+        out: *mut u8,
+        cap: u64,
+        err: *mut semq_error_t,
+    ) -> semq_status_t;
+    /// Reads a floor from its JSON form; strict on the schema's keys, other
+    /// keys ignored. `SEMQ_ERR_INVALID_INPUT` on any violation.
+    pub fn semq_floor_load(
+        buf: *const u8,
+        len: u64,
+        out: *mut *mut semq_floor_t,
+        err: *mut semq_error_t,
+    ) -> semq_status_t;
     /// `*out = 1` iff the diff is within the floor (exact integer
     /// arithmetic). The floor must match the diff's config, id kind and
     /// reference state_id (`SEMQ_ERR_INCOMPATIBLE` otherwise).

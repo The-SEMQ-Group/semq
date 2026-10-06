@@ -86,32 +86,6 @@ impl Floor {
         Self::from_raw(out, "floor")
     }
 
-    /// This floor, also recording `max_hamming`: `hamming <= max_hamming <=
-    /// config.units_per_row()`, else `InvalidInput`.
-    pub fn with_max_hamming(&self, max_hamming: u64) -> Result<Floor> {
-        let mut out: *mut sys::semq_floor_t = ptr::null_mut();
-        let mut err = new_error();
-        let reference_id = self.reference_id();
-        // SAFETY: the config is a validated struct, `reference_id` holds 32
-        // readable bytes and every out-pointer is live for the call.
-        let status = unsafe {
-            sys::semq_floor_create_with_max(
-                self.config.as_raw(),
-                self.id_kind.as_raw(),
-                reference_id.as_ptr(),
-                self.nulls(),
-                self.changed_rows(),
-                self.total_rows(),
-                self.hamming(),
-                max_hamming,
-                &mut out,
-                &mut err,
-            )
-        };
-        check(status, &err, "floor")?;
-        Self::from_raw(out, "floor")
-    }
-
     /// The envelope of one or more null diffs of one reference; every input
     /// is within the result. The diffs must share config, id kind and
     /// reference (`Incompatible`, `field` = the index of the offending
@@ -219,17 +193,17 @@ impl Floor {
     }
 
     /// The largest hamming of any changed row of any null (`0` when no null
-    /// changed a row). `None` for a floor built without it, by
-    /// [`new`](Self::new) or from a `semq-floor/1` report.
+    /// changed a row). `None` for a floor that does not record it: one from
+    /// [`new`](Self::new) or [`from_report`](Self::from_report), or read
+    /// from JSON without it.
     pub fn max_hamming(&self) -> Option<u64> {
         // SAFETY: the handle is live.
         let v = unsafe { sys::semq_floor_max_hamming(self.ptr.as_ptr()) };
         (v != sys::SEMQ_NONE).then_some(v)
     }
 
-    /// The `semq-floor/1` report as plain data, ready for any serializer.
-    /// It does not carry `max_hamming`; [`as_report_v2`](Self::as_report_v2)
-    /// does.
+    /// The report as plain data, ready for any serializer. It does not
+    /// carry `max_hamming`; [`to_json`](Self::to_json) does.
     pub fn as_report(&self) -> FloorReport {
         FloorReport {
             version: FloorReport::VERSION.to_owned(),
@@ -272,46 +246,35 @@ impl Floor {
         )
     }
 
-    /// The `semq-floor/2` report, with `max_hamming`; `None` for a floor
-    /// that does not record it.
-    pub fn as_report_v2(&self) -> Option<FloorReportV2> {
-        let r = self.as_report();
-        Some(FloorReportV2 {
-            version: FloorReportV2::VERSION.to_owned(),
-            config: r.config,
-            id_kind: r.id_kind,
-            reference_id: r.reference_id,
-            nulls: r.nulls,
-            changed_rows: r.changed_rows,
-            total_rows: r.total_rows,
-            hamming: r.hamming,
-            max_hamming: self.max_hamming()?,
-        })
+    /// The floor's JSON form, written by the core: the
+    /// [floor schema](https://the-semq-group.github.io/semq/reference/contracts/#floor-schema)
+    /// with `max_hamming` when the floor records it, keys in schema order, no
+    /// whitespace. The same bytes in every binding.
+    pub fn to_json(&self) -> String {
+        // SAFETY: the handle is live.
+        let n = unsafe { sys::semq_floor_json_size(self.ptr.as_ptr()) };
+        let mut out = vec![0u8; n as usize];
+        let mut err = new_error();
+        // SAFETY: `out` holds `n` writable bytes; the handle is live.
+        let status =
+            unsafe { sys::semq_floor_save(self.ptr.as_ptr(), out.as_mut_ptr(), n, &mut err) };
+        check(status, &err, "save").expect("SEMQ core violated an infallible save contract");
+        String::from_utf8(out).expect("SEMQ core wrote a floor that is not UTF-8")
     }
 
-    /// The inverse of [`as_report_v2`](Self::as_report_v2), strictly:
-    /// `version` must be [`FloorReportV2::VERSION`] and the fields must
-    /// satisfy [`from_report`](Self::from_report) and
-    /// [`with_max_hamming`](Self::with_max_hamming); otherwise
-    /// `InvalidInput`.
-    pub fn from_report_v2(report: &FloorReportV2) -> Result<Floor> {
-        if report.version != FloorReportV2::VERSION {
-            return Err(Error::invalid(format!(
-                "floor.version must be {:?}",
-                FloorReportV2::VERSION
-            )));
-        }
-        let v1 = FloorReport {
-            version: FloorReport::VERSION.to_owned(),
-            config: report.config,
-            id_kind: report.id_kind.clone(),
-            reference_id: report.reference_id.clone(),
-            nulls: report.nulls,
-            changed_rows: report.changed_rows,
-            total_rows: report.total_rows,
-            hamming: report.hamming,
-        };
-        Floor::from_report(&v1)?.with_max_hamming(report.max_hamming)
+    /// Read a floor from its JSON form, by the core's rules: the schema's
+    /// keys strictly (each at most once, integer counts, `max_hamming`
+    /// optional), other keys ignored, and the rules of [`new`](Self::new).
+    /// Anything else is `InvalidInput`.
+    pub fn from_json(json: impl AsRef<[u8]>) -> Result<Floor> {
+        let bytes = json.as_ref();
+        let mut out: *mut sys::semq_floor_t = ptr::null_mut();
+        let mut err = new_error();
+        // SAFETY: `bytes` is readable for its length; the out-pointers are live.
+        let status =
+            unsafe { sys::semq_floor_load(bytes.as_ptr(), bytes.len() as u64, &mut out, &mut err) };
+        check(status, &err, "load")?;
+        Self::from_raw(out, "load")
     }
 
     #[allow(clippy::type_complexity)]
@@ -417,37 +380,6 @@ pub struct FloorReport {
 impl FloorReport {
     /// The schema version every report carries.
     pub const VERSION: &'static str = "semq-floor/1";
-}
-
-/// A [`Floor`] as plain data in the `semq-floor/2` schema: the fields of
-/// [`FloorReport`] in the same order, then `max_hamming`, an integer.
-/// `version` is `"semq-floor/2"`. [`Floor::from_report_v2`] is the strict
-/// inverse.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FloorReportV2 {
-    /// The schema version, [`VERSION`](Self::VERSION).
-    pub version: String,
-    /// The config the nulls were measured under.
-    pub config: CodecConfig,
-    /// `"u64"` or `"utf8"`.
-    pub id_kind: String,
-    /// The reference's `state_id`, hex.
-    pub reference_id: String,
-    /// How many null diffs the floor was measured from.
-    pub nulls: u64,
-    /// Numerator of the admitted fraction of changed rows.
-    pub changed_rows: u64,
-    /// Denominator of the admitted fraction of changed rows.
-    pub total_rows: u64,
-    /// Largest admitted p99 hamming distance over changed rows.
-    pub hamming: u64,
-    /// Largest hamming of any changed row of any null.
-    pub max_hamming: u64,
-}
-
-impl FloorReportV2 {
-    /// The schema version every report carries.
-    pub const VERSION: &'static str = "semq-floor/2";
 }
 
 /// Exactly 64 hex digits (either case) as 32 bytes.
