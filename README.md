@@ -63,10 +63,7 @@ go get github.com/The-SEMQ-Group/semq/bindings/go   # Go 1.21+, with cgo
 npm install @semq/sdk                               # Node.js 22+ or a browser bundler
 ```
 
-The Python wheels and the npm package include the compiled core, so they need
-no compiler. The Rust crate and the Go module compile the core they carry,
-which needs a C compiler; Rust also needs CMake 3.20+. See
-[Installation](https://github.com/The-SEMQ-Group/semq/blob/main/docs/installation.md)
+See [Installation](https://github.com/The-SEMQ-Group/semq/blob/main/docs/installation.md)
 for each language, and [CONTRIBUTING](https://github.com/The-SEMQ-Group/semq/blob/main/CONTRIBUTING.md)
 to build from a clone of this repository.
 
