@@ -1142,6 +1142,12 @@ static void test_evaluate_per_row(void) {
     semq_encoding_free(ref);
 }
 
+/* Append `s` to the NUL-terminated `buf` of `cap` bytes. */
+static void append(char* buf, size_t cap, const char* s) {
+    const size_t n = strlen(buf);
+    snprintf(buf + n, cap - n, "%s", s);
+}
+
 static semq_status_t load_text(const char* text, semq_floor_t** out) {
     semq_error_t err;
     return semq_floor_load((const uint8_t*)text, strlen(text), out, &err);
@@ -1172,7 +1178,7 @@ static void test_floor_json(void) {
     char want[512] = "{\"version\":\"semq-floor/1\",\"config\":{\"operator\":\"quant\",\"dim\":128,\"bins\":4,"
                      "\"rule_revision\":0},\"id_kind\":\"u64\",\"reference_id\":\"";
     for (int i = 0; i < 32; i++) snprintf(want + strlen(want), 3, "%02x", rid[i]);
-    strcat(want, "\",\"nulls\":1,\"changed_rows\":100,\"total_rows\":200,\"hamming\":2,\"max_hamming\":9}");
+    append(want, sizeof(want), "\",\"nulls\":1,\"changed_rows\":100,\"total_rows\":200,\"hamming\":2,\"max_hamming\":9}");
     TEST_ASSERT_EQUAL_STRING(want, text);
 
     /* It reads back as the same floor, through whitespace and unknown keys. */
@@ -1191,7 +1197,8 @@ static void test_floor_json(void) {
     /* max_hamming is optional: without it the floor does not record it, and saves without it. */
     char* cut = strstr(text, ",\"max_hamming\"");
     TEST_ASSERT_NOT_NULL(cut);
-    strcpy(cut, "}");
+    cut[0] = '}';
+    cut[1] = '\0';
     TEST_ASSERT_EQUAL_INT(SEMQ_OK, load_text(text, &g));
     TEST_ASSERT_EQUAL_UINT64(SEMQ_NONE, semq_floor_max_hamming(g));
     char back[512];
@@ -1231,10 +1238,10 @@ static void test_floor_json(void) {
     /* An ignored value nests up to 64 levels, the floor object included. */
     for (int arrays = 63; arrays <= 64; arrays++) {
         char nested[1024] = "{\"x\":";
-        for (int i = 0; i < arrays; i++) strcat(nested, "[");
-        for (int i = 0; i < arrays; i++) strcat(nested, "]");
-        strcat(nested, ",");
-        strcat(nested, body);
+        for (int i = 0; i < arrays; i++) append(nested, sizeof(nested), "[");
+        for (int i = 0; i < arrays; i++) append(nested, sizeof(nested), "]");
+        append(nested, sizeof(nested), ",");
+        append(nested, sizeof(nested), body);
         TEST_ASSERT_EQUAL_INT_MESSAGE(arrays == 63 ? SEMQ_OK : SEMQ_ERR_INVALID_INPUT, load_text(nested, &g), nested);
         if (arrays == 63) semq_floor_free(g);
     }
