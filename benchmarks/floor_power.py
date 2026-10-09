@@ -378,6 +378,8 @@ def gate_example(diff: Any, floor: Any, chosen: np.ndarray) -> dict[str, Any]:
         "faulted_hamming": sorted(changed.get(int(i), 0) for i in chosen),
         "rows_ignored_by_p99": len(values) // 100,
         "candidate_p99": rebuild.p99(values),
+        "floor_changed_rows": floor.changed_rows,
+        "floor_total_rows": floor.total_rows,
         "floor_hamming": floor.hamming,
         "floor_max_hamming": floor.max_hamming,
         "within": diff.within(floor),
