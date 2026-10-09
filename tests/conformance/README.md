@@ -33,6 +33,9 @@ with a change to the [floor schema](../../docs/reference/contracts.md#floor-sche
 in the same pull request, and review the diff of the regenerated files like
 code.
 
+Adding cases also takes `--update`, provided that no existing case and no
+existing file changes.
+
 ## Case format
 
 Float32 inputs are `.f32` files (little-endian) with a `shape`, or arrays of

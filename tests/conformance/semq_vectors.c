@@ -1428,19 +1428,33 @@ static void vector_11_13(void) {
     semq_encoding_t* enc_changed = encode_u64(&c, ref_ids, 4u, g_seeded, enc_man, 1u, &err);
     semq_encoding_t* empty_ref;
     { semq_ids_t in = { SEMQ_ID_U64, 0u, NULL, NULL, NULL }; empty_ref = create_rows(&c, &in, NULL, ref_man, 2u, &err); }
-    struct { const char* name; semq_encoding_t* e; } files[5] = {
-        { "ref.semq", ref }, { "cand.semq", cand }, { "same.semq", same }, { "encoder-changed.semq", enc_changed }, { "empty-ref.semq", empty_ref } };
-    for (int i = 0; i < 5; i++) { uint64_t len; uint8_t* img = image_of(files[i].e, &len); write_file(files[i].name, img, (size_t)len); free(img); }
+    /* phase and orbit: the same four rows, id 3 moved, so changed rows unpack symbols to count hamming */
+    float moved[4 * SEEDED_DIM];
+    memcpy(moved, g_seeded, sizeof(moved));
+    moved[2u * SEEDED_DIM + 0] = -moved[2u * SEEDED_DIM + 0];
+    moved[2u * SEEDED_DIM + 5] = -moved[2u * SEEDED_DIM + 5];
+    renorm(moved + 2u * SEEDED_DIM, SEEDED_DIM);
+    semq_config_t cp = cfg_of(SEMQ_PHASE, SEEDED_DIM, 8u), co = cfg_of(SEMQ_ORBIT, SEEDED_DIM, 50u);
+    semq_encoding_t* phase_ref = encode_u64(&cp, ref_ids, 4u, g_seeded, NULL, 0u, &err);
+    semq_encoding_t* phase_cand = encode_u64(&cp, ref_ids, 4u, moved, NULL, 0u, &err);
+    semq_encoding_t* orbit_ref = encode_u64(&co, ref_ids, 4u, g_seeded, NULL, 0u, &err);
+    semq_encoding_t* orbit_cand = encode_u64(&co, ref_ids, 4u, moved, NULL, 0u, &err);
+    struct { const char* name; semq_encoding_t* e; } files[9] = {
+        { "ref.semq", ref }, { "cand.semq", cand }, { "same.semq", same }, { "encoder-changed.semq", enc_changed }, { "empty-ref.semq", empty_ref },
+        { "phase-ref.semq", phase_ref }, { "phase-cand.semq", phase_cand }, { "orbit-ref.semq", orbit_ref }, { "orbit-cand.semq", orbit_cand } };
+    for (int i = 0; i < 9; i++) { uint64_t len; uint8_t* img = image_of(files[i].e, &len); write_file(files[i].name, img, (size_t)len); free(img); }
     js_open();
     js_header(11u, "diff");
-    struct { const char* id; semq_encoding_t* a; semq_encoding_t* b; const char* fa; const char* fb; uint64_t unit_id; } pairs[5] = {
+    struct { const char* id; semq_encoding_t* a; semq_encoding_t* b; const char* fa; const char* fb; uint64_t unit_id; } pairs[7] = {
         { "added-removed-changed", ref, cand, "ref.semq", "cand.semq", 3u },
         { "identical-short-circuit", ref, same, "ref.semq", "same.semq", 2u },
         { "encoder-changed", ref, enc_changed, "ref.semq", "encoder-changed.semq", 1u },
         { "empty-reference", empty_ref, cand, "empty-ref.semq", "cand.semq", SEMQ_NONE },
         { "candidate-empty", ref, empty_ref, "ref.semq", "empty-ref.semq", SEMQ_NONE },
+        { "phase-changed", phase_ref, phase_cand, "phase-ref.semq", "phase-cand.semq", 3u },
+        { "orbit-changed", orbit_ref, orbit_cand, "orbit-ref.semq", "orbit-cand.semq", 3u },
     };
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 7; i++) {
         semq_diff_t* d = NULL;
         if (semq_encoding_diff(pairs[i].a, pairs[i].b, &d, &err) != SEMQ_OK) die("diff");
         js_begin_object();
@@ -1555,6 +1569,41 @@ static void vector_11_13(void) {
         js_begin_array(); js_str("base1.semq"); js_str("null-b.semq"); js_end_array();
         js_end_array(); js_end_object();
         js_key("expect"); js_error(&err); js_end_object();
+        /* nulls of another config, and of another id kind with the same config */
+        {
+            semq_diff_t* d_phase = NULL;
+            semq_encoding_diff(phase_ref, phase_cand, &d_phase, &err);
+            const semq_diff_t* configs[2] = { g_null_a, d_phase };
+            semq_floor_measure(configs, 2u, &f_none, &err);
+            js_begin_object(); js_kv_str("id", "measure-rejects-different-configs");
+            js_key("input"); js_begin_object(); js_key("null_diffs"); js_begin_array();
+            js_begin_array(); js_str("base100.semq"); js_str("null-a.semq"); js_end_array();
+            js_begin_array(); js_str("../11-diff/phase-ref.semq"); js_str("../11-diff/phase-cand.semq"); js_end_array();
+            js_end_array(); js_end_object();
+            js_key("expect"); js_error(&err); js_end_object();
+            semq_diff_free(d_phase);
+            uint64_t len = 0u;
+            const uint8_t* rows0 = semq_encoding_rows(b0, &len);
+            const uint8_t* rows1 = semq_encoding_rows(b1, &len);
+            const uint64_t offsets[2] = { 0u, 1u };
+            semq_ids_t utf8 = { SEMQ_ID_UTF8, 1u, NULL, offsets, (const uint8_t*)"a" };
+            semq_encoding_t* u0 = create_rows(semq_encoding_config(b0), &utf8, rows0, NULL, 0u, &err);
+            semq_encoding_t* u1 = create_rows(semq_encoding_config(b1), &utf8, rows1, NULL, 0u, &err);
+            struct { const char* name; semq_encoding_t* e; } ufiles[2] = { { "utf8-base1.semq", u0 }, { "utf8-null-b.semq", u1 } };
+            for (int i = 0; i < 2; i++) { uint64_t n; uint8_t* img = image_of(ufiles[i].e, &n); write_file(ufiles[i].name, img, (size_t)n); free(img); }
+            semq_diff_t* d_utf8 = NULL;
+            semq_encoding_diff(u0, u1, &d_utf8, &err);
+            const semq_diff_t* kinds[2] = { g_null_b, d_utf8 };
+            semq_floor_measure(kinds, 2u, &f_none, &err);
+            js_begin_object(); js_kv_str("id", "measure-rejects-different-id-kinds");
+            js_key("input"); js_begin_object(); js_key("null_diffs"); js_begin_array();
+            js_begin_array(); js_str("base1.semq"); js_str("null-b.semq"); js_end_array();
+            js_begin_array(); js_str("utf8-base1.semq"); js_str("utf8-null-b.semq"); js_end_array();
+            js_end_array(); js_end_object();
+            js_key("expect"); js_error(&err); js_end_object();
+            semq_diff_free(d_utf8);
+            semq_encoding_free(u0); semq_encoding_free(u1);
+        }
         /* within: the floor is given in full; hosts construct it, then apply it. */
         const semq_config_t* cq = semq_encoding_config(g_base100);
         semq_config_t orbit16; semq_config_orbit(16u, 50u, &orbit16, NULL);
@@ -1746,6 +1795,7 @@ static void vector_11_13(void) {
     semq_encoding_free(removed); semq_encoding_free(added); semq_encoding_free(nothing); semq_encoding_free(g_base100);
     semq_encoding_free(base200); semq_encoding_free(null200); semq_encoding_free(hidden);
     semq_encoding_free(ref); semq_encoding_free(cand); semq_encoding_free(same); semq_encoding_free(enc_changed); semq_encoding_free(empty_ref);
+    semq_encoding_free(phase_ref); semq_encoding_free(phase_cand); semq_encoding_free(orbit_ref); semq_encoding_free(orbit_cand);
 }
 
 /* -------------------------------------------------------------------------- */

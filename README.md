@@ -54,20 +54,18 @@ embedding model → float32 unit-norm vectors → SEMQ state (.semq) → diff, f
 
 ## Install
 
-The following source installation keeps the Python binding and core at the
-same revision. It requires Python 3.11+, a C/C++ toolchain, CMake 3.20+, and Ninja.
+Install the binding for your language from its registry:
 
 ```sh
-git clone https://github.com/The-SEMQ-Group/semq.git
-cd semq
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install cmake ninja
-python -m pip install .
+pip install semq                                    # Python 3.11+
+cargo add semq                                      # Rust 1.77+, with a C compiler and CMake 3.20+
+go get github.com/The-SEMQ-Group/semq/bindings/go   # Go 1.21+, with cgo and a C compiler
+npm install @semq/sdk                               # Node.js 22+ or a browser bundler
 ```
 
-These commands use a POSIX shell. See [Installation](https://github.com/The-SEMQ-Group/semq/blob/main/docs/installation.md) for
-Windows setup and the Rust, Go, and TypeScript builds.
+See [Installation](https://github.com/The-SEMQ-Group/semq/blob/main/docs/installation.md)
+for each language, and [CONTRIBUTING](https://github.com/The-SEMQ-Group/semq/blob/main/CONTRIBUTING.md)
+to build from a clone of this repository.
 
 ## Encode, save and compare
 
