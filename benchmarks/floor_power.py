@@ -329,9 +329,9 @@ class Rows:
         self.maxabs = d.max(axis=1)
         self.cosdev = 1.0 - rebuild.row_cosines(ref, x)
         tol = ALLCLOSE["atol"] + ALLCLOSE["rtol"] * np.abs(ref.astype(np.float64))
-        self.allclose = (d <= tol).all(axis=1)
-        self.bf16 = (d > spacing).any(axis=1)
-        self.equal = (x == ref).all(axis=1)
+        self.allclose = np.asarray((d <= tol).all(axis=1))
+        self.bf16 = np.asarray((d > spacing).any(axis=1))
+        self.equal = np.asarray((x == ref).all(axis=1))
 
     def replaced(self, rows: np.ndarray, new: Rows) -> Rows:
         out = Rows.__new__(Rows)
