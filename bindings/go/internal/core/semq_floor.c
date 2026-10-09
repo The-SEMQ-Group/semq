@@ -74,8 +74,8 @@ static const uint8_t* reference_state_id(const semq_diff_t* d) {
 semq_status_t semqi_floor_create(const semq_config_t* config, uint32_t id_kind,
                                  const uint8_t reference_id[32], uint64_t nulls,
                                  uint64_t changed_rows, uint64_t total_rows,
-                                 uint64_t hamming, uint64_t max_hamming, semq_floor_t** out,
-                                 semq_error_t* err) {
+                                 uint64_t hamming, uint64_t max_hamming, uint64_t distinct_nulls,
+                                 semq_floor_t** out, semq_error_t* err) {
     if (out == NULL) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "output is NULL");
     *out = NULL;
     if (config == NULL || reference_id == NULL) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "NULL argument");
@@ -98,6 +98,14 @@ semq_status_t semqi_floor_create(const semq_config_t* config, uint32_t id_kind,
             return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "floor.max_hamming exceeds units_per_row");
         }
     }
+    if (distinct_nulls != SEMQ_NONE) {
+        if (distinct_nulls == 0u) {
+            return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "floor.distinct_nulls must be at least 1");
+        }
+        if (distinct_nulls > nulls) {
+            return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "floor.distinct_nulls exceeds floor.nulls");
+        }
+    }
     semq_floor_t* f = (semq_floor_t*)semqi_alloc(sizeof(*f));
     if (f == NULL) return SEMQI_NOMEM(err);
     f->config       = *config;
@@ -108,6 +116,7 @@ semq_status_t semqi_floor_create(const semq_config_t* config, uint32_t id_kind,
     f->total_rows   = total_rows;
     f->hamming      = hamming;
     f->max_hamming  = max_hamming;
+    f->distinct_nulls = distinct_nulls;
     *out = f;
     semqi_ok(err);
     return SEMQ_OK;
@@ -119,20 +128,7 @@ SEMQ_API semq_status_t semq_floor_create(const semq_config_t* config, uint32_t i
                                          uint64_t hamming, semq_floor_t** out,
                                          semq_error_t* err) {
     return semqi_floor_create(config, id_kind, reference_id, nulls, changed_rows, total_rows, hamming,
-                              SEMQ_NONE, out, err);
-}
-
-SEMQ_API semq_status_t semq_floor_create_with_max(const semq_config_t* config, uint32_t id_kind,
-                                                   const uint8_t reference_id[32], uint64_t nulls,
-                                                   uint64_t changed_rows, uint64_t total_rows,
-                                                   uint64_t hamming, uint64_t max_hamming,
-                                                   semq_floor_t** out, semq_error_t* err) {
-    if (max_hamming == SEMQ_NONE) {
-        if (out != NULL) *out = NULL;
-        return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "floor.max_hamming exceeds units_per_row");
-    }
-    return semqi_floor_create(config, id_kind, reference_id, nulls, changed_rows, total_rows, hamming,
-                              max_hamming, out, err);
+                              SEMQ_NONE, SEMQ_NONE, out, err);
 }
 
 SEMQ_API void semq_floor_free(semq_floor_t* f) { semqi_free(f); }
@@ -147,6 +143,10 @@ SEMQ_API uint64_t semq_floor_changed_rows(const semq_floor_t* f) { return f->cha
 SEMQ_API uint64_t semq_floor_total_rows(const semq_floor_t* f) { return f->total_rows; }
 SEMQ_API uint64_t semq_floor_hamming(const semq_floor_t* f) { return f->hamming; }
 SEMQ_API uint64_t semq_floor_max_hamming(const semq_floor_t* f) { return f->max_hamming; }
+SEMQ_API uint64_t semq_floor_distinct_nulls(const semq_floor_t* f) { return f->distinct_nulls; }
+
+/* Every check this version defines. */
+#define KNOWN_CHECKS ((uint32_t)SEMQ_CHECK_PER_ROW)
 
 /* The checks of a verdict as reason flags, all of them evaluated. With
  * `per_row`, also the rows above max_hamming, into a new array in `*rows`
@@ -164,7 +164,7 @@ static semq_status_t gate(const semq_diff_t* d, const semq_floor_t* f, int per_r
     }
     if (per_row && f->max_hamming == SEMQ_NONE) {
         return semqi_fail(err, SEMQ_ERR_INCOMPATIBLE, SEMQ_NONE, SEMQ_NONE,
-                          "floor does not record max_hamming; measure it again for the per-row check");
+                          "floor has no per-row data (max_hamming); measure it again with the per-row check");
     }
     const uint64_t n_common = d->n_unchanged + d->n_changed;
     uint64_t p = 0u;
@@ -212,29 +212,16 @@ SEMQ_API semq_status_t semq_diff_within(const semq_diff_t* d, const semq_floor_t
     return SEMQ_OK;
 }
 
-SEMQ_API semq_status_t semq_gate_options_create(semq_gate_options_t** out, semq_error_t* err) {
-    if (out == NULL) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "output is NULL");
-    *out = (semq_gate_options_t*)semqi_calloc(1u, sizeof(semq_gate_options_t));
-    if (*out == NULL) return SEMQI_NOMEM(err);
-    semqi_ok(err);
-    return SEMQ_OK;
-}
-
-SEMQ_API void semq_gate_options_free(semq_gate_options_t* o) { semqi_free(o); }
-
-SEMQ_API void semq_gate_options_set_per_row(semq_gate_options_t* o, int enabled) {
-    if (o != NULL) o->per_row = enabled != 0;
-}
-
-SEMQ_API semq_status_t semq_diff_evaluate(const semq_diff_t* d, const semq_floor_t* f,
-                                          const semq_gate_options_t* o, semq_verdict_t** out,
-                                          semq_error_t* err) {
+SEMQ_API semq_status_t semq_diff_evaluate(const semq_diff_t* d, const semq_floor_t* f, uint32_t checks,
+                                          semq_verdict_t** out, semq_error_t* err) {
     if (out == NULL) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "output is NULL");
     *out = NULL;
     if (d == NULL || f == NULL) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "NULL argument");
+    if ((checks & ~KNOWN_CHECKS) != 0u) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "checks has an unknown bit");
     semq_verdict_t* v = (semq_verdict_t*)semqi_calloc(1u, sizeof(*v));
     if (v == NULL) return SEMQI_NOMEM(err);
-    const semq_status_t s = gate(d, f, o != NULL && o->per_row, &v->reasons, &v->rows, &v->n_rows, err);
+    const semq_status_t s = gate(d, f, (checks & (uint32_t)SEMQ_CHECK_PER_ROW) != 0u, &v->reasons, &v->rows,
+                                 &v->n_rows, err);
     if (s != SEMQ_OK) {
         semq_verdict_free(v);
         return s;
@@ -257,11 +244,34 @@ SEMQ_API uint64_t semq_verdict_row(const semq_verdict_t* v, uint64_t i) {
     return i < v->n_rows ? v->rows[i] : SEMQ_NONE;
 }
 
-SEMQ_API semq_status_t semq_floor_measure(const semq_diff_t* const* diffs, uint32_t k,
-                                          semq_floor_t** out, semq_error_t* err) {
+static int cmp_digest(const void* a, const void* b) {
+    return memcmp(*(const uint8_t* const*)a, *(const uint8_t* const*)b, SEMQ_DIGEST_BYTES);
+}
+
+/* How many distinct candidate content_digests the nulls have. */
+static semq_status_t count_distinct(const semq_diff_t* const* diffs, uint32_t k, uint64_t* out, semq_error_t* err) {
+    uint64_t bytes = 0u;
+    if (semqi_mul_ovf(k, sizeof(const uint8_t*), &bytes)) return SEMQI_NOMEM(err);
+    const uint8_t** digests = (const uint8_t**)semqi_alloc(bytes);
+    if (digests == NULL) return SEMQI_NOMEM(err);
+    for (uint32_t i = 0u; i < k; i++) digests[i] = diffs[i]->cand->footer;  /* content_digest */
+    qsort((void*)digests, (size_t)k, sizeof(digests[0]), cmp_digest);
+    uint64_t n = 1u;
+    for (uint32_t i = 1u; i < k; i++) {
+        if (memcmp(digests[i - 1u], digests[i], SEMQ_DIGEST_BYTES) != 0) n++;
+    }
+    semqi_free((void*)digests);
+    *out = n;
+    return SEMQ_OK;
+}
+
+SEMQ_API semq_status_t semq_floor_measure_for(const semq_diff_t* const* diffs, uint32_t k, uint32_t checks,
+                                              semq_floor_t** out, semq_error_t* err) {
     if (out == NULL) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "output is NULL");
     *out = NULL;
+    if ((checks & ~KNOWN_CHECKS) != 0u) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "checks has an unknown bit");
     if (diffs == NULL || k == 0u) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "measure needs at least one null diff");
+    const int per_row = (checks & (uint32_t)SEMQ_CHECK_PER_ROW) != 0u;
     uint64_t best_changed = 0u, best_common = 1u, max_p = 0u, max_row = 0u;
     for (uint32_t i = 0u; i < k; i++) {
         const semq_diff_t* d = diffs[i];
@@ -296,7 +306,17 @@ SEMQ_API semq_status_t semq_floor_measure(const semq_diff_t* const* diffs, uint3
             if (d->hamming[r] > max_row) max_row = d->hamming[r];
         }
     }
-    return semq_floor_create_with_max(&diffs[0]->ref->config, (uint32_t)diffs[0]->ref->id_kind,
-                                      reference_state_id(diffs[0]), k, best_changed, best_common, max_p, max_row,
-                                      out, err);
+    uint64_t distinct = SEMQ_NONE;
+    if (per_row) {
+        const semq_status_t s = count_distinct(diffs, k, &distinct, err);
+        if (s != SEMQ_OK) return s;
+    }
+    return semqi_floor_create(&diffs[0]->ref->config, (uint32_t)diffs[0]->ref->id_kind,
+                              reference_state_id(diffs[0]), k, best_changed, best_common, max_p,
+                              per_row ? max_row : SEMQ_NONE, distinct, out, err);
+}
+
+SEMQ_API semq_status_t semq_floor_measure(const semq_diff_t* const* diffs, uint32_t k,
+                                          semq_floor_t** out, semq_error_t* err) {
+    return semq_floor_measure_for(diffs, k, 0u, out, err);
 }

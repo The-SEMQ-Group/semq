@@ -80,6 +80,7 @@ int main(void) {
     printf("SEMQ_LIST_ADDED=%llu\n", (unsigned long long)(SEMQ_LIST_ADDED));
     printf("SEMQ_LIST_REMOVED=%llu\n", (unsigned long long)(SEMQ_LIST_REMOVED));
     printf("SEMQ_LIST_CHANGED=%llu\n", (unsigned long long)(SEMQ_LIST_CHANGED));
+    printf("SEMQ_CHECK_PER_ROW=%llu\n", (unsigned long long)(SEMQ_CHECK_PER_ROW));
     printf("SEMQ_REASON_NO_COMMON_ROWS=%llu\n", (unsigned long long)(SEMQ_REASON_NO_COMMON_ROWS));
     printf("SEMQ_REASON_REMOVED_ROWS=%llu\n", (unsigned long long)(SEMQ_REASON_REMOVED_ROWS));
     printf("SEMQ_REASON_CHANGED_RATIO=%llu\n", (unsigned long long)(SEMQ_REASON_CHANGED_RATIO));

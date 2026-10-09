@@ -298,7 +298,8 @@ def p99(values: list[int]) -> int:
 
 FLOOR_VERSION = "semq-floor/1"
 FLOOR_KEYS = ("version", "config", "id_kind", "reference_id", "nulls", "changed_rows", "total_rows", "hamming")
-COUNTS = ("nulls", "changed_rows", "total_rows", "hamming", "max_hamming")
+PER_ROW_KEYS = ("max_hamming", "distinct_nulls")
+COUNTS = ("nulls", "changed_rows", "total_rows", "hamming") + PER_ROW_KEYS
 CONFIG_KEYS = ("operator", "dim", "scale", "sectors", "bins", "rule_revision")
 JSON_MAX_DEPTH = 64
 REASONS = ("no_common_rows", "removed_rows", "changed_ratio", "hamming", "encoder", "row_above_max")
@@ -359,9 +360,9 @@ def _count(value: Any, limit: int = 2**64) -> int:
 def floor_from_value(value: Any) -> dict[str, Any]:
     """A floor from a parsed JSON object: the construction rules, in schema order.
 
-    Unknown keys are ignored; known keys appear once; `max_hamming` is optional.
+    Unknown keys are ignored; known keys appear once; the per-row keys are optional.
     """
-    top = _members(value, FLOOR_KEYS + ("max_hamming",))
+    top = _members(value, FLOOR_KEYS + PER_ROW_KEYS)
     if any(k not in top for k in FLOOR_KEYS):
         raise ValueError("floor: missing key")
     if top["version"] != FLOOR_VERSION:
@@ -384,6 +385,9 @@ def floor_from_value(value: Any) -> dict[str, Any]:
     if not isinstance(rid, str) or len(rid) != 64 or any(c not in "0123456789abcdefABCDEF" for c in rid):
         raise ValueError("floor: reference_id")
     counts = {k: _count(top[k]) for k in COUNTS if k in top}
+    # 2^64 - 1 marks an absent key in the C ABI, so it is reserved in both per-row keys.
+    if any(counts.get(k) == 2**64 - 1 for k in PER_ROW_KEYS):
+        raise ValueError("floor: reserved value")
     if counts["nulls"] == 0 or counts["total_rows"] == 0 or counts["changed_rows"] > counts["total_rows"]:
         raise ValueError("floor: counts")
     units = units_per_row(operator, dim)
@@ -391,6 +395,8 @@ def floor_from_value(value: Any) -> dict[str, Any]:
         raise ValueError("floor: hamming")
     if "max_hamming" in counts and not counts["hamming"] <= counts["max_hamming"] <= units:
         raise ValueError("floor: max_hamming")
+    if "distinct_nulls" in counts and not 1 <= counts["distinct_nulls"] <= counts["nulls"]:
+        raise ValueError("floor: distinct_nulls")
     return {
         "version": FLOOR_VERSION,
         "config": {"operator": operator, "dim": dim, parameter: p1, "rule_revision": revision},
@@ -455,8 +461,12 @@ def within(report: dict[str, Any], floor: dict[str, Any]) -> bool:
     return bool(evaluate(report, floor)["passed"])
 
 
-def measure(reports: list[dict[str, Any]]) -> dict[str, Any]:
-    """Assumes every report is a valid null of one reference (asserted)."""
+def measure(reports: list[dict[str, Any]], contents: list[bytes] | None = None) -> dict[str, Any]:
+    """Assumes every report is a valid null of one reference (asserted).
+
+    With `contents`, the content_digest of each null's candidate, the floor
+    also records the per-row data: `max_hamming` and `distinct_nulls`.
+    """
     best = None
     max_p = max_row = 0
     first = reports[0]
@@ -481,7 +491,7 @@ def measure(reports: list[dict[str, Any]]) -> dict[str, Any]:
         "changed_rows": best[0],
         "total_rows": best[1],
         "hamming": max_p,
-        "max_hamming": max_row,
+        **({} if contents is None else {"max_hamming": max_row, "distinct_nulls": len(set(contents))}),
     }
 
 
@@ -668,11 +678,13 @@ def check_11_13(root: Path) -> int:
                 expect(evaluate(report, floor, per_row) == e.get("evaluate"), f"evaluate {case['id']}")
             n += 1
         else:
-            reports = [diff(parse((d / a).read_bytes()), parse((d / b).read_bytes())) for a, b in case["input"]["null_diffs"]]
+            pairs = [(parse((d / a).read_bytes()), parse((d / b).read_bytes())) for a, b in case["input"]["null_diffs"]]
+            reports = [diff(ref, cand) for ref, cand in pairs]
+            contents = [cand.digests()[0] for _, cand in pairs] if case["input"].get("per_row", False) else None
             if len({(r["reference_id"], r["id_kind"], json.dumps(r["config"], sort_keys=True)) for r in reports}) > 1:
                 expect(e.get("error") == "Incompatible", f"measure incompatible {case['id']}")
             elif "floor" in e:
-                expect(measure(reports) == e["floor"], f"measure {case['id']}")
+                expect(measure(reports, contents) == e["floor"], f"measure {case['id']}")
             else:
                 try:
                     measure(reports)

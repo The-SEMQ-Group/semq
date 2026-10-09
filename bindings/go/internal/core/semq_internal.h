@@ -98,18 +98,16 @@ struct semq_floor {
     uint64_t      changed_rows;
     uint64_t      total_rows;
     uint64_t      hamming;
-    uint64_t      max_hamming;  /* SEMQ_NONE when not recorded */
+    uint64_t      max_hamming;     /* SEMQ_NONE when not recorded */
+    uint64_t      distinct_nulls;  /* SEMQ_NONE when not recorded */
 };
 
-/* Every floor is built here: the construction rules, with `max_hamming`
- * SEMQ_NONE when the floor does not record it. */
+/* Every floor is built here: the construction rules, with `max_hamming` and
+ * `distinct_nulls` SEMQ_NONE when the floor does not record them. */
 semq_status_t semqi_floor_create(const semq_config_t* config, uint32_t id_kind, const uint8_t reference_id[32],
                                  uint64_t nulls, uint64_t changed_rows, uint64_t total_rows, uint64_t hamming,
-                                 uint64_t max_hamming, semq_floor_t** out, semq_error_t* err);
-
-struct semq_gate_options {
-    int per_row;
-};
+                                 uint64_t max_hamming, uint64_t distinct_nulls, semq_floor_t** out,
+                                 semq_error_t* err);
 
 struct semq_verdict {
     uint32_t  reasons;

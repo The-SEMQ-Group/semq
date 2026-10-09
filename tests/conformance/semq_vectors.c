@@ -204,7 +204,8 @@ static void js_config(const semq_config_t* c) {
 
 /* The floor report: the fields of a floor as every host's `as_dict` emits them. */
 static void js_floor_fields(const semq_config_t* c, uint32_t kind, const uint8_t rid[32], uint64_t nulls,
-                            uint64_t changed, uint64_t total, uint64_t hamming, uint64_t max_hamming) {
+                            uint64_t changed, uint64_t total, uint64_t hamming, uint64_t max_hamming,
+                            uint64_t distinct_nulls) {
     js_begin_object();
     js_kv_str("version", "semq-floor/1");
     js_key("config"); js_config(c);
@@ -215,13 +216,34 @@ static void js_floor_fields(const semq_config_t* c, uint32_t kind, const uint8_t
     js_kv_u64("total_rows", total);
     js_kv_u64("hamming", hamming);
     if (max_hamming != SEMQ_NONE) js_kv_u64("max_hamming", max_hamming);
+    if (distinct_nulls != SEMQ_NONE) js_kv_u64("distinct_nulls", distinct_nulls);
     js_end_object();
 }
 static void js_floor(const semq_floor_t* f) {
     uint8_t rid[32];
     semq_floor_reference_id(f, rid);
     js_floor_fields(semq_floor_config(f), semq_floor_id_kind(f), rid, semq_floor_nulls(f), semq_floor_changed_rows(f),
-                    semq_floor_total_rows(f), semq_floor_hamming(f), semq_floor_max_hamming(f));
+                    semq_floor_total_rows(f), semq_floor_hamming(f), semq_floor_max_hamming(f),
+                    semq_floor_distinct_nulls(f));
+}
+
+/* A floor from its fields. Per-row data comes only from a measure or the
+ * JSON form, so a `max_hamming` other than SEMQ_NONE is added to the saved
+ * form and read back. */
+static semq_status_t floor_of_fields(const semq_config_t* c, uint32_t kind, const uint8_t rid[32], uint64_t nulls,
+                                     uint64_t changed, uint64_t total, uint64_t hamming, uint64_t max_hamming,
+                                     semq_floor_t** out, semq_error_t* err) {
+    semq_status_t s = semq_floor_create(c, kind, rid, nulls, changed, total, hamming, out, err);
+    if (s != SEMQ_OK || max_hamming == SEMQ_NONE) return s;
+    const uint64_t n = semq_floor_json_size(*out);
+    char* text = (char*)xmalloc((size_t)n + 32u);
+    if (semq_floor_save(*out, (uint8_t*)text, n, err) != SEMQ_OK) die("floor save");
+    semq_floor_free(*out);
+    *out = NULL;
+    snprintf(text + n - 1u, 32u, ",\"max_hamming\":%llu}", (unsigned long long)max_hamming);
+    s = semq_floor_load((const uint8_t*)text, strlen(text), out, err);
+    free(text);
+    return s;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1500,20 +1522,29 @@ static void vector_11_13(void) {
         const semq_diff_t* two[2] = { g_null_a, g_null_a2 };
         const semq_diff_t* mixed[2] = { g_null_a, g_null_b };
         semq_floor_t* f_a = NULL; semq_floor_t* f_two = NULL; semq_floor_t* f_hidden = NULL; semq_floor_t* f_none = NULL;
+        semq_floor_t* f_twice = NULL; semq_floor_t* f_distinct = NULL;
         semq_diff_t* d_hidden = NULL; semq_encoding_diff(base200, hidden, &d_hidden, &err);
         const semq_diff_t* hid[1] = { d_hidden };
+        const semq_diff_t* twice[2] = { g_null_a, g_null_a };
+        /* measure records no per-row data; measure_for with the per-row check records max_hamming and distinct_nulls. */
         semq_floor_measure(one, 1u, &f_a, &err);
         semq_floor_measure(two, 2u, &f_two, &err);
-        semq_floor_measure(hid, 1u, &f_hidden, &err);
-        struct { const char* id; const char* nulls[2][2]; uint32_t k; const semq_floor_t* f; } ms[3] = {
-            { "measure-a", { { "base100.semq", "null-a.semq" }, { NULL, NULL } }, 1u, f_a },
-            { "measure-a-and-two-changed", { { "base100.semq", "null-a.semq" }, { "base100.semq", "two-changed.semq" } }, 2u, f_two },
-            { "measure-records-max-hamming", { { "base200.semq", "hidden.semq" }, { NULL, NULL } }, 1u, f_hidden } };
-        for (int i = 0; i < 3; i++) {
+        semq_floor_measure_for(hid, 1u, SEMQ_CHECK_PER_ROW, &f_hidden, &err);
+        semq_floor_measure_for(twice, 2u, SEMQ_CHECK_PER_ROW, &f_twice, &err);
+        semq_floor_measure_for(two, 2u, SEMQ_CHECK_PER_ROW, &f_distinct, &err);
+        struct { const char* id; const char* nulls[2][2]; uint32_t k; int per_row; const semq_floor_t* f; } ms[5] = {
+            { "measure-a", { { "base100.semq", "null-a.semq" }, { NULL, NULL } }, 1u, 0, f_a },
+            { "measure-a-and-two-changed", { { "base100.semq", "null-a.semq" }, { "base100.semq", "two-changed.semq" } }, 2u, 0, f_two },
+            { "measure-per-row-records-max-hamming", { { "base200.semq", "hidden.semq" }, { NULL, NULL } }, 1u, 1, f_hidden },
+            { "measure-per-row-same-null-twice", { { "base100.semq", "null-a.semq" }, { "base100.semq", "null-a.semq" } }, 2u, 1, f_twice },
+            { "measure-per-row-distinct-nulls", { { "base100.semq", "null-a.semq" }, { "base100.semq", "two-changed.semq" } }, 2u, 1, f_distinct } };
+        for (int i = 0; i < 5; i++) {
             js_begin_object(); js_kv_str("id", ms[i].id);
             js_key("input"); js_begin_object(); js_key("null_diffs"); js_begin_array();
             for (uint32_t k = 0u; k < ms[i].k; k++) { js_begin_array(); js_str(ms[i].nulls[k][0]); js_str(ms[i].nulls[k][1]); js_end_array(); }
-            js_end_array(); js_end_object();
+            js_end_array();
+            if (ms[i].per_row) js_kv_bool("per_row", 1);
+            js_end_object();
             js_key("expect"); js_begin_object(); js_key("floor"); js_floor(ms[i].f); js_end_object();
             js_end_object();
         }
@@ -1547,18 +1578,14 @@ static void vector_11_13(void) {
             { "per-row-null-within-its-floor", "base200.semq", "null-200.semq", base200, null200, cq, SEMQ_ID_U64, rid200, 1u, 100u, 200u, 2u, 2u, 1 },
             { "per-row-needs-max-hamming", "base200.semq", "hidden.semq", base200, hidden, cq, SEMQ_ID_U64, rid200, 1u, 100u, 200u, 2u, SEMQ_NONE, 1 } };
         /* The expected error is that of evaluate; within is given when evaluate succeeds. */
-        semq_gate_options_t* per_row = NULL;
-        if (semq_gate_options_create(&per_row, &err) != SEMQ_OK) die("gate options");
-        semq_gate_options_set_per_row(per_row, 1);
         for (int i = 0; i < 15; i++) {
             semq_floor_t* f = NULL;
-            const semq_status_t fs = ws[i].max_hamming == SEMQ_NONE
-                ? semq_floor_create(ws[i].fc, ws[i].kind, ws[i].rid, ws[i].nulls, ws[i].changed, ws[i].total, ws[i].hamming, &f, &err)
-                : semq_floor_create_with_max(ws[i].fc, ws[i].kind, ws[i].rid, ws[i].nulls, ws[i].changed, ws[i].total, ws[i].hamming, ws[i].max_hamming, &f, &err);
+            const semq_status_t fs = floor_of_fields(ws[i].fc, ws[i].kind, ws[i].rid, ws[i].nulls, ws[i].changed,
+                                                     ws[i].total, ws[i].hamming, ws[i].max_hamming, &f, &err);
             if (fs != SEMQ_OK) die("floor");
             semq_diff_t* d = NULL; semq_encoding_diff(ws[i].r, ws[i].c, &d, &err);
             semq_verdict_t* v = NULL;
-            const semq_status_t st = semq_diff_evaluate(d, f, ws[i].per_row ? per_row : NULL, &v, &err);
+            const semq_status_t st = semq_diff_evaluate(d, f, ws[i].per_row ? (uint32_t)SEMQ_CHECK_PER_ROW : 0u, &v, &err);
             js_begin_object(); js_kv_str("id", ws[i].id);
             js_key("input"); js_begin_object(); js_kv_str("reference", ws[i].ref); js_kv_str("candidate", ws[i].cand);
             js_key("floor"); js_floor(f);
@@ -1574,7 +1601,6 @@ static void vector_11_13(void) {
             semq_diff_free(d);
             semq_floor_free(f);
         }
-        semq_gate_options_free(per_row);
         /* invalid floors are rejected at construction */
         struct { const char* id; uint32_t kind; uint64_t nulls, changed, total, hamming, max_hamming; } bad[7] = {
             { "floor-changed-exceeds-total", SEMQ_ID_U64, 1u, 5u, 4u, 1u, SEMQ_NONE }, { "floor-total-zero", SEMQ_ID_U64, 1u, 0u, 0u, 1u, SEMQ_NONE },
@@ -1583,14 +1609,12 @@ static void vector_11_13(void) {
             { "floor-max-below-hamming", SEMQ_ID_U64, 1u, 1u, 1u, 3u, 2u }, { "floor-max-exceeds-units", SEMQ_ID_U64, 1u, 1u, 1u, 3u, 17u } };
         for (int i = 0; i < 7; i++) {
             semq_floor_t* f = NULL;
-            if (bad[i].max_hamming == SEMQ_NONE)
-                semq_floor_create(cq, bad[i].kind, rid100, bad[i].nulls, bad[i].changed, bad[i].total, bad[i].hamming, &f, &err);
-            else
-                semq_floor_create_with_max(cq, bad[i].kind, rid100, bad[i].nulls, bad[i].changed, bad[i].total, bad[i].hamming, bad[i].max_hamming, &f, &err);
+            floor_of_fields(cq, bad[i].kind, rid100, bad[i].nulls, bad[i].changed, bad[i].total, bad[i].hamming,
+                            bad[i].max_hamming, &f, &err);
             if (f != NULL) die("bad floor accepted");
             js_begin_object(); js_kv_str("id", bad[i].id);
             js_key("input"); js_begin_object(); js_kv_str("reference", "base100.semq"); js_kv_str("candidate", "null-a.semq");
-            js_key("floor"); js_floor_fields(cq, bad[i].kind, rid100, bad[i].nulls, bad[i].changed, bad[i].total, bad[i].hamming, bad[i].max_hamming); js_end_object();
+            js_key("floor"); js_floor_fields(cq, bad[i].kind, rid100, bad[i].nulls, bad[i].changed, bad[i].total, bad[i].hamming, bad[i].max_hamming, SEMQ_NONE); js_end_object();
             js_key("expect"); js_error(&err); js_end_object();
         }
         /* invalid nulls */
@@ -1628,7 +1652,8 @@ static void vector_11_13(void) {
             char* unknown = splice(base, "\"rule_revision\":0", "\"rule_revision\":0, \"note\": [1.5e-3, -0, true]");
             struct { const char* id; char* text; } texts[] = {
                 { "floor-saved", splice(base, "{", "{") },
-                { "floor-without-max-hamming", splice(base, ",\"max_hamming\":10", "") },
+                { "floor-without-max-hamming", splice(base, ",\"max_hamming\":10,\"distinct_nulls\":1", "") },
+                { "floor-max-hamming-without-distinct-nulls", splice(base, ",\"distinct_nulls\":1", "") },
                 { "floor-ignores-unknown-keys", splice(unknown, "{\"version\"",
                   " {\n  \"comment\": {\"a\": [null, false, \"\\u00e9\\ud83d\\ude00\\n\"]},\n  \"version\"") },
                 { "floor-escaped-key", splice(base, "\"version\"", "\"\\u0076ersion\"") },
@@ -1646,9 +1671,16 @@ static void vector_11_13(void) {
                 { "floor-count-overflow", splice(base, "\"total_rows\":200", "\"total_rows\":18446744073709551616") },
                 { "floor-missing-key", splice(base, "\"hamming\":2,", "") },
                 { "floor-max-below-hamming", splice(base, "\"max_hamming\":10", "\"max_hamming\":1") },
+                { "floor-max-hamming-reserved", splice(base, "\"max_hamming\":10", "\"max_hamming\":18446744073709551615") },
+                { "floor-distinct-nulls-zero", splice(base, "\"distinct_nulls\":1", "\"distinct_nulls\":0") },
+                { "floor-distinct-nulls-above-nulls", splice(base, "\"distinct_nulls\":1", "\"distinct_nulls\":2") },
+                { "floor-distinct-nulls-reserved", splice(base, "\"distinct_nulls\":1", "\"distinct_nulls\":18446744073709551615") },
+                { "floor-distinct-nulls-float", splice(base, "\"distinct_nulls\":1", "\"distinct_nulls\":1.0") },
+                { "floor-distinct-nulls-negative", splice(base, "\"distinct_nulls\":1", "\"distinct_nulls\":-1") },
+                { "floor-distinct-nulls-string", splice(base, "\"distinct_nulls\":1", "\"distinct_nulls\":\"1\"") },
                 { "floor-other-operator-parameter", splice(base, "\"bins\":4", "\"bins\":4,\"sectors\":4") },
-                { "floor-trailing-data", splice(base, "\"max_hamming\":10}", "\"max_hamming\":10} {}") },
-                { "floor-trailing-comma", splice(base, "\"max_hamming\":10}", "\"max_hamming\":10,}") },
+                { "floor-trailing-data", splice(base, "\"distinct_nulls\":1}", "\"distinct_nulls\":1} {}") },
+                { "floor-trailing-comma", splice(base, "\"distinct_nulls\":1}", "\"distinct_nulls\":1,}") },
                 { "floor-lone-surrogate", splice(base, "{", "{\"x\":\"\\ud800\",") },
                 { "floor-invalid-utf8", splice(base, "{", "{\"x\":\"\xc3\x28\",") },
                 { "floor-control-character", splice(base, "{", "{\"x\":\"\x01\",") },
@@ -1682,6 +1714,7 @@ static void vector_11_13(void) {
             free(base);
         }
         semq_floor_free(f_a); semq_floor_free(f_two); semq_floor_free(f_hidden); semq_diff_free(d_hidden);
+        semq_floor_free(f_twice); semq_floor_free(f_distinct);
     }
     js_footer();
 

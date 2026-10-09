@@ -89,6 +89,7 @@ static void render(const semq_floor_t* f, writer_t* w) {
     put_count(w, "total_rows", f->total_rows);
     put_count(w, "hamming", f->hamming);
     if (f->max_hamming != SEMQ_NONE) put_count(w, "max_hamming", f->max_hamming);
+    if (f->distinct_nulls != SEMQ_NONE) put_count(w, "distinct_nulls", f->distinct_nulls);
     put(w, "}");
 }
 
@@ -391,10 +392,12 @@ static int config(reader_t* r, semq_config_t* out) {
     return 1;
 }
 
+/* The required keys come first; K_MAX_HAMMING and later are optional. */
 enum { K_VERSION, K_CONFIG, K_ID_KIND, K_REFERENCE_ID, K_NULLS, K_CHANGED_ROWS, K_TOTAL_ROWS, K_HAMMING,
-       K_MAX_HAMMING, K_KEYS };
+       K_MAX_HAMMING, K_DISTINCT_NULLS, K_KEYS };
 static const char* const KEYS[K_KEYS] = { "version", "config", "id_kind", "reference_id", "nulls",
-                                          "changed_rows", "total_rows", "hamming", "max_hamming" };
+                                          "changed_rows", "total_rows", "hamming", "max_hamming",
+                                          "distinct_nulls" };
 static const char* const COUNT_ERRORS[K_KEYS] = {
     NULL, NULL, NULL, NULL,
     "floor.nulls must be an integer in [0, 2^64)",
@@ -402,7 +405,9 @@ static const char* const COUNT_ERRORS[K_KEYS] = {
     "floor.total_rows must be an integer in [0, 2^64)",
     "floor.hamming must be an integer in [0, 2^64)",
     "floor.max_hamming must be an integer in [0, 2^64)",
+    "floor.distinct_nulls must be an integer in [0, 2^64)",
 };
+#define OPTIONAL_KEYS ((1u << K_MAX_HAMMING) | (1u << K_DISTINCT_NULLS))
 
 SEMQ_API semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_floor_t** out, semq_error_t* err) {
     if (out == NULL) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "output is NULL");
@@ -458,7 +463,8 @@ SEMQ_API semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_fl
             case K_CHANGED_ROWS:
             case K_TOTAL_ROWS:
             case K_HAMMING:
-            case K_MAX_HAMMING: ok = count(&r, &counts[k], COUNT_ERRORS[k]); break;
+            case K_MAX_HAMMING:
+            case K_DISTINCT_NULLS: ok = count(&r, &counts[k], COUNT_ERRORS[k]); break;
             default: ok = skip(&r, 1); break; /* unknown key */
             }
             if (ok) ok = next(&r, &more);
@@ -468,7 +474,7 @@ SEMQ_API semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_fl
         ws(&r);
         if (r.p != r.end) ok = fail(&r, "floor is not valid JSON: data after the object");
     }
-    if (ok && (seen | (1u << K_MAX_HAMMING)) != (1u << K_KEYS) - 1u) {
+    if (ok && (seen | OPTIONAL_KEYS) != (1u << K_KEYS) - 1u) {
         for (int k = 0; k < K_MAX_HAMMING; k++) {
             if (!(seen & (1u << k))) {
                 static const char* const missing[K_MAX_HAMMING] = {
@@ -480,8 +486,12 @@ SEMQ_API semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_fl
             }
         }
     }
+    /* SEMQ_NONE marks an absent optional key, so the value itself is reserved. */
     if (ok && (seen & (1u << K_MAX_HAMMING)) && counts[K_MAX_HAMMING] == SEMQ_NONE) {
-        ok = fail(&r, "floor.max_hamming exceeds units_per_row");
+        ok = fail(&r, "floor.max_hamming is 18446744073709551615, which is reserved (SEMQ_NONE)");
+    }
+    if (ok && (seen & (1u << K_DISTINCT_NULLS)) && counts[K_DISTINCT_NULLS] == SEMQ_NONE) {
+        ok = fail(&r, "floor.distinct_nulls is 18446744073709551615, which is reserved (SEMQ_NONE)");
     }
     if (!ok) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, r.error);
     (void)version;
@@ -489,5 +499,6 @@ SEMQ_API semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_fl
     if (s != SEMQ_OK) return s;
     return semqi_floor_create(&cfg, kind == 0 ? SEMQ_ID_U64 : SEMQ_ID_UTF8, rid, counts[K_NULLS],
                               counts[K_CHANGED_ROWS], counts[K_TOTAL_ROWS], counts[K_HAMMING],
-                              (seen & (1u << K_MAX_HAMMING)) ? counts[K_MAX_HAMMING] : SEMQ_NONE, out, err);
+                              (seen & (1u << K_MAX_HAMMING)) ? counts[K_MAX_HAMMING] : SEMQ_NONE,
+                              (seen & (1u << K_DISTINCT_NULLS)) ? counts[K_DISTINCT_NULLS] : SEMQ_NONE, out, err);
 }
