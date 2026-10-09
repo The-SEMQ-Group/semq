@@ -25,6 +25,11 @@ from .errors import SemqError
 from .floor import Floor
 
 DEFAULT_MIN_NULLS = 3
+# Under exchangeable nulls, each check rejects an unchanged rebuild with
+# probability up to 1 / (nulls + 1): below 5% from 20 nulls on. `diff
+# --per-row` warns under this count when the floor's nulls were not all the
+# same state.
+PER_ROW_MIN_NULLS = 20
 
 
 def _escape(text: str) -> str:
@@ -108,6 +113,23 @@ def _print_diff(d: Diff, limit: int) -> None:
         print(f"  {_escape(k)}: {'<absent>' if b is None else _escape(b)} -> {'<absent>' if a is None else _escape(a)}")
 
 
+def _check_per_row_floor(path: str, floor: Floor) -> None:
+    """Refuse a floor without per-row data; warn when its nulls vary and are few."""
+    if floor.max_hamming is None:
+        raise _Exit(
+            2,
+            f"{path}: the floor has no per-row data (max_hamming); measure it with `semq floor --per-row`",
+        )
+    distinct, nulls = floor.distinct_nulls, floor.nulls
+    if distinct is not None and distinct > 1 and nulls < PER_ROW_MIN_NULLS:
+        print(
+            f"warning: {distinct} of the floor's {nulls} nulls are different states, so each check can reject "
+            f"an unchanged rebuild with probability up to 1/{nulls + 1} ({100 / (nulls + 1):.0f}%); "
+            f"measure the floor from at least {PER_ROW_MIN_NULLS} nulls for --per-row",
+            file=sys.stderr,
+        )
+
+
 def cmd_diff(args: argparse.Namespace) -> int:
     ref = _load(args.reference)
     cand = _load(args.candidate)
@@ -124,6 +146,8 @@ def cmd_diff(args: argparse.Namespace) -> int:
             floor = Floor.load(args.floor)
         except (OSError, SemqError) as exc:
             raise _Exit(2, f"{args.floor}: invalid floor: {exc}") from exc
+        if args.per_row:
+            _check_per_row_floor(args.floor, floor)
         try:
             verdict = d.evaluate(floor, per_row=args.per_row)
         except SemqError as exc:
@@ -170,7 +194,7 @@ def cmd_floor(args: argparse.Namespace) -> int:
         except SemqError as exc:
             raise _Exit(2, f"{path}: {exc}") from exc
     try:
-        floor = Floor.measure(diffs)
+        floor = Floor.measure(diffs, per_row=args.per_row)
     except SemqError as exc:
         raise _Exit(2, str(exc)) from exc
     floor.save(sys.stdout)
@@ -211,7 +235,8 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument(
         "--per-row",
         action="store_true",
-        help="also fail when any changed row has a hamming above the floor's max_hamming",
+        help="also fail when any changed row has a hamming above the floor's max_hamming "
+        "(needs a floor from `semq floor --per-row`)",
     )
     d.add_argument("--json", action="store_true")
     d.add_argument("--limit", type=int, default=20)
@@ -225,6 +250,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=DEFAULT_MIN_NULLS,
         help=f"null rebuilds required (default {DEFAULT_MIN_NULLS}); one null is only what that rebuild happened to do",
+    )
+    f.add_argument(
+        "--per-row",
+        action="store_true",
+        help="also record max_hamming and distinct_nulls for `semq diff --per-row`; SEMQ 1.0 cannot read the result",
     )
     f.set_defaults(func=cmd_floor)
 

@@ -53,10 +53,9 @@ semq floor reference.semq null-1.semq null-2.semq null-3.semq > floor.json
 cat floor.json
 ```
 
-`floor.json` records four counts (`changed_rows`, `total_rows`, `hamming`,
-`max_hamming`: the floor takes the worst ratio, the largest p99 hamming and
-the largest hamming of any changed row over the nulls) and where they were
-measured: the config, the id kind, the
+`floor.json` records the three counts (`changed_rows`, `total_rows`,
+`hamming`: the floor takes the worst ratio and the largest p99 hamming over
+the nulls) and where they were measured: the config, the id kind, the
 reference's `state_id` and how many nulls went in. The floor applies only to
 diffs against that reference; measure a new one when the reference changes.
 `semq floor` requires three nulls by default because one null only shows what
@@ -80,12 +79,6 @@ Changed manifest keys are listed on stderr; the verdict is computed by the core.
 the complete report; without `--floor`, `semq diff` is a report and always
 exits `0`.
 
-Add `--per-row` to also fail when any changed row moved more than any row of
-any null did. The p99 ignores the most changed 1% of rows, so a few rows
-with a large change can pass without it; with it, stderr lists those rows.
-It also rejects clean rebuilds a little more often, so measure more nulls
-(about 20) when you use it.
-
 The same verdict is available in code:
 
 ```python
@@ -98,10 +91,59 @@ print(floor)
 diff = reference.diff(Encoding.load("candidate.semq"))
 print(diff)
 print(diff.within(floor))
-verdict = diff.evaluate(floor, per_row=True)
-print(verdict.passed, verdict.reasons, verdict.rows)  # every failed check, and the rows above max_hamming
+print(diff.evaluate(floor).reasons)  # every failed check, not only the first
 print(diff.units(0)[:3])  # the first units of row 0 that moved: (unit, before, after)
 ```
+
+## 4. Check every row
+
+The p99 check ignores the most changed 1% of rows, so a few rows with a
+large change can pass. The per-row check also fails the verdict when any
+changed row moved more than any row of any null did. It needs a floor
+measured for it:
+
+```sh
+semq floor reference.semq null-1.semq null-2.semq null-3.semq --per-row > floor-per-row.json
+semq diff reference.semq candidate.semq --floor floor-per-row.json --per-row
+echo "exit $?"
+```
+
+With `--per-row`, `semq floor` also records `max_hamming`, the largest
+hamming of any changed row of any null, and `distinct_nulls`, how many of
+the nulls were different states (two nulls are the same state when their
+candidates have the same `content_digest`). When the gate fails, stderr
+lists the rows above `max_hamming`. `semq diff --per-row` exits `2` on a
+floor without these keys, such as one from `semq floor` without `--per-row`
+or one saved by SEMQ 1.0. SEMQ 1.0 cannot read a floor written with
+`--per-row`; a floor written without it reads in every version.
+
+In code:
+
+```python
+from semq import Encoding, Floor
+
+reference = Encoding.load("reference.semq")
+nulls = [reference.diff(Encoding.load(f"null-{k}.semq")) for k in (1, 2, 3)]
+floor = Floor.measure(nulls, per_row=True)
+print(floor.max_hamming, floor.distinct_nulls)
+verdict = reference.diff(Encoding.load("candidate.semq")).evaluate(floor, per_row=True)
+print(verdict.passed, verdict.reasons, verdict.rows)  # the rows above max_hamming
+```
+
+**How many nulls.** Each check compares one statistic of the candidate with
+the largest value of that statistic among the nulls. If an unchanged rebuild
+and the `N` nulls are exchangeable (produced the same way, so that any order
+of the `N + 1` is equally likely), the unchanged rebuild is above all `N`
+nulls with probability at most `1/(N+1)`, so each statistic rejects it with
+probability at most `1/(N+1)`. `within` uses two statistics, the changed
+ratio and the p99 hamming, so it rejects an unchanged rebuild with
+probability at most `2/(N+1)`. The per-row check adds a third, for at most `3/(N+1)`: 75% with 3 nulls, about 14% with 20. In
+practice it adds less, because hamming distances are integers and a tie with
+the largest null does not fail. When every null rebuild gave the same rows
+(`distinct_nulls` is `1`), the rebuild is deterministic: an unchanged
+rebuild gives those rows again, so the per-row check adds no false alarm. When the nulls vary, measure the floor
+from at least 20 nulls; `semq diff --per-row` prints a warning on stderr
+below that, without changing the exit code.
 
 ## What the verdict means
 
@@ -111,7 +153,8 @@ rows, its p99 hamming is at most the floor's, and neither `encoder` nor
 `encoder_revision` changed. Added rows do not affect it; they are listed so
 you can judge them. The floor is an envelope of what you observed, taken
 component-wise over the nulls; it does not estimate the probability of the
-next rebuild.
+next rebuild. The bound in step 4 holds only if the nulls and the candidate
+are exchangeable: it comes from how you produce them, not from the floor.
 
 ## Encode a large corpus in batches
 
