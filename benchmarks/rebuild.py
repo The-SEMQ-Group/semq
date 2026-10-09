@@ -131,18 +131,40 @@ def git(*args: str) -> str:
 
 
 def hardware() -> dict[str, Any]:
-    try:
-        machine = subprocess.check_output(
-            ["sysctl", "-n", "machdep.cpu.brand_string"], text=True
-        ).strip()
-    except (OSError, subprocess.CalledProcessError):
-        machine = platform.processor()
+    """The CPU, and the GPU the embeddings ran on: MPS on macOS, else NVIDIA if any."""
+    machine = platform.processor()
+    gpu = None
+    if sys.platform == "darwin":
+        try:
+            machine = subprocess.check_output(
+                ["sysctl", "-n", "machdep.cpu.brand_string"], text=True
+            ).strip()
+        except (OSError, subprocess.CalledProcessError):
+            pass
+        gpu = f"{machine} (MPS)"
+    else:
+        try:
+            with open("/proc/cpuinfo", encoding="utf-8") as f:
+                machine = next(
+                    line.split(":", 1)[1].strip()
+                    for line in f
+                    if line.startswith("model name")
+                )
+        except (OSError, StopIteration):
+            pass
+        try:
+            names = subprocess.check_output(
+                ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"], text=True
+            ).split("\n")
+            gpu = names[0].strip() or None
+        except (OSError, subprocess.CalledProcessError):
+            pass
     return {
         "machine": machine,
         "os": platform.platform(),
         "arch": platform.machine(),
         "cpu_threads": os.cpu_count(),
-        "gpu": f"{machine} (MPS)",
+        "gpu": gpu,
     }
 
 
