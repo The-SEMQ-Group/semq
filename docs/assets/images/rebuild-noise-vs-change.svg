@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 268" role="img" aria-labelledby="t d">
   <title id="t">Rebuild noise against a real change</title>
-  <desc id="d">The same document embedded on a CPU and on a GPU gives floats that differ in the last digits, so a hash of the floats changes, but the SEMQ symbols are equal and the gate passes. An edited document changes some symbols and the gate flags its row.</desc>
+  <desc id="d">Illustrative example: an unchanged document has different floating-point values but the same symbols. An edited document has different symbols and its row is reported. The gate compares changes with the measured floor; changed symbols alone do not determine its verdict.</desc>
   <defs>
     <marker id="a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M0,0 L8,4 L0,8 z" fill="#9aa5ad"/>
@@ -72,6 +72,6 @@
     <rect class="b1" x="84" width="18" height="24" rx="2"/><rect class="b3" x="105" width="18" height="24" rx="2"/>
     <rect class="x" x="105" width="18" height="24" rx="2"/><rect class="b0" x="126" width="18" height="24" rx="2"/>
   </g>
-  <text class="no" x="632" y="212">✗ symbols changed</text>
-  <text class="s" x="632" y="230">fail, the row is named</text>
+  <text class="no" x="632" y="212">changed row</text>
+  <text class="s" x="632" y="230">compare with floor</text>
 </svg>

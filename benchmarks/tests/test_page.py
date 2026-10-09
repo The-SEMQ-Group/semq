@@ -73,6 +73,7 @@ def small_report():
             "example": {
                 "nulls_in_floor": 20,
                 "changed_rows": 241,
+                "floor_changed_rows": 270,
                 "hamming_counts": {"1": 232, "2": 7, "260": 1, "267": 1},
                 "faulted_hamming": [260, 267],
                 "rows_ignored_by_p99": 2,
@@ -100,11 +101,25 @@ def test_power_panel_renders_from_a_small_report():
     assert "states: all 2 matched the reference" in text
     assert "Hardware: CPU: Test CPU (x86_64) · GPU: Test GPU." in text
     assert "| Replace 2 documents |" in text
-    assert "| 3 | 0% | 50.0% | 0% | 75.0% |" in text
+    assert "| 3 | 0% | 0%–30.0% | 50.0% | 0% | 0%–30.0% | 75.0% |" in text
     # The row-by-row example: what the p99 drops and what per-row compares.
     assert "⌊241/100⌋ = 2 most-changed rows, so it reads 2" in text
     assert "the p99 ignores these 2 rows" in text
-    assert "floor max_hamming = 3: per-row flags any row above it" in text
+    assert "the per-row limit is 3 symbols" in text
+
+
+def test_calibration_rebuilds_are_excluded_from_false_alarm_counts():
+    report = page.load("rebuild")
+    calibration = report["results"]["floor_nulls"]
+    # A calibration error must not become a held-out false alarm.
+    report["results"]["errors"]["semq_quant4"]["false_alarms_on_nulls"] = [
+        calibration[0],
+        "null_cpu_b1",
+    ]
+    text = "\n".join(page.simpler_panel(report))
+    assert "| SEMQ diff against its floor | 1 of 2 |" in text
+    assert "| Hash of the FP32 bytes | 2 of 2 |" in text
+    assert "2 rebuilds held out from the 3 used to measure the floor" in text
 
 
 def test_power_panel_refuses_false_alarms_its_text_does_not_describe():

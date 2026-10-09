@@ -134,7 +134,12 @@ def simpler_panel(data: dict[str, Any]) -> list[str]:
     """The same runs judged with a float hash, allclose, a cosine threshold and
     a calibrated max-difference threshold, from ``results.errors``."""
     results = data["results"]
-    nulls = [key for key in results["runs"] if key.startswith("null_")]
+    calibration = set(results["floor_nulls"])
+    nulls = {
+        key
+        for key in results["runs"]
+        if key.startswith("null_") and key not in calibration
+    }
     rows = []
     for key, label in SIMPLE_CHECKS.items():
         errors = results["errors"][key]
@@ -143,20 +148,24 @@ def simpler_panel(data: dict[str, Any]) -> list[str]:
         rows.append(
             [
                 label,
-                f"{len(errors['false_alarms_on_nulls'])} of {len(nulls)}",
+                f"{len(nulls.intersection(errors['false_alarms_on_nulls']))} of {len(nulls)}",
                 f"{len(missed)} of {len(REAL_CHANGES)}{detail}",
             ]
         )
     return [
         "**The same runs, judged by other checks.** A false alarm flags a rebuild "
-        "that changed nothing; a miss lets a real change pass.",
+        "with unchanged text and encoder; a miss lets a tested pipeline change pass. "
+        f"False alarms count only the {len(nulls)} rebuilds held out from the "
+        f"{len(calibration)} used to measure the floor.",
         "",
         *table(
-            ["Check", "False alarms on rebuilds", "Real changes missed"], rows, "-rr"
+            ["Check", "False alarms on held-out rebuilds", "Tested changes missed"],
+            rows,
+            "-rr",
         ),
-        "Hashing the floats fails on every rebuild, because devices and batch sizes "
-        "change the last bits. A cosine threshold loose enough for that noise also lets "
-        "a switch to half precision pass. A threshold on the largest difference works "
+        "In these runs, every held-out rebuild changed the FP32 bytes. The fixed "
+        "cosine threshold also lets the switch to half precision pass. A threshold "
+        "on the largest difference works "
         "when it is calibrated on your own rebuilds, which is what the floor does.",
         "",
         "Source: [`rebuild.json`](../assets/benchmarks/summary/rebuild.json), produced by "
@@ -207,7 +216,7 @@ def fault_label(fault: dict[str, Any]) -> str:
         k = fault["documents"]
         return f"Replace {k} document{'' if k == 1 else 's'}"
     if family == "truncate":
-        return f"Cut the last {fault['cut']:.0%} of one document"
+        return f"Cut the last {fault['cut']:.0%} of words in one document"
     if family == "substitute":
         m = fault["words"]
         return f"Swap {m} word{'' if m == 1 else 's'} in one document"
@@ -268,7 +277,7 @@ def chart_legend(items: list[tuple[str, str]]) -> str:
 def false_alarm_chart(vfar: dict[str, Any]) -> list[str]:
     """False-alarm rate against nulls in the floor (log scale), measured and bounded."""
     ns = sorted(int(k) for k in vfar)
-    left, right, top, bottom = 58, SVG_WIDTH - 150, 14, 236
+    left, right, top, bottom = 62, SVG_WIDTH - 154, 36, 250
     lo_n, hi_n = math.log(ns[0]), math.log(ns[-1])
 
     def xs(n: float) -> float:
@@ -278,8 +287,11 @@ def false_alarm_chart(vfar: dict[str, Any]) -> list[str]:
         return bottom - v / 80 * (bottom - top)
 
     out = svg_open(bottom + 44, "False alarms against the number of nulls in the floor")
+    out[0] = out[0].replace(
+        'class="semq-chart"', 'class="semq-chart is-rebuild" tabindex="0"'
+    )
     out.append(
-        f'<text class="semq-chart__axis" x="{left - 8}" y="{top - 2}">'
+        f'<text class="semq-chart__axis" x="{left - 8}" y="{top - 18}">'
         "false-alarm rate (%)</text>"
     )
     for v in (0, 20, 40, 60, 80):
@@ -298,7 +310,7 @@ def false_alarm_chart(vfar: dict[str, Any]) -> list[str]:
         )
     out.append(
         f'<text class="semq-chart__axis" x="{(left + right) / 2:.0f}" y="{bottom + 38}" '
-        'text-anchor="middle">nulls in the floor (N, log scale)</text>'
+        'text-anchor="middle">calibration rebuilds (N, log scale)</text>'
     )
     ends = []
     for det, stats in (("floor_within", 2), ("floor_per_row", 3)):
@@ -317,6 +329,12 @@ def false_alarm_chart(vfar: dict[str, Any]) -> list[str]:
         for n in ns:
             r = vfar[str(n)][det]
             lo, up = (100 * c for c in r["ci95"])
+            x = xs(n)
+            out.append(
+                f'<path class="semq-chart__interval {css}" '
+                f'd="M{x:.1f},{ys(lo):.1f}V{ys(up):.1f}'
+                f'M{x - 4:.1f},{ys(lo):.1f}h8M{x - 4:.1f},{ys(up):.1f}h8"/>'
+            )
             out.append(
                 f"<g><title>{GATE_NAMES[det]}, {n} nulls: {percent(100 * r['rate'])} "
                 f"(95% interval {percent(lo)}–{percent(up)}; "
@@ -327,147 +345,55 @@ def false_alarm_chart(vfar: dict[str, Any]) -> list[str]:
         ends.append((ys(100 * vfar[str(ns[-1])][det]["rate"]), det))
     # Direct labels at the right end, pushed apart when the two rates are close.
     (ya, da), (yb, db) = sorted(ends)
-    if yb - ya < 14:
+    if yb - ya < 20:
         mid = (ya + yb) / 2
-        ya, yb = mid - 7, mid + 7
+        ya, yb = mid - 10, mid + 10
     for y, det in ((ya, da), (yb, db)):
         last = percent(100 * vfar[str(ns[-1])][det]["rate"])
         out.append(
             f'<text class="semq-chart__label" x="{right + 12}" y="{y + 4:.1f}">'
             f"{GATE_NAMES[det]} {last}</text>"
         )
-    return out + ["</svg>", "</figure>", ""]
+    return out + [
+        "</svg>",
+        '<figcaption class="semq-scroll-hint">Scroll horizontally to view the full chart.</figcaption>',
+        "</figure>",
+        "",
+    ]
 
 
 def rank_chart(example: dict[str, Any]) -> list[str]:
-    """One candidate's changed rows sorted by hamming (log scale), with what each
-    check reads. The x axis is cut: the last TAIL rows are drawn wide."""
-    values: list[int] = []
-    for h, c in example["hamming_counts"].items():
-        values += [int(h)] * c
-    values.sort()
-    m = len(values)
-    tail = min(m, 12)
-    head = m - tail
+    """The measured noise and replaced rows, without a broken or logarithmic axis."""
     faulted = sorted(example["faulted_hamming"])
+    counts = {int(h): c for h, c in example["hamming_counts"].items()}
+    for h in faulted:
+        counts[h] -= 1
+    noise = {h: c for h, c in counts.items() if c > 0}
+    total = example["changed_rows"]
+    n_noise = sum(noise.values())
+    noise_range = (
+        str(min(noise)) if min(noise) == max(noise) else f"{min(noise)}–{max(noise)}"
+    )
     ignored = example["rows_ignored_by_p99"]
-    left, right, top, bottom = 58, SVG_WIDTH - 24, 22, 236
-    split = left + 0.3 * (right - left)
-    tail_start = split + 22
-    y_lo, y_hi = 0.8, 400.0
-
-    def xs(rank: float) -> float:
-        if rank <= head + 0.5:
-            return left + (rank - 0.5) / max(head, 1) * (split - left)
-        return tail_start + (rank - head - 0.5) / tail * (right - tail_start)
-
-    def ys(h: float) -> float:
-        span = math.log(y_hi) - math.log(y_lo)
-        return bottom - (math.log(h) - math.log(y_lo)) / span * (bottom - top)
-
-    out = svg_open(bottom + 44, "One candidate's changed rows sorted by hamming")
-    out.append(
-        f'<text class="semq-chart__axis" x="{left - 8}" y="{top - 10}" '
-        'text-anchor="start">hamming (log scale)</text>'
-    )
-    for h in (1, 2, 3, 10, 30, 100, 300):
-        for x1, x2 in ((left, split), (tail_start, right)):
-            out.append(
-                f'<line class="semq-chart__grid" x1="{x1:.1f}" x2="{x2:.1f}" '
-                f'y1="{ys(h):.1f}" y2="{ys(h):.1f}"/>'
-            )
-        out.append(
-            f'<text class="semq-chart__tick" x="{left - 8}" y="{ys(h) + 4:.1f}" '
-            f'text-anchor="end">{h}</text>'
-        )
-    ticks = sorted({1, head, *range(head + 1, m, 3), m}) if head else range(1, m + 1)
-    for rank in ticks:
-        x = xs(rank)
-        out.append(
-            f'<text class="semq-chart__tick" x="{x:.1f}" y="{bottom + 18}" '
-            f'text-anchor="middle">{rank}</text>'
-        )
-    # The cut in the x axis.
-    mid = (split + tail_start) / 2
-    for dx in (-3, 3):
-        out.append(
-            f'<line class="semq-chart__reference" x1="{mid + dx - 3:.1f}" x2="{mid + dx + 3:.1f}" '
-            f'y1="{bottom + 5}" y2="{bottom - 5}"/>'
-        )
-    out.append(
-        f'<text class="semq-chart__axis" x="{(left + right) / 2:.0f}" y="{bottom + 38}" '
-        f'text-anchor="middle">changed rows, sorted by hamming; the last {tail} drawn wide</text>'
-    )
-    x0 = (xs(m - ignored) + xs(m - ignored + 1)) / 2
-    out.append(
-        f'<rect class="semq-chart__band" x="{x0:.1f}" y="{top}" '
-        f'width="{right - x0:.1f}" height="{bottom - top}"/>'
-    )
-    out.append(
-        f'<text class="semq-chart__note" x="{x0 - 8:.1f}" y="{ys(30):.1f}" '
-        f'text-anchor="end">the p99 ignores these {ignored} rows</text>'
-    )
-    lines = (
-        (
-            example["floor_max_hamming"],
-            "is-per-row",
-            f"floor max_hamming = {example['floor_max_hamming']}: "
-            "per-row flags any row above it",
-            -6,
-        ),
-        (
-            example["floor_hamming"],
-            "is-within",
-            f"floor p99 = {example['floor_hamming']}: "
-            f"within compares the candidate's p99, {example['candidate_p99']}",
-            14,
-        ),
-    )
-    for h, css, name, dy in lines:
-        for x1, x2 in ((left, split), (tail_start, x0)):
-            out.append(
-                f'<line class="semq-chart__threshold {css}" x1="{x1:.1f}" x2="{x2:.1f}" '
-                f'y1="{ys(h):.1f}" y2="{ys(h):.1f}"/>'
-            )
-        out.append(
-            f'<text class="semq-chart__note" x="{left + 8}" y="{ys(h) + dy:.1f}">'
-            f"{esc(name)}</text>"
-        )
-    noise = values[: m - len(faulted)]
-    for lo_rank, hi_rank in ((1, min(head, len(noise))), (head + 1, len(noise))):
-        if hi_rank < lo_rank:
-            continue
-        pts = " ".join(
-            f"{xs(r):.1f},{ys(noise[r - 1]):.1f}" for r in range(lo_rank, hi_rank + 1)
-        )
-        out.append(
-            f"<g><title>{len(noise)} rows moved by rebuild noise, "
-            f"hamming {noise[0]} to {noise[-1]}</title>"
-            f'<polyline class="semq-chart__line is-noise" points="{pts}"/></g>'
-        )
-    for r in range(head + 1, len(noise) + 1):
-        out.append(
-            f"<g><title>row {r}: hamming {noise[r - 1]}, rebuild noise</title>"
-            f'<circle class="semq-chart__point is-noise" cx="{xs(r):.1f}" '
-            f'cy="{ys(noise[r - 1]):.1f}" r="3.5"/></g>'
-        )
-    for i, h in enumerate(faulted):
-        rank = m - len(faulted) + i + 1
-        out.append(
-            f"<g><title>row {rank}: replaced document, hamming {h}</title>"
-            f'<circle class="semq-chart__point is-faulted" cx="{xs(rank):.1f}" '
-            f'cy="{ys(h):.1f}" r="5"/></g>'
-        )
-    out.append(
-        f'<text class="semq-chart__note" x="{left + 8}" y="{ys(1) - 8:.1f}">'
-        f"{len(noise)} rows changed by rebuild noise</text>"
-    )
-    out.append(
-        f'<text class="semq-chart__label" x="{x0 - 8:.1f}" y="{ys(faulted[-1]) + 4:.1f}" '
-        f'text-anchor="end">{len(faulted)} replaced documents, hamming '
-        f"{' and '.join(str(h) for h in faulted)}</text>"
-    )
-    return out + ["</svg>", "</figure>", ""]
+    return [
+        '<figure class="semq-row-example" aria-label="Changed rows in the synthetic example">',
+        '<div class="semq-row-example__bar" aria-hidden="true">',
+        f'<span class="is-noise" style="width:{100 * n_noise / total:.4f}%"></span>',
+        f'<span class="is-faulted" style="width:{100 * len(faulted) / total:.4f}%"></span>',
+        "</div>",
+        '<div class="semq-row-example__groups">',
+        '<div class="is-noise"><span>Rebuild noise</span>',
+        f"<strong>{n_noise:,} rows</strong><p>{noise_range} symbols changed per row</p></div>",
+        '<div class="is-faulted"><span>Replaced documents</span>',
+        f'<strong>{len(faulted)} rows</strong><p>{" and ".join(str(h) for h in faulted)} '
+        "symbols changed</p></div>",
+        "</div>",
+        f"<figcaption>Of {total:,} changed rows, the p99 ignores these {ignored} rows "
+        f'with the largest changes. The candidate’s p99 stays at {example["candidate_p99"]}; '
+        f'the per-row limit is {example["floor_max_hamming"]} symbols.</figcaption>',
+        "</figure>",
+        "",
+    ]
 
 
 SIZE_MARKS = (
@@ -494,241 +420,134 @@ def mark(css: str, x: float, y: float) -> str:
 
 
 def detection_size_chart(det: dict[str, Any]) -> list[str]:
-    """Detection rate against fault size (log), one mark per check and fault."""
+    """Named numeric scenarios with rates and intervals; labels stay HTML text."""
     faults = sorted(
         (f for f in det.values() if f["family"] in ("diffuse", "sparse")),
-        key=lambda f: f["size_median_1_minus_cos"],
+        key=fault_order,
     )
-    sizes = [f["size_median_1_minus_cos"] for f in faults]
-    lo = 10 ** math.floor(math.log10(min(sizes)))
-    hi = 10 ** math.ceil(math.log10(max(sizes)))
-    left, right, top, bottom = 58, SVG_WIDTH - 24, 30, 236
-
-    def xs(v: float) -> float:
-        return left + (math.log10(v) - math.log10(lo)) / (
-            math.log10(hi) - math.log10(lo)
-        ) * (right - left)
-
-    def ys(v: float) -> float:
-        return bottom - v / 100 * (bottom - top)
-
-    out = svg_open(bottom + 44, "Detection of numeric faults against their size")
-    out.append(
-        f'<text class="semq-chart__axis" x="{left - 8}" y="{top - 14}">'
-        "injected faults detected (%)</text>"
-    )
-    for v in (0, 25, 50, 75, 100):
-        out.append(
-            f'<line class="semq-chart__grid" x1="{left}" x2="{right}" '
-            f'y1="{ys(v):.1f}" y2="{ys(v):.1f}"/>'
-        )
-        out.append(
-            f'<text class="semq-chart__tick" x="{left - 8}" y="{ys(v) + 4:.1f}" '
-            f'text-anchor="end">{v}%</text>'
-        )
-    e = math.floor(math.log10(lo))
-    while 10.0**e <= hi:
-        label = "1" if e == 0 else f"1e{e}"
-        out.append(
-            f'<text class="semq-chart__tick" x="{xs(10.0**e):.1f}" '
-            f'y="{bottom + 18}" text-anchor="middle">{label}</text>'
-        )
-        e += 1
-    out.append(
-        f'<text class="semq-chart__axis" x="{(left + right) / 2:.0f}" y="{bottom + 38}" '
-        'text-anchor="middle">size of the fault, 1 − cosine (log scale)</text>'
-    )
+    out = [
+        '<figure class="semq-dotchart" aria-label="Detection of injected numeric changes">',
+        "<figcaption>Detection rate · higher is better. Whiskers show 95% "
+        "resampling intervals.</figcaption>",
+        '<div class="semq-dotchart__axis"><span>Injected change</span>',
+        '<div class="semq-dotchart__ticks">'
+        + "".join(f"<span>{v}%</span>" for v in (0, 25, 50, 75, 100))
+        + "</div></div>",
+    ]
+    short_names = ("SEMQ", "Max diff", "Cosine")
     for f in faults:
-        x = xs(f["size_median_1_minus_cos"])
-        title = (
-            esc(fault_label(f))
-            + ": "
-            + ", ".join(
-                f"{name} {percent(100 * f['detectors'][det_key]['rate'])}"
-                for det_key, _, name in SIZE_MARKS
-            )
+        label = (
+            f"Gaussian noise · {f['noise_x_null_scale']}× rebuild noise"
+            if f["family"] == "diffuse"
+            else f"Scale {f['coordinates']:.0%} of dimensions by 1 + {sci(f['scale'])}"
         )
-        out.append(f"<g><title>{title}</title>")
-        for det_key, css, _ in SIZE_MARKS:
-            out.append(mark(css, x, ys(100 * f["detectors"][det_key]["rate"])))
-        out.append("</g>")
-    return out + ["</svg>", "</figure>", ""]
+        rates = [f["detectors"][key] for key, _, _ in SIZE_MARKS]
+        out.extend(
+            [
+                '<div class="semq-dotchart__row">',
+                f'<div class="semq-dotchart__label"><strong>{esc(label)}</strong>'
+                f'<small>Angular change: {sci(f["size_median_1_minus_cos"])}</small></div>',
+                '<svg viewBox="0 0 360 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">',
+            ]
+        )
+        for v in (0, 25, 50, 75, 100):
+            x = 20 + 3.2 * v
+            out.append(
+                f'<line class="semq-chart__grid" x1="{x}" x2="{x}" y1="0" y2="60"/>'
+            )
+        for i, ((_, css, _), r) in enumerate(zip(SIZE_MARKS, rates, strict=True)):
+            y = 12 + 18 * i
+            lo, hi = (20 + 320 * c for c in r["ci95"])
+            out.append(
+                f'<path class="semq-dotchart__interval {css}" '
+                f'd="M{lo:.1f},{y}H{hi:.1f}M{lo:.1f},{y - 3}v6M{hi:.1f},{y - 3}v6"/>'
+            )
+            out.append(mark(css, 20 + 320 * r["rate"], y))
+        out.extend(["</svg>", '<div class="semq-dotchart__rates">'])
+        for name, (_, css, _), r in zip(short_names, SIZE_MARKS, rates, strict=True):
+            out.append(
+                f'<span class="{css}">{name}: <strong>{percent(100 * r["rate"])}</strong></span>'
+            )
+        out.extend(["</div>", "</div>"])
+    return out + ["</figure>", ""]
 
 
 def gate_diagram(example: dict[str, Any]) -> list[str]:
-    """How the gate decides, drawn from one measured candidate: the floor's three
-    bounds and the candidate's three values, compared row by row."""
-    floor_rows = example["floor_changed_rows"]
+    """Calibration and candidate checks as responsive, accessible HTML."""
     rows = (
+        ("Changed rows", example["changed_rows"], example["floor_changed_rows"]),
+        ("p99 symbols changed", example["candidate_p99"], example["floor_hamming"]),
         (
-            "changed rows",
-            example["changed_rows"],
-            floor_rows,
-            "changed_ratio",
-        ),
-        ("p99 hamming", example["candidate_p99"], example["floor_hamming"], "hamming"),
-        (
-            "largest row",
-            max(example["faulted_hamming"]),
+            "Most symbols changed in one row",
+            max(int(h) for h in example["hamming_counts"]),
             example["floor_max_hamming"],
-            "per-row",
         ),
-    )
-    failed = [check for _, value, bound, check in rows if value > bound]
-    named = len(example["faulted_hamming"])
-    label = (
-        "How the gate decides: a floor measured once from rebuilds with no change, "
-        "and a candidate whose three values are each compared with the floor's bound"
     )
     out = [
-        f'<figure class="semq-diagram" role="img" aria-label="{esc(label)}">',
-        '<svg viewBox="0 -4 760 316" xmlns="http://www.w3.org/2000/svg">',
-        "<defs>",
-        '<marker id="gate-arrow" viewBox="0 0 8 8" refX="7" refY="4" '
-        'markerWidth="7" markerHeight="7" orient="auto">'
-        '<path d="M0,0 L8,4 L0,8 z" class="semq-diagram__head"/></marker>',
-        "</defs>",
+        '<figure class="semq-gate" aria-label="Calibrate the floor, then evaluate a candidate">',
+        '<div class="semq-gate__steps">',
+        '<div><span class="semq-gate__step">1 · Calibrate</span>',
+        f'<strong>{example["nulls_in_floor"]} unchanged rebuilds</strong>',
+        "<p>Compare each with the same reference. Keep the largest observed "
+        "value of each statistic as the floor.</p></div>",
+        '<div><span class="semq-gate__step">2 · Evaluate</span>',
+        "<strong>One candidate rebuild</strong>",
+        "<p>Compare it with that reference, then check each value against its "
+        "floor limit.</p></div>",
+        "</div>",
+        '<ul class="semq-gate__checks">',
     ]
-
-    def box(x: int, y: int, w: int, h: int, css: str = "") -> None:
-        out.append(
-            f'<rect class="semq-diagram__box {css}" x="{x}" y="{y}" width="{w}" '
-            f'height="{h}" rx="6"/>'
-        )
-
-    def text(x: float, y: float, value: str, css: str, anchor: str = "start") -> None:
-        out.append(
-            f'<text class="{css}" x="{x}" y="{y}" text-anchor="{anchor}">'
-            f"{esc(value)}</text>"
-        )
-
-    def arrow(points: str, label: str = "", lx: float = 0, ly: float = 0) -> None:
-        out.append(
-            f'<polyline class="semq-diagram__arrow" points="{points}" '
-            'marker-end="url(#gate-arrow)"/>'
-        )
-        if label:
-            text(lx, ly, label, "semq-diagram__edge", "middle")
-
-    text(232, 10, "measured once", "semq-diagram__edge")
-    text(232, 302, "each candidate", "semq-diagram__edge")
-    text(
-        750,
-        302,
-        "Example: one candidate from the synthetic pool below",
-        "semq-diagram__edge",
-        "end",
-    )
-    # Inputs.
-    for dx in (8, 4, 0):
-        box(16 + dx, 24 - dx, 140, 52, "is-input")
-    text(86, 46, "Rebuilds with", "semq-diagram__title", "middle")
-    text(
-        86,
-        62,
-        f"no change ({example['nulls_in_floor']})",
-        "semq-diagram__title",
-        "middle",
-    )
-    box(16, 122, 140, 52, "is-input")
-    text(86, 152, "Reference state", "semq-diagram__title", "middle")
-    box(16, 220, 140, 52, "is-input")
-    text(86, 250, "Candidate rebuild", "semq-diagram__title", "middle")
-
-    # Diffs against the reference: the reference feeds both.
-    arrow("166,48 214,48", "diff each", 190, 40)
-    arrow("156,246 214,246", "diff", 186, 264)
-    out.append('<polyline class="semq-diagram__link" points="156,148 186,148 186,56"/>')
-    out.append('<polyline class="semq-diagram__link" points="186,148 186,238"/>')
-    text(192, 152, "against it", "semq-diagram__edge")
-
-    # The floor's bounds and the candidate's values, aligned row by row.
-    box(218, 14, 184, 104, "is-floor")
-    text(232, 36, "Floor", "semq-diagram__title")
-    box(218, 186, 184, 104, "")
-    text(232, 208, "Candidate's diff", "semq-diagram__title")
-    for i, (name, value, bound, _) in enumerate(rows):
-        y = 58 + 20 * i
-        text(232, y, name, "semq-diagram__text")
-        text(388, y, f"≤ {bound:,}", "semq-diagram__value", "end")
-        text(232, y + 172, name, "semq-diagram__text")
-        text(388, y + 172, f"{value:,}", "semq-diagram__value", "end")
-
-    # Compare value against bound, one line per check.
-    box(446, 94, 196, 108, "")
-    text(460, 116, "Compare", "semq-diagram__title")
-    for i, (_, value, bound, check) in enumerate(rows):
-        y = 140 + 20 * i
+    for label, value, bound in rows:
         ok = value <= bound
-        text(460, y, f"{value:,} ≤ {bound:,}", "semq-diagram__value")
-        text(
-            628,
-            y,
-            f"{'✓' if ok else '✗'} {check}",
-            "semq-diagram__ok" if ok else "semq-diagram__bad",
-            "end",
+        out.append(
+            f'<li><span>{esc(label)}</span><code>{value:,} {"≤" if ok else ">"} {bound:,}</code>'
+            f'<strong class="{"is-pass" if ok else "is-fail"}">'
+            f'{"Within" if ok else "Exceeds"}</strong></li>'
         )
-    arrow("402,66 424,66 424,120 442,120", "bounds", 424, 58)
-    arrow("402,238 424,238 424,176 442,176", "values", 424, 254)
-
-    # The verdict.
-    verdict_css = "is-fail" if failed else "is-pass"
-    box(670, 102, 80, 92, verdict_css)
-    arrow("642,148 666,148")
-    if failed:
-        text(710, 128, "Fail", "semq-diagram__bad", "middle")
-        text(710, 150, failed[0], "semq-diagram__text", "middle")
-        text(710, 170, f"{named} rows", "semq-diagram__text", "middle")
-        text(710, 184, "named", "semq-diagram__text", "middle")
-    else:
-        text(710, 152, "Pass", "semq-diagram__ok", "middle")
-    out += ["</svg>", "</figure>", ""]
+    out += [
+        "</ul>",
+        "<figcaption>Illustrative candidate from the measured synthetic pool. "
+        "<code>within</code> accepts the first two values; <code>per-row</code> "
+        f'also checks the last and flags {len(example["faulted_hamming"])} rows.</figcaption>',
+        "</figure>",
+        "",
+    ]
     return out
 
 
-def detection_chart(vdet: dict[str, Any], keys: tuple[str, ...]) -> list[str]:
-    """Detection of the given faults by within and per-row, as horizontal bars."""
+def tradeoff_table(vdet: dict[str, Any], far: dict[str, Any], n: int) -> list[str]:
+    """Detection and false alarms together, with one 0–100% scale and exact rates."""
     rows = [
         (
-            det,
-            f"{fault_label(vdet[key])}, {GATE_NAMES[det]}",
-            100 * vdet[key]["detectors"][det]["rate"],
+            f"Replace {vdet[key]['documents']} document{'s' if vdet[key]['documents'] != 1 else ''}",
+            "Detected · higher is better",
+            vdet[key]["detectors"],
         )
-        for key in keys
-        for det in ("floor_within", "floor_per_row")
+        for key in ("replace_1", "replace_2")
     ]
-    top, height = 8, 8 + ROW_HEIGHT * len(rows) + 44
-    right = SVG_WIDTH - 70
-
-    def scale(v: float) -> float:
-        return LABEL_WIDTH + v / 100 * (right - LABEL_WIDTH)
-
-    out = svg_open(height, "Detection of replaced documents by within and per-row")
-    out += axis_ticks(
-        scale,
-        [0, 25, 50, 75, 100],
-        top,
-        top + ROW_HEIGHT * len(rows),
-        lambda v: f"{v:.0f}%",
-    )
-    for i, (det, name, value) in enumerate(rows):
-        y = top + i * ROW_HEIGHT + 7
-        w = max(scale(value) - LABEL_WIDTH, 2)
-        out.append(f"<g><title>{esc(name)}: {percent(value)} of draws</title>")
+    rows.append(("Unchanged rebuild", "False alarm · lower is better", far))
+    out = [
+        '<figure class="semq-tradeoff" aria-label="Detection and false alarms with and without per-row">',
+        f"<figcaption>Synthetic pool · {n} calibration rebuilds. Bars show rates "
+        "on a 0–100% scale; ranges are 95% resampling intervals.</figcaption>",
+        '<table><thead><tr><th scope="col">Scenario</th>',
+        '<th scope="col"><code>within</code></th>',
+        '<th scope="col">With <code>per-row</code></th></tr></thead><tbody>',
+    ]
+    for label, direction, rates in rows:
         out.append(
-            f'<text class="semq-chart__label" x="{LABEL_WIDTH - 10}" y="{y + 12}" '
-            f'text-anchor="end">{esc(name)}</text>'
+            f'<tr><th scope="row">{esc(label)}<small>{esc(direction)}</small></th>'
         )
-        out.append(bar_path(LABEL_WIDTH, y, w, 16, GATE_CSS[det]))
-        out.append(
-            f'<text class="semq-chart__value" x="{LABEL_WIDTH + w + 6:.1f}" '
-            f'y="{y + 12}">{percent(value)}</text></g>'
-        )
-    out.append(
-        f'<text class="semq-chart__axis" x="{(LABEL_WIDTH + right) / 2:.0f}" '
-        f'y="{height - 4}" text-anchor="middle">injected changes detected (%)</text>'
-    )
-    return out + ["</svg>", "</figure>", ""]
+        for key in GATE_NAMES:
+            r = rates[key]
+            out.append(
+                f'<td><strong>{percent(100 * r["rate"])}</strong>'
+                f'<span class="semq-rate-track" aria-hidden="true"><span '
+                f'class="{GATE_CSS[key]}" style="width:{100 * r["rate"]:.4f}%"></span></span>'
+                f"<small>{esc(rate_cells(r)[1])}</small></td>"
+            )
+        out.append("</tr>")
+    return out + ["</tbody></table>", "</figure>", ""]
 
 
 def power_panel(data: dict[str, Any]) -> list[str]:
@@ -756,8 +575,11 @@ def power_panel(data: dict[str, Any]) -> list[str]:
     return [
         "## False alarms and detection power",
         "",
+        f"Hardware: {hardware_line(data)}.",
+        "",
         f"{regime['nulls']} rebuilds of the same corpus that change only the device, "
-        "the batch size and the input order. Every rebuild gave different floats, but "
+        "the batch size and the input order. Every rebuild's floats differed from "
+        "the reference, but "
         f"there were only {regime['distinct_states_including_reference']} SEMQ "
         f"states: {states_summary(regime)}.",
         "",
@@ -774,7 +596,8 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         f"{percent(100 * far_few['floor_within']['rate'])} and the calibrated float "
         f"checks {percent(100 * min(far_few[k]['rate'] for k in CALIBRATED))} to "
         f"{percent(100 * max(far_few[k]['rate'] for k in CALIBRATED))}: a floor from "
-        "a few rebuilds is tighter than the noise. The draws resample the same "
+        "a few rebuilds can underestimate the variation in unchanged candidates. "
+        "The draws resample the same "
         f"{regime['nulls']} rebuilds, so the intervals describe this pool, not every "
         "future rebuild.",
         "",
@@ -791,17 +614,19 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         f" for every check, one swapped word "
         f"{percent(100 * det['substitute_1']['detectors']['floor_within']['rate'])} for the floor "
         f"and {percent(100 * det['substitute_1']['detectors']['cosine_calibrated']['rate'])} for "
-        "the cosine check. A cut is not always a change: in documents longer than the "
-        "model's 512-token limit, it removes text the model never reads.",
+        "the cosine check. Some cuts remove only text beyond the model's 512-token "
+        "window, leaving the model input unchanged.",
         "",
-        "Numeric faults move rows by less than a quantization bin. The floor sees "
-        "them only when a coordinate crosses a bin edge, so the calibrated float "
-        "checks catch them earlier. Size is the median 1 − cosine between a changed "
-        "row and the same row before the fault.",
+        "**Numeric changes.** A perturbation can change floats without crossing a "
+        "quantization boundary. SEMQ's symbols change only when a coordinate crosses "
+        "that boundary; the calibrated float checks detect smaller movements in "
+        "these runs. Each row below names the injected change. Angular change is "
+        "the median 1 − cosine between modified rows and those same rows before "
+        "the injection. The scaled dimensions are the same in every document.",
         "",
         chart_legend(
             [
-                ("is-floor", "SEMQ floor"),
+                ("is-floor", "SEMQ within"),
                 ("is-maxabs", "largest difference, calibrated"),
                 ("is-cosine", "lowest cosine, calibrated"),
             ]
@@ -811,7 +636,7 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         *table_view(
             [
                 "Fault",
-                "Size",
+                "Angular change (1 − cosine)",
                 "Floor, `within`",
                 "Floor, per-row",
                 "Largest difference, calibrated",
@@ -832,8 +657,6 @@ def power_panel(data: dict[str, Any]) -> list[str]:
             "Detection rates by fault",
         ),
         "",
-        f"Hardware: {hardware_line(data)}.",
-        "",
         "### When the rebuild noise varies (synthetic)",
         "",
         f"The rebuilds above changed at most {noise_rows} rows each. To test rebuilds "
@@ -848,8 +671,9 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         "(exchangeable), an unchanged candidate exceeds that largest value with "
         "probability at most 1/(N+1), so a gate that checks s statistics rejects it at "
         "most s/(N+1) of the time. `within` checks two statistics and "
-        "per-row adds a third. Both stay under their bound, because the statistics "
-        "move together and integer hamming values tie.",
+        "per-row adds a third. These are upper bounds, not predicted rates. The "
+        "observed rates below are lower; dependence between statistics and tied "
+        "Hamming values can make the bounds conservative.",
         "",
         chart_legend(
             [
@@ -860,19 +684,31 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         ),
         "",
         *false_alarm_chart(vfar),
+        "More calibration rebuilds reduced false alarms in this synthetic pool. "
+        "Solid lines show observed rates, whiskers show 95% resampling intervals, "
+        "and dashed lines show the theoretical upper bounds. Lower is better.",
+        "",
         *table_view(
-            ["Nulls in the floor", "`within`", "Bound", "Per-row", "Bound"],
+            [
+                "Calibration rebuilds",
+                "`within`",
+                "95% interval",
+                "Upper bound",
+                "Per-row",
+                "95% interval",
+                "Upper bound",
+            ],
             [
                 [
                     key,
-                    percent(100 * vfar[key]["floor_within"]["rate"]),
+                    *rate_cells(vfar[key]["floor_within"]),
                     percent(100 * vbound[key]["floor_within"]),
-                    percent(100 * vfar[key]["floor_per_row"]["rate"]),
+                    *rate_cells(vfar[key]["floor_per_row"]),
                     percent(100 * vbound[key]["floor_per_row"]),
                 ]
                 for key in sorted(vfar, key=int)
             ],
-            "rrrrr",
+            "rrrrrrr",
             "False alarms by number of nulls",
         ),
         "",
@@ -885,25 +721,20 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         f"ignores the ⌊{example['changed_rows']}/100⌋ = "
         f"{example['rows_ignored_by_p99']} most-changed rows, so it reads "
         f"{example['candidate_p99']}, no more than the floor's p99, and `within` "
-        "passes. Per-row compares every row with `max_hamming`, the largest hamming "
+        f"passes: its {example['changed_rows']} changed rows also stay below the "
+        f"floor's limit of {example['floor_changed_rows']}. Per-row compares every "
+        "row with `max_hamming`, the largest hamming "
         "of any row in any null, and flags the two documents.",
-        "",
-        chart_legend(
-            [
-                ("is-noise", "rows moved by rebuild noise"),
-                ("is-faulted", "replaced documents"),
-                ("is-within", "floor p99, read by within"),
-                ("is-per-row", "floor max_hamming, read by per-row"),
-            ]
-        ),
         "",
         *rank_chart(example),
         "",
-        f"**Detection with {n} nulls**, across all draws:",
+        "### What per-row adds",
         "",
-        chart_legend([("is-within", "within"), ("is-per-row", "per-row")]),
+        "Per-row caught localized changes the p99 hid, at the cost of more false "
+        "alarms in this synthetic test. Compare both outcomes before choosing a "
+        "gate; these are observed rates, not guarantees.",
         "",
-        *detection_chart(vdet, ("replace_1", "replace_2")),
+        *tradeoff_table(vdet, vfar[n], int(n)),
         *table_view(
             ["Fault", *(POWER_CHECKS[d] for d in POWER_DETECTORS)],
             [
@@ -919,30 +750,6 @@ def power_panel(data: dict[str, Any]) -> list[str]:
             "-rrrr",
             "Detection of replaced documents",
         ),
-        "",
-        f"**The tradeoff of per-row**, with {n} nulls in the floor:",
-        "",
-        *table(
-            ["", "`within`", "With per-row"],
-            [
-                *(
-                    [
-                        f"{fault_label(vdet[key])}: detected",
-                        percent(100 * vdet[key]["detectors"]["floor_within"]["rate"]),
-                        percent(100 * vdet[key]["detectors"]["floor_per_row"]["rate"]),
-                    ]
-                    for key in ("replace_1", "replace_2")
-                ),
-                [
-                    "Unchanged rebuild: false alarm",
-                    percent(100 * vfar[n]["floor_within"]["rate"]),
-                    percent(100 * vfar[n]["floor_per_row"]["rate"]),
-                ],
-            ],
-            "-rr",
-        ),
-        "Per-row caught localized changes the p99 hid, at the cost of more false "
-        "alarms in this synthetic test. These are observed rates, not guarantees.",
         "",
         "Source: [`floor-power.json`](../assets/benchmarks/summary/floor-power.json), "
         "produced by `python -m benchmarks.floor_power`.",
@@ -972,6 +779,8 @@ def rows_panel(data: dict[str, Any]) -> list[str]:
     return [
         "## Which rows changed?",
         "",
+        f"Hardware: {hardware_line(data)}.",
+        "",
         f"Edit {head['percent']:g}% of the corpus ({head['rows_edited']} documents cut to "
         "their first half and embedded again). Distribution drift, the check embedding "
         "monitors use, sees nothing; `diff` returns the "
@@ -991,8 +800,9 @@ def rows_panel(data: dict[str, Any]) -> list[str]:
         ),
         "Drift checks follow Evidently's defaults (centroid distance with threshold 0.2, "
         "a domain classifier with ROC AUC threshold 0.55), re-implemented in numpy. "
-        "With these thresholds, only the domain classifier flagged drift, and only "
-        "when half the corpus changed. From 5% up a few edited documents encode to "
+        "With these thresholds, the domain classifier flagged drift only in the "
+        "tested 50% scenario; the centroid check flagged none. From 5% up a few "
+        "edited documents encode to "
         "the same quantized row as before, so `diff` misses them; no unedited row was "
         "reported in these runs.",
         "",
@@ -1477,21 +1287,29 @@ def rebuild_page(
         "",
         "# Rebuild detection",
         "",
-        "Re-embedding a corpus rarely gives the same floats twice: another device or "
-        "batch size moves the last digits. SEMQ turns each embedding into symbols, "
-        "reports which rows changed, and compares the change with the noise measured "
-        "on rebuilds that changed nothing. Passing the gate means the candidate "
-        "stayed within that noise; it does not establish semantic equivalence.",
+        "Rebuilding an embedding corpus can change its floating-point values even "
+        "when its text and encoder are unchanged. SEMQ turns each embedding into "
+        "symbols, reports changed row IDs, and compares the differences with a "
+        "floor: the largest variations observed in unchanged rebuilds. Passing "
+        "the gate means the candidate stayed within that measured envelope; it "
+        "does not establish semantic equivalence.",
         "",
-        '<figure class="semq-figure"><img src="../../assets/images/'
-        'rebuild-noise-vs-change.svg" alt="The same document rebuilt on another device '
-        "gives other floats but the same symbols; an edited document changes symbols "
-        'and its row is reported"></figure>',
+        '<figure class="semq-figure" markdown="1">',
         "",
-        "Illustrative values. Real rebuilds can also change a few symbols, which the "
-        "floor tolerates, and a small edit can leave every symbol unchanged.",
+        "![The same document rebuilt on another device gives other floats but "
+        "the same symbols; an edited document changes symbols and its row is "
+        "reported](../assets/images/rebuild-noise-vs-change.svg)",
+        "",
+        "<figcaption>Illustrative values. A real rebuild can change some symbols "
+        "within the floor, and a small edit can leave every symbol unchanged."
+        '<span class="semq-scroll-hint">Scroll horizontally to view the full illustration.</span></figcaption>',
+        "",
+        "</figure>",
         "",
         "**Setup:** 5,183 SciFact documents · `e5-small-v2` · quant with four bins.",
+        "",
+        "Each section is a separate experiment with its own calibration. The "
+        "hardware and frozen results are listed with that experiment.",
         "",
         f"- **No false alarms on real rebuilds:** none with {n} rebuilds in the floor, "
         f"over {power['results']['draws']:,} resamples of {real['regime']['nulls']} "
@@ -1513,10 +1331,12 @@ def rebuild_page(
         "rows only, not over the whole corpus.",
         "",
         *gate_diagram(power["results"]["pools"]["varying"]["example"]),
-        "The floor is measured once, from rebuilds with no change. Each candidate "
-        "is diffed against the same reference, and each of its values is compared "
-        "with the floor's bound: `within` checks the first two, and `--per-row` adds "
-        "the largest row.",
+        "Measure a floor for a specific reference and expected rebuild settings. "
+        "Recalibrate when the reference or noise regime changes. Each candidate "
+        "is compared with that reference: `within` checks the changed-row ratio "
+        "and p99 Hamming; `--per-row` also checks the largest row change. The "
+        "example shows the numeric checks; a changed encoder manifest also fails "
+        "the gate.",
         "",
         *rebuild_panel(rebuild),
         *simpler_panel(rebuild),
