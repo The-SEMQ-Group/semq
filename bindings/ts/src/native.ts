@@ -127,20 +127,9 @@ export interface CoreExports {
     out: number,
     err: number,
   ) => number;
-  floorCreateWithMax: (
-    cfg: number,
-    idKind: number,
-    referenceId: number,
-    nulls: bigint,
-    changedRows: bigint,
-    totalRows: bigint,
-    hamming: bigint,
-    maxHamming: bigint,
-    out: number,
-    err: number,
-  ) => number;
   floorFree: (floor: number) => void;
   floorMeasure: (diffs: number, k: number, out: number, err: number) => number;
+  floorMeasureFor: (diffs: number, k: number, checks: number, out: number, err: number) => number;
   floorConfig: (floor: number) => number;
   floorIdKind: (floor: number) => number;
   floorReferenceId: (floor: number, out: number) => void;
@@ -149,15 +138,13 @@ export interface CoreExports {
   floorTotalRows: (floor: number) => bigint;
   floorHamming: (floor: number) => bigint;
   floorMaxHamming: (floor: number) => bigint;
+  floorDistinctNulls: (floor: number) => bigint;
   floorJsonSize: (floor: number) => bigint;
   floorSave: (floor: number, out: number, cap: bigint, err: number) => number;
   floorLoad: (buf: number, len: bigint, out: number, err: number) => number;
   diffWithin: (diff: number, floor: number, out: number, err: number) => number;
   // Gate evaluation
-  gateOptionsCreate: (out: number, err: number) => number;
-  gateOptionsFree: (options: number) => void;
-  gateOptionsSetPerRow: (options: number, enabled: number) => void;
-  diffEvaluate: (diff: number, floor: number, options: number, out: number, err: number) => number;
+  diffEvaluate: (diff: number, floor: number, checks: number, out: number, err: number) => number;
   verdictFree: (verdict: number) => void;
   verdictPassed: (verdict: number) => number;
   verdictReasons: (verdict: number) => number;
@@ -248,9 +235,9 @@ export function bindCore(w: SemqWasm): CoreExports {
     diffUnitsU64: num("semq_diff_units_u64"),
     diffUnitsUtf8: num("semq_diff_units_utf8"),
     floorCreate: num("semq_floor_create"),
-    floorCreateWithMax: num("semq_floor_create_with_max"),
     floorFree: nil("semq_floor_free"),
     floorMeasure: num("semq_floor_measure"),
+    floorMeasureFor: num("semq_floor_measure_for"),
     floorConfig: num("semq_floor_config"),
     floorIdKind: num("semq_floor_id_kind"),
     floorReferenceId: nil("semq_floor_reference_id"),
@@ -259,13 +246,11 @@ export function bindCore(w: SemqWasm): CoreExports {
     floorTotalRows: big("semq_floor_total_rows"),
     floorHamming: big("semq_floor_hamming"),
     floorMaxHamming: big("semq_floor_max_hamming"),
+    floorDistinctNulls: big("semq_floor_distinct_nulls"),
     floorJsonSize: big("semq_floor_json_size"),
     floorSave: num("semq_floor_save"),
     floorLoad: num("semq_floor_load"),
     diffWithin: num("semq_diff_within"),
-    gateOptionsCreate: num("semq_gate_options_create"),
-    gateOptionsFree: nil("semq_gate_options_free"),
-    gateOptionsSetPerRow: nil("semq_gate_options_set_per_row"),
     diffEvaluate: num("semq_diff_evaluate"),
     verdictFree: nil("semq_verdict_free"),
     verdictPassed: num("semq_verdict_passed"),

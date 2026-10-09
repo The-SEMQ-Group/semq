@@ -221,18 +221,16 @@ class Diff:
         With no options, ``evaluate(floor).passed == within(floor)``. With
         ``per_row=True`` the verdict also fails when any changed row has a
         hamming above ``floor.max_hamming``, and ``rows`` lists those ids;
-        a floor without ``max_hamming`` raises ``Incompatible``.
+        a floor without per-row data (one from ``Floor.measure`` without
+        ``per_row=True``, or saved by SEMQ 1.0) raises ``Incompatible``.
         """
         if not isinstance(floor, Floor):
             raise InvalidInput("evaluate takes a Floor")
         lib = _ffi.lib()
         err = _ffi.new_error()
-        opts_out = ffi.new("semq_gate_options_t**")
-        _ffi.check(lib.semq_gate_options_create(opts_out, err), err, "evaluate")
-        opts = ffi.gc(opts_out[0], lib.semq_gate_options_free)
-        lib.semq_gate_options_set_per_row(opts, 1 if per_row else 0)
+        checks = _ffi.CHECK_PER_ROW if per_row else 0
         out = ffi.new("semq_verdict_t**")
-        _ffi.check(lib.semq_diff_evaluate(self._d, floor._f, opts, out, err), err, "evaluate")
+        _ffi.check(lib.semq_diff_evaluate(self._d, floor._f, checks, out, err), err, "evaluate")
         v = ffi.gc(out[0], lib.semq_verdict_free)
         reasons = int(lib.semq_verdict_reasons(v))
         changed = self._ids(_ffi.LIST_CHANGED) if lib.semq_verdict_row_count(v) else []

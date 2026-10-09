@@ -1001,13 +1001,19 @@ fn vector_12(dir: &Path, case: &Value) -> CaseResult {
     }
     if has(input, "null_diffs") {
         let diffs = null_diffs(dir, array_field(input, "null_diffs")?)?;
-        let Some(floor) = verdict(expect, Floor::measure(&diffs))? else {
+        let per_row = has(input, "per_row") && bool_field(input, "per_row")?;
+        let options = GateOptions::new().per_row(per_row);
+        let Some(floor) = verdict(expect, Floor::measure_for(&diffs, &options))? else {
             return Ok(Outcome::Pass);
         };
         assert_floor(&floor, field(expect, "floor")?)?;
         for (i, diff) in diffs.iter().enumerate() {
             let within = diff.within(&floor).context(format!("within(null {i})"))?;
             ensure!(within, "null diff {i} is not within its own floor");
+            let passed = diff
+                .evaluate(&floor, &options)
+                .context(format!("evaluate(null {i})"))?;
+            ensure!(passed.passed(), "null diff {i} does not pass its own floor");
         }
         return Ok(Outcome::Pass);
     }

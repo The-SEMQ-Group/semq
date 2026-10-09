@@ -432,10 +432,14 @@ describe.skipIf(!AVAILABLE)("conformance", () => {
         }
         if ("null_diffs" in i) {
           const diffs = nullDiffs("12-floor", i.null_diffs);
-          const floor = runExpecting(e, () => Floor.measure(diffs));
+          const options = { perRow: i.per_row === true };
+          const floor = runExpecting(e, () => Floor.measure(diffs, options));
           if (floor !== undefined) {
             expectFloorReport(floor, e.floor);
-            for (const d of diffs) expect(d.within(floor)).toBe(true);
+            for (const d of diffs) {
+              expect(d.within(floor)).toBe(true);
+              expect(d.evaluate(floor, options).passed).toBe(true);
+            }
           }
           return;
         }

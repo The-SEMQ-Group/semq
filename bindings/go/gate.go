@@ -11,13 +11,23 @@ import "C"
 import "runtime"
 
 // GateOptions selects the checks Diff.Evaluate applies beyond those of
-// Diff.Within. The zero value has every check off, so a new check never
-// changes an existing verdict.
+// Diff.Within, and the data MeasureFloorFor records for them. The zero
+// value has every check off, so a new check never changes an existing
+// verdict.
 type GateOptions struct {
 	// PerRow also fails the verdict when any changed row has a hamming
 	// above the floor's MaxHamming, and lists those rows. It needs a floor
-	// that records MaxHamming (IncompatibleError otherwise).
+	// with per-row data, from MeasureFloorFor with PerRow or from LoadFloor
+	// (IncompatibleError otherwise).
 	PerRow bool
+}
+
+// checks returns the options as semq_check_t flags.
+func (o GateOptions) checks() C.uint32_t {
+	if o.PerRow {
+		return C.SEMQ_CHECK_PER_ROW
+	}
+	return 0
 }
 
 // Reason names a check that failed in a Verdict, with the name every
@@ -63,7 +73,8 @@ type Verdict struct {
 // verdict also fails when any changed row has a hamming above
 // f.MaxHamming(), and Rows lists those ids. IncompatibleError when f was
 // measured against another config, id kind or reference, or for PerRow on
-// a floor without MaxHamming.
+// a floor without per-row data (from MeasureFloor, FloorFromReport, or
+// saved by SEMQ 1.0).
 func (d *Diff) Evaluate(f *Floor, opts GateOptions) (Verdict, error) {
 	h, err := d.handle()
 	if err != nil {
@@ -76,18 +87,10 @@ func (d *Diff) Evaluate(f *Floor, opts GateOptions) (Verdict, error) {
 	}
 	defer runtime.KeepAlive(f)
 	var (
-		o  *C.semq_gate_options_t
 		v  *C.semq_verdict_t
 		ce C.semq_error_t
 	)
-	if err := check(C.semq_gate_options_create(&o, &ce), &ce, "evaluate"); err != nil {
-		return Verdict{}, err
-	}
-	defer C.semq_gate_options_free(o)
-	if opts.PerRow {
-		C.semq_gate_options_set_per_row(o, 1)
-	}
-	if err := check(C.semq_diff_evaluate(h, fh, o, &v, &ce), &ce, "evaluate"); err != nil {
+	if err := check(C.semq_diff_evaluate(h, fh, opts.checks(), &v, &ce), &ce, "evaluate"); err != nil {
 		return Verdict{}, err
 	}
 	defer C.semq_verdict_free(v)

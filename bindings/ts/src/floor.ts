@@ -3,7 +3,7 @@
 
 import { CodecConfig } from "./config.js";
 import { hex, ID_U64, ID_UTF8, isUint8Array, isWellFormed, kindName, text } from "./convert.js";
-import { Diff } from "./diff.js";
+import { checksOf, Diff, type GateOptions } from "./diff.js";
 import { InvalidInput } from "./errors.js";
 import { scoped } from "./module.js";
 import { NONE, call, rt, type Runtime } from "./runtime.js";
@@ -25,8 +25,10 @@ const encoder = new TextEncoder();
  * another config, id kind or reference throws `Incompatible`. No
  * probabilistic coverage is claimed.
  *
- * A measured floor also records `maxHamming`, the largest hamming of any
- * changed row of any null, for the per-row check of {@link Diff.evaluate}.
+ * `Floor.measure(diffs, { perRow: true })` also records the per-row data
+ * the per-row check of {@link Diff.evaluate} needs: `maxHamming`, the
+ * largest hamming of any changed row of any null, and `distinctNulls`.
+ * Without it the JSON form is the one SEMQ 1.0 reads.
  * The JSON form ({@link Floor.toJson}, {@link Floor.fromJson},
  * {@link Floor.asDict}, {@link Floor.fromDict}) is written and read by the
  * core, with the same rules in every binding.
@@ -43,9 +45,9 @@ export class Floor {
    * A floor from its fields. `referenceId` is the `stateId` of the reference
    * (32 bytes); counts are numbers. The core validates the rest: `nulls >= 1`,
    * `totalRows >= 1`, `changedRows <= totalRows` and
-   * `hamming <= config.unitsPerRow`, and `hamming <= maxHamming <=
-   * config.unitsPerRow` when `maxHamming` is given; anything else is
-   * InvalidInput. Without `maxHamming` the floor does not record it.
+   * `hamming <= config.unitsPerRow`; anything else is InvalidInput. The
+   * floor has no per-row data: that comes only from {@link Floor.measure}
+   * or {@link Floor.fromJson}.
    */
   constructor(fields: {
     config: CodecConfig;
@@ -55,7 +57,6 @@ export class Floor {
     changedRows: number;
     totalRows: number;
     hamming: number;
-    maxHamming?: number;
   }) {
     const r = rt();
     if (fields === null || typeof fields !== "object") {
@@ -71,7 +72,6 @@ export class Floor {
     const changedRows = count(fields.changedRows, "changedRows");
     const totalRows = count(fields.totalRows, "totalRows");
     const hamming = count(fields.hamming, "hamming");
-    const maxHamming = fields.maxHamming === undefined ? undefined : count(fields.maxHamming, "maxHamming");
     this.r = r;
     this.ptr = scoped(r.w, (a) => {
       const cfg = config.write(a);
@@ -79,11 +79,7 @@ export class Floor {
       const out = a.alloc(4);
       const kind = idKind === "u64" ? ID_U64 : ID_UTF8;
       const counts = [BigInt(nulls), BigInt(changedRows), BigInt(totalRows), BigInt(hamming)] as const;
-      call(r, "floor", (err) =>
-        maxHamming === undefined
-          ? r.core.floorCreate(cfg, kind, rid, ...counts, out, err)
-          : r.core.floorCreateWithMax(cfg, kind, rid, ...counts, BigInt(maxHamming), out, err),
-      );
+      call(r, "floor", (err) => r.core.floorCreate(cfg, kind, rid, ...counts, out, err));
       return r.w.getU32(out);
     });
     r.floors.register(this, this.ptr, this);
@@ -103,10 +99,18 @@ export class Floor {
    * within the result. `Incompatible` when the nulls differ in config, id
    * kind or reference (`field` is the offending index); `InvalidInput` when
    * one is not a null: rows added or removed, none in common, or a change to
-   * `encoder` or `encoder_revision`.
+   * `encoder` or `encoder_revision`. The floor records no per-row data.
    */
-  static measure(nullDiffs: Diff[]): Floor {
+  static measure(nullDiffs: Diff[]): Floor;
+  /**
+   * {@link Floor.measure} that also records what the checks in `options`
+   * need: with `{ perRow: true }`, `maxHamming` and `distinctNulls` for the
+   * per-row check. SEMQ 1.0 cannot read a floor saved with them.
+   */
+  static measure(nullDiffs: Diff[], options: GateOptions): Floor;
+  static measure(nullDiffs: Diff[], options: GateOptions = {}): Floor {
     const r = rt();
+    const checks = checksOf(options, "measure");
     if (!Array.isArray(nullDiffs) || nullDiffs.length === 0) {
       throw new InvalidInput("measure needs at least one null diff");
     }
@@ -115,7 +119,7 @@ export class Floor {
     const ptr = scoped(r.w, (a) => {
       const arr = a.u32(handles);
       const out = a.alloc(4);
-      call(r, "measure", (err) => r.core.floorMeasure(arr, nullDiffs.length, out, err));
+      call(r, "measure", (err) => r.core.floorMeasureFor(arr, nullDiffs.length, checks, out, err));
       return r.w.getU32(out);
     });
     return Floor.fromHandle(r, ptr);
@@ -174,14 +178,25 @@ export class Floor {
   }
 
   /** The largest hamming of any changed row of any null (`0` when no null
-   * changed a row); `undefined` for a floor that does not record it: one
-   * built without `maxHamming` or read from JSON without it. */
+   * changed a row); `undefined` for a floor without per-row data: one from
+   * the constructor, from `measure` without `perRow`, or read from JSON
+   * without it. */
   get maxHamming(): number | undefined {
     const v = this.r.core.floorMaxHamming(this.handle);
     return v === NONE ? undefined : Number(v);
   }
 
-  /** True when `other` has the same eight fields. */
+  /** How many of the nulls were distinct states, from `1` to `nulls`: two
+   * nulls are the same when their candidates have the same `contentDigest`.
+   * With `1` the per-row check adds no false alarm; when the nulls vary,
+   * each check can reject an unchanged rebuild with probability up to
+   * `1 / (nulls + 1)`. `undefined` for a floor without per-row data. */
+  get distinctNulls(): number | undefined {
+    const v = this.r.core.floorDistinctNulls(this.handle);
+    return v === NONE ? undefined : Number(v);
+  }
+
+  /** True when `other` has the same nine fields. */
   equals(other: Floor): boolean {
     return (
       other instanceof Floor &&
@@ -192,12 +207,13 @@ export class Floor {
       this.changedRows === other.changedRows &&
       this.totalRows === other.totalRows &&
       this.hamming === other.hamming &&
-      this.maxHamming === other.maxHamming
+      this.maxHamming === other.maxHamming &&
+      this.distinctNulls === other.distinctNulls
     );
   }
 
   /** The floor's JSON form, written by the core: the floor schema with
-   * `max_hamming` when the floor records it, keys in schema order, no
+   * `max_hamming` and `distinct_nulls` when the floor records them, keys in schema order, no
    * whitespace. The same text in every binding. */
   toJson(): string {
     const h = this.handle;
@@ -212,9 +228,9 @@ export class Floor {
 
   /**
    * Read a floor from its JSON form, by the core's rules: the schema's keys
-   * strictly (each at most once, integer counts, `max_hamming` optional),
-   * other keys ignored, and the construction rules. Anything else is
-   * InvalidInput.
+   * strictly (each at most once, integer counts, `max_hamming` and
+   * `distinct_nulls` optional), other keys ignored, and the construction
+   * rules. Anything else is InvalidInput.
    */
   static fromJson(json: string | Uint8Array): Floor {
     const r = rt();
@@ -249,6 +265,7 @@ export class Floor {
     total_rows: number;
     hamming: number;
     max_hamming?: number;
+    distinct_nulls?: number;
   } {
     return JSON.parse(this.toJson()) as ReturnType<Floor["asDict"]>;
   }

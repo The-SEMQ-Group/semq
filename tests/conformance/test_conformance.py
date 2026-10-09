@@ -316,11 +316,12 @@ def test_12_floor(case: dict[str, Any]) -> None:
         return
     if "null_diffs" in i:
         diffs = [Encoding.load(ROOT / "12-floor" / a).diff(Encoding.load(ROOT / "12-floor" / b)) for a, b in i["null_diffs"]]
-        floor = run_expecting(e, lambda: Floor.measure(diffs))
+        per_row = i.get("per_row", False)
+        floor = run_expecting(e, lambda: Floor.measure(diffs, per_row=per_row))
         if floor is not None:
             assert floor.as_dict() == e["floor"]
             for d in diffs:
-                assert d.within(floor)
+                assert d.within(floor) and d.evaluate(floor, per_row=per_row).passed
         return
     d = Encoding.load(ROOT / "12-floor" / i["reference"]).diff(Encoding.load(ROOT / "12-floor" / i["candidate"]))
     verdict = run_expecting(e, lambda: d.evaluate(Floor.from_dict(i["floor"]), per_row=i.get("per_row", False)))

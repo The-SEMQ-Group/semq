@@ -996,7 +996,8 @@ func conformance12(t *testing.T, dir string, c conformanceCase) {
 			Floor json.RawMessage `json:"floor"`
 		}
 		diffs := nullDiffs(t, dir, in.NullDiffs)
-		floor, err := semq.MeasureFloor(diffs)
+		opts := semq.GateOptions{PerRow: in.PerRow}
+		floor, err := semq.MeasureFloorFor(diffs, opts)
 		if outcome(t, c.Expect, err) {
 			return
 		}
@@ -1010,6 +1011,9 @@ func conformance12(t *testing.T, dir string, c conformanceCase) {
 			}
 			if !within {
 				t.Errorf("null diff %d is not within its own floor", i)
+			}
+			if v, err := d.Evaluate(floor, opts); err != nil || !v.Passed {
+				t.Errorf("null diff %d does not pass its own floor: %+v %v", i, v, err)
 			}
 		}
 		return

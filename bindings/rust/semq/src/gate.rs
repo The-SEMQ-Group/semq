@@ -9,8 +9,10 @@ use semq_sys as sys;
 use crate::ids::Id;
 
 /// Which checks [`Diff::evaluate`](crate::Diff::evaluate) applies beyond
-/// those of [`Diff::within`](crate::Diff::within). Every check is off by
-/// default, so a new check never changes an existing verdict.
+/// those of [`Diff::within`](crate::Diff::within), and which data
+/// [`Floor::measure_for`](crate::Floor::measure_for) records for them.
+/// Every check is off by default, so a new check never changes an existing
+/// verdict.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct GateOptions {
     per_row: bool,
@@ -24,15 +26,21 @@ impl GateOptions {
 
     /// Per-row check: also fail when any changed row has a hamming above
     /// the floor's [`max_hamming`](crate::Floor::max_hamming), and list
-    /// those rows. Needs a floor that records it (`Incompatible`
-    /// otherwise).
+    /// those rows. Needs a floor from
+    /// [`Floor::measure_for`](crate::Floor::measure_for) with this check, or
+    /// read from JSON that has its data (`Incompatible` otherwise).
     pub fn per_row(mut self, enabled: bool) -> GateOptions {
         self.per_row = enabled;
         self
     }
 
-    pub(crate) fn is_per_row(&self) -> bool {
-        self.per_row
+    /// The checks as `SEMQ_CHECK_*` flags.
+    pub(crate) fn checks(&self) -> u32 {
+        if self.per_row {
+            sys::SEMQ_CHECK_PER_ROW
+        } else {
+            0
+        }
     }
 }
 

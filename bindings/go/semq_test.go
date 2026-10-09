@@ -988,13 +988,17 @@ func TestEvaluateNamesEveryFailedCheckAndTheRowsAboveMax(t *testing.T) {
 	null := rowsWithChanges(t, 200, 100, 2, 4)
 	defer ref.Close()
 	defer null.Close()
-	f, err := MeasureFloor([]*Diff{mustDiff(t, ref, null)})
+	dn := mustDiff(t, ref, null)
+	f, err := MeasureFloorFor([]*Diff{dn}, GateOptions{PerRow: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer f.Close()
 	if m, ok := f.MaxHamming(); !ok || m != 2 || f.Hamming() != 2 {
 		t.Fatalf("floor: %v", f.Report())
+	}
+	if n, ok := f.DistinctNulls(); !ok || n != 1 {
+		t.Fatalf("DistinctNulls: %d %v", n, ok)
 	}
 	c := ref.Config()
 	bpv := int(c.BytesPerVector())
@@ -1051,12 +1055,31 @@ func TestEvaluateNamesEveryFailedCheckAndTheRowsAboveMax(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(all.Reasons, []Reason{ReasonChangedRatio, ReasonHamming, ReasonRowAboveMax}) || len(all.Rows) != 100 {
 		t.Fatalf("tight: %+v %v", all.Reasons, err)
 	}
-	// A floor without MaxHamming refuses the per-row check and keeps its plain verdict.
-	if v, err := d.Evaluate(tight, GateOptions{}); err != nil || v.Passed {
-		t.Fatalf("plain on a floor without max: %+v %v", v, err)
+	// A floor without per-row data refuses the per-row check and keeps its
+	// plain verdict: one from MeasureFloor, and one through FloorReport.
+	plainFloor, err := MeasureFloor([]*Diff{dn})
+	if err != nil {
+		t.Fatal(err)
 	}
-	_, err = d.Evaluate(tight, GateOptions{PerRow: true})
-	asIncompatible(t, err)
+	defer plainFloor.Close()
+	fromReport, err := FloorFromReport(f.Report())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fromReport.Close()
+	for _, g := range []*Floor{plainFloor, fromReport, tight} {
+		if _, ok := g.MaxHamming(); ok {
+			t.Fatalf("per-row data on %v", g)
+		}
+		if v, err := d.Evaluate(g, GateOptions{}); err != nil || v.Passed != (g != tight) {
+			t.Fatalf("plain on a floor without per-row data: %+v %v", v, err)
+		}
+		_, err = d.Evaluate(g, GateOptions{PerRow: true})
+		asIncompatible(t, err)
+		if !strings.Contains(err.Error(), "per-row") {
+			t.Fatalf("message: %v", err)
+		}
+	}
 }
 
 func TestFloorReportAndInverse(t *testing.T) {
@@ -1065,7 +1088,7 @@ func TestFloorReportAndInverse(t *testing.T) {
 	defer ref.Close()
 	defer a.Close()
 	da := mustDiff(t, ref, a)
-	f, err := MeasureFloor([]*Diff{da})
+	f, err := MeasureFloorFor([]*Diff{da}, GateOptions{PerRow: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1082,10 +1105,19 @@ func TestFloorReportAndInverse(t *testing.T) {
 	if m, ok := f.MaxHamming(); !ok || m != 1 {
 		t.Fatalf("MaxHamming: %d %v", m, ok)
 	}
-	// The Floor's own JSON form, written and read by the core, carries max_hamming.
+	// The Floor's own JSON form, written and read by the core, carries the
+	// per-row data. Without it, the form is the report's, as SEMQ 1.0 wrote it.
 	full, err := json.Marshal(f)
-	if err != nil || string(full) != want[:len(want)-1]+`,"max_hamming":1}` {
+	if err != nil || string(full) != want[:len(want)-1]+`,"max_hamming":1,"distinct_nulls":1}` {
 		t.Fatalf("floor json %s %v", full, err)
+	}
+	plain, err := MeasureFloor([]*Diff{da})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer plain.Close()
+	if b, err := json.Marshal(plain); err != nil || string(b) != want {
+		t.Fatalf("measure json %s %v", b, err)
 	}
 	back, err := LoadFloor(full)
 	if err != nil {
@@ -1095,12 +1127,16 @@ func TestFloorReportAndInverse(t *testing.T) {
 	if m, ok := back.MaxHamming(); !ok || m != 1 || back.Report() != f.Report() {
 		t.Fatalf("LoadFloor: %+v", back.Report())
 	}
+	if n, ok := back.DistinctNulls(); !ok || n != 1 {
+		t.Fatalf("LoadFloor DistinctNulls: %d %v", n, ok)
+	}
 	withNote, err := LoadFloor([]byte(`{"note":[1,{}],` + string(full[1:])))
 	if err != nil {
 		t.Fatal(err)
 	}
 	withNote.Close()
-	for _, bad := range []string{"", "{}", string(full) + " x", strings.Replace(string(full), `"max_hamming":1`, `"max_hamming":0`, 1)} {
+	for _, bad := range []string{"", "{}", string(full) + " x", strings.Replace(string(full), `"max_hamming":1`, `"max_hamming":0`, 1),
+		strings.Replace(string(full), `"distinct_nulls":1`, `"distinct_nulls":2`, 1)} {
 		_, err := LoadFloor([]byte(bad))
 		asInvalid(t, err)
 	}

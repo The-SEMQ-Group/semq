@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from .diff import Diff
 
 FLOOR_VERSION = "semq-floor/1"
-_COUNTS = ("nulls", "changed_rows", "total_rows", "hamming", "max_hamming")
+_COUNTS = ("nulls", "changed_rows", "total_rows", "hamming")
 
 Source = Union[str, "os.PathLike[str]", bytes, bytearray, memoryview, TextOrBinaryReader]
 
@@ -45,10 +45,11 @@ class Floor:
     reference raises ``Incompatible``. The floor describes what was
     observed; it claims no probabilistic coverage of the next rebuild.
 
-    A measured floor also records ``max_hamming``, the largest hamming of
-    any changed row of any null, for the per-row check of
-    ``Diff.evaluate``. A floor read from JSON without it, such as one saved
-    by SEMQ 1.0, has ``max_hamming`` ``None``.
+    ``Floor.measure(nulls, per_row=True)`` also records the per-row data
+    for the per-row check of ``Diff.evaluate``: ``max_hamming``, the largest
+    hamming of any changed row of any null, and ``distinct_nulls``. Without
+    it, or for a floor saved by SEMQ 1.0, both are ``None`` and the JSON form
+    is the one SEMQ 1.0 reads. The constructor never records them.
 
     The JSON form is written and read by the core: ``save``/``load`` and
     ``as_dict``/``from_dict`` apply the same rules in every binding.
@@ -69,7 +70,6 @@ class Floor:
         changed_rows: int,
         total_rows: int,
         hamming: int,
-        max_hamming: int | None = None,
     ) -> None:
         if not isinstance(config, CodecConfig):
             raise InvalidInput("floor.config must be a CodecConfig")
@@ -78,15 +78,11 @@ class Floor:
         rid = bytes(reference_id) if isinstance(reference_id, (bytes, bytearray, memoryview)) else None
         if rid is None or len(rid) != 32:
             raise InvalidInput("floor.reference_id must be 32 bytes")
-        values = (nulls, changed_rows, total_rows, hamming) + (() if max_hamming is None else (max_hamming,))
-        counts = [_count(n, v) for n, v in zip(_COUNTS, values, strict=False)]
+        counts = [_count(n, v) for n, v in zip(_COUNTS, (nulls, changed_rows, total_rows, hamming), strict=True)]
         out = ffi.new("semq_floor_t**")
         err = _ffi.new_error()
         kind = _convert._KINDS[id_kind]
-        if max_hamming is None:
-            status = _ffi.lib().semq_floor_create(config._c, kind, rid, *counts, out, err)
-        else:
-            status = _ffi.lib().semq_floor_create_with_max(config._c, kind, rid, *counts, out, err)
+        status = _ffi.lib().semq_floor_create(config._c, kind, rid, *counts, out, err)
         _ffi.check(status, err, "floor")
         self._f = ffi.gc(out[0], _ffi.lib().semq_floor_free)
         self._config = config
@@ -99,8 +95,14 @@ class Floor:
         return self
 
     @classmethod
-    def measure(cls, null_diffs: Iterable[Diff]) -> Floor:
-        """The envelope of one or more null diffs of one reference; every input is within the result."""
+    def measure(cls, null_diffs: Iterable[Diff], *, per_row: bool = False) -> Floor:
+        """The envelope of one or more null diffs of one reference; every input is within the result.
+
+        With ``per_row=True`` the floor also records ``max_hamming`` and
+        ``distinct_nulls``, which ``Diff.evaluate(floor, per_row=True)``
+        needs. SEMQ 1.0 cannot read a floor saved with them; without them the
+        saved form is the one SEMQ 1.0 writes.
+        """
         from .diff import Diff
 
         diffs = list(null_diffs)
@@ -112,7 +114,8 @@ class Floor:
         arr = ffi.new("const semq_diff_t*[]", [d._d for d in diffs])
         out = ffi.new("semq_floor_t**")
         err = _ffi.new_error()
-        _ffi.check(_ffi.lib().semq_floor_measure(arr, len(diffs), out, err), err, "measure")
+        checks = _ffi.CHECK_PER_ROW if per_row else 0
+        _ffi.check(_ffi.lib().semq_floor_measure_for(arr, len(diffs), checks, out, err), err, "measure")
         return cls._from_handle(out[0])
 
     # ---- fields ----------------------------------------------------------
@@ -165,10 +168,24 @@ class Floor:
         """The largest hamming of any changed row of any null (``0`` when no null changed a row).
 
         ``Diff.evaluate(floor, per_row=True)`` flags every changed row above
-        it. ``None`` for a floor that does not record it: one built without
-        ``max_hamming`` or read from JSON without it.
+        it. ``None`` for a floor without per-row data: one from the
+        constructor, from ``measure`` without ``per_row=True``, or read from
+        JSON without it.
         """
         v = int(_ffi.lib().semq_floor_max_hamming(self._f))
+        return None if v == _ffi.NONE else v
+
+    @property
+    def distinct_nulls(self) -> int | None:
+        """How many of the nulls were distinct states (``1`` to ``nulls``); ``None`` without per-row data.
+
+        Two nulls are the same state when their candidates have the same
+        ``content_digest``. With ``1``, every null rebuild gave the same rows
+        and the per-row check adds no false alarm; when the nulls vary, each
+        check can reject an unchanged rebuild with probability up to
+        ``1 / (nulls + 1)``.
+        """
+        v = int(_ffi.lib().semq_floor_distinct_nulls(self._f))
         return None if v == _ffi.NONE else v
 
     # ---- report form -----------------------------------------------------
@@ -192,7 +209,7 @@ class Floor:
     def as_dict(self) -> dict[str, Any]:
         """The floor schema as a dict: the config as in reports, the reference id as hex.
 
-        ``max_hamming`` is present only when the floor records it.
+        ``max_hamming`` and ``distinct_nulls`` are present only when the floor records them.
         """
         out: dict[str, Any] = json.loads(self._json())
         return out
@@ -241,10 +258,10 @@ class Floor:
 
     # ---- value semantics -------------------------------------------------
 
-    def _key(self) -> tuple[CodecConfig, str, bytes, int, int, int, int, int | None]:
+    def _key(self) -> tuple[CodecConfig, str, bytes, int, int, int, int, int | None, int | None]:
         return (
             self._config, self.id_kind, self.reference_id, self.nulls, self.changed_rows, self.total_rows, self.hamming,
-            self.max_hamming,
+            self.max_hamming, self.distinct_nulls,
         )
 
     def __eq__(self, other: object) -> bool:
@@ -260,7 +277,7 @@ class Floor:
     def __repr__(self) -> str:
         return (
             f"Floor(changed_rows={self.changed_rows}, total_rows={self.total_rows}, hamming={self.hamming}, "
-            f"max_hamming={self.max_hamming}, "
+            f"max_hamming={self.max_hamming}, distinct_nulls={self.distinct_nulls}, "
             f"nulls={self.nulls}, config={self._config!r}, id_kind={self.id_kind!r}, "
             f"reference_id={self.reference_id.hex()!r})"
         )

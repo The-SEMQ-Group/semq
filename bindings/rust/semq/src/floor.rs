@@ -13,6 +13,7 @@ use crate::config::CodecConfig;
 use crate::convert::{hex, FreeOnDrop};
 use crate::diff::Diff;
 use crate::error::{check, new_error, Error, Result};
+use crate::gate::GateOptions;
 use crate::ids::{ptr_or_null, IdKind};
 
 /// An envelope of observed variation, bound to the context it was measured
@@ -26,13 +27,15 @@ use crate::ids::{ptr_or_null, IdKind};
 /// diff of another config, id kind or reference is `Incompatible`. No
 /// probabilistic coverage is claimed.
 ///
-/// A floor from [`measure`](Self::measure) also records
+/// A floor from [`measure_for`](Self::measure_for) with
+/// [`GateOptions::per_row`] also records the per-row data the per-row check
+/// of [`Diff::evaluate`](crate::Diff::evaluate) needs:
 /// [`max_hamming`](Self::max_hamming), the largest hamming of any changed
-/// row of any null, for the per-row check of
-/// [`Diff::evaluate`](crate::Diff::evaluate).
+/// row of any null, and [`distinct_nulls`](Self::distinct_nulls). A floor
+/// without them saves to the JSON form SEMQ 1.0 reads.
 ///
 /// Immutable, freed on drop and safe to share between threads. Equality
-/// and hashing are those of the eight fields.
+/// and hashing are those of the nine fields.
 pub struct Floor {
     ptr: NonNull<sys::semq_floor_t>,
     config: CodecConfig,
@@ -94,8 +97,21 @@ impl Floor {
     /// and `encoder_revision` unchanged (`InvalidInput`, `field` = index).
     ///
     /// Takes any iterable of diffs: a `Vec<Diff>` or a slice by reference,
-    /// `[&d1, &d2]`, or an iterator.
+    /// `[&d1, &d2]`, or an iterator. The floor records no per-row data; see
+    /// [`measure_for`](Self::measure_for).
     pub fn measure<D: AsRef<Diff>>(null_diffs: impl IntoIterator<Item = D>) -> Result<Floor> {
+        Self::measure_for(null_diffs, &GateOptions::new())
+    }
+
+    /// [`measure`](Self::measure) that also records what the checks in
+    /// `checks` need: with [`GateOptions::per_row`],
+    /// [`max_hamming`](Self::max_hamming) and
+    /// [`distinct_nulls`](Self::distinct_nulls). SEMQ 1.0 cannot read a
+    /// floor saved with them. With [`GateOptions::new`] it is `measure`.
+    pub fn measure_for<D: AsRef<Diff>>(
+        null_diffs: impl IntoIterator<Item = D>,
+        checks: &GateOptions,
+    ) -> Result<Floor> {
         // Hold every item until the call returns: an owned Diff dropped while
         // collecting pointers would free the handle the core is about to read.
         let diffs: Vec<D> = null_diffs.into_iter().collect();
@@ -107,7 +123,9 @@ impl Floor {
         let mut err = new_error();
         // SAFETY: `diffs` keeps every handle alive for the call; the array
         // holds `k` pointers; the out-pointers are live for the call.
-        let status = unsafe { sys::semq_floor_measure(ptr_or_null(&ptrs), k, &mut out, &mut err) };
+        let status = unsafe {
+            sys::semq_floor_measure_for(ptr_or_null(&ptrs), k, checks.checks(), &mut out, &mut err)
+        };
         drop(diffs);
         check(status, &err, "measure")?;
         Self::from_raw(out, "measure")
@@ -193,17 +211,29 @@ impl Floor {
     }
 
     /// The largest hamming of any changed row of any null (`0` when no null
-    /// changed a row). `None` for a floor that does not record it: one from
-    /// [`new`](Self::new) or [`from_report`](Self::from_report), or read
-    /// from JSON without it.
+    /// changed a row). `None` for a floor without per-row data: one from
+    /// [`new`](Self::new), [`measure`](Self::measure) or
+    /// [`from_report`](Self::from_report), or read from JSON without it.
     pub fn max_hamming(&self) -> Option<u64> {
         // SAFETY: the handle is live.
         let v = unsafe { sys::semq_floor_max_hamming(self.ptr.as_ptr()) };
         (v != sys::SEMQ_NONE).then_some(v)
     }
 
+    /// How many of the nulls were distinct states, from `1` to
+    /// [`nulls`](Self::nulls): two nulls are the same when their candidates
+    /// have the same `content_digest`. With `1` the per-row check adds no
+    /// false alarm; when the nulls vary, each check can reject an unchanged
+    /// rebuild with probability up to `1 / (nulls + 1)`. `None` for a floor
+    /// without per-row data.
+    pub fn distinct_nulls(&self) -> Option<u64> {
+        // SAFETY: the handle is live.
+        let v = unsafe { sys::semq_floor_distinct_nulls(self.ptr.as_ptr()) };
+        (v != sys::SEMQ_NONE).then_some(v)
+    }
+
     /// The report as plain data, ready for any serializer. It does not
-    /// carry `max_hamming`; [`to_json`](Self::to_json) does.
+    /// carry the per-row data; [`to_json`](Self::to_json) does.
     pub fn as_report(&self) -> FloorReport {
         FloorReport {
             version: FloorReport::VERSION.to_owned(),
@@ -220,7 +250,9 @@ impl Floor {
     /// The inverse of [`as_report`](Self::as_report), strictly: `version`
     /// must be [`FloorReport::VERSION`], `id_kind` `"u64"` or `"utf8"`,
     /// `reference_id` 64 hex characters, and the counts must satisfy
-    /// [`new`](Self::new); otherwise `InvalidInput`.
+    /// [`new`](Self::new); otherwise `InvalidInput`. The result has no
+    /// per-row data, because the report does not carry it: read a floor
+    /// that has it with [`from_json`](Self::from_json).
     pub fn from_report(report: &FloorReport) -> Result<Floor> {
         if report.version != FloorReport::VERSION {
             return Err(Error::invalid(format!(
@@ -248,7 +280,7 @@ impl Floor {
 
     /// The floor's JSON form, written by the core: the
     /// [floor schema](https://the-semq-group.github.io/semq/reference/contracts/#floor-schema)
-    /// with `max_hamming` when the floor records it, keys in schema order, no
+    /// with the per-row data when the floor records it, keys in schema order, no
     /// whitespace. The same bytes in every binding.
     pub fn to_json(&self) -> String {
         // SAFETY: the handle is live.
@@ -263,9 +295,9 @@ impl Floor {
     }
 
     /// Read a floor from its JSON form, by the core's rules: the schema's
-    /// keys strictly (each at most once, integer counts, `max_hamming`
-    /// optional), other keys ignored, and the rules of [`new`](Self::new).
-    /// Anything else is `InvalidInput`.
+    /// keys strictly (each at most once, integer counts, `max_hamming` and
+    /// `distinct_nulls` optional), other keys ignored, and the rules of
+    /// [`new`](Self::new). Anything else is `InvalidInput`.
     pub fn from_json(json: impl AsRef<[u8]>) -> Result<Floor> {
         let bytes = json.as_ref();
         let mut out: *mut sys::semq_floor_t = ptr::null_mut();
@@ -289,6 +321,7 @@ impl Floor {
         u64,
         u64,
         Option<u64>,
+        Option<u64>,
     ) {
         (
             self.config,
@@ -299,6 +332,7 @@ impl Floor {
             self.total_rows(),
             self.hamming(),
             self.max_hamming(),
+            self.distinct_nulls(),
         )
     }
 }
@@ -343,6 +377,7 @@ impl fmt::Debug for Floor {
             .field("total_rows", &self.total_rows())
             .field("hamming", &self.hamming())
             .field("max_hamming", &self.max_hamming())
+            .field("distinct_nulls", &self.distinct_nulls())
             .finish()
     }
 }
@@ -356,7 +391,10 @@ impl fmt::Debug for Floor {
 /// config.operator().parameter_name(): config.parameter(), "rule_revision":
 /// config.rule_revision()}`); `id_kind` is `"u64"` or `"utf8"`;
 /// `reference_id` is 64 lowercase hex characters; the four counts are
-/// integers. [`Floor::from_report`] is the strict inverse.
+/// integers. It does not carry the per-row data (`max_hamming`,
+/// `distinct_nulls`): [`Floor::from_report`] is the strict inverse for a
+/// floor without it, and [`Floor::to_json`] and [`Floor::from_json`] carry
+/// it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FloorReport {
     /// The schema version, [`VERSION`](Self::VERSION).

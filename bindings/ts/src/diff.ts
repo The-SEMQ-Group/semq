@@ -13,6 +13,7 @@ import { call, type Runtime } from "./runtime.js";
 const LIST_ADDED = ABI.constants.SEMQ_LIST_ADDED;
 const LIST_REMOVED = ABI.constants.SEMQ_LIST_REMOVED;
 const LIST_CHANGED = ABI.constants.SEMQ_LIST_CHANGED;
+const CHECK_PER_ROW = ABI.constants.SEMQ_CHECK_PER_ROW;
 
 /** A check that failed in a {@link Verdict}; the same names in every binding. */
 export type Reason = "no_common_rows" | "removed_rows" | "changed_ratio" | "hamming" | "encoder" | "row_above_max";
@@ -20,10 +21,18 @@ export type Reason = "no_common_rows" | "removed_rows" | "changed_ratio" | "hamm
 /** The reasons by bit of `semq_reason_t`, in the order a verdict lists them. */
 const REASONS: readonly Reason[] = ["no_common_rows", "removed_rows", "changed_ratio", "hamming", "encoder", "row_above_max"];
 
-/** Which checks {@link Diff.evaluate} applies beyond those of {@link Diff.within}; every check is off by default. */
+/** Which checks {@link Diff.evaluate} applies beyond those of {@link Diff.within}, and which data
+ * {@link Floor.measure} records for them; every check is off by default. */
 export interface GateOptions {
-  /** Also fail when any changed row has a hamming above the floor's `maxHamming`, and list those rows. */
+  /** Also fail when any changed row has a hamming above the floor's `maxHamming`, and list those rows.
+   * Needs a floor from `Floor.measure(diffs, { perRow: true })`. */
   perRow?: boolean;
+}
+
+/** @internal The options as `semq_check_t` flags. */
+export function checksOf(options: GateOptions, operation: string): number {
+  if (options === null || typeof options !== "object") throw new InvalidInput(`${operation} options must be an object`);
+  return options.perRow === true ? CHECK_PER_ROW : 0;
 }
 
 /** The result of {@link Diff.evaluate}. */
@@ -259,24 +268,18 @@ export class Diff {
    * `perRow: true` the verdict also fails when any changed row has a hamming
    * above `floor.maxHamming`, and `rows` lists those ids. `Incompatible` for
    * a floor of another config, id kind or reference, and for the per-row
-   * check on a floor without `maxHamming`.
+   * check on a floor without per-row data (from `Floor.measure` without
+   * `perRow`, or saved by SEMQ 1.0).
    */
   evaluate(floor: Floor, options: GateOptions = {}): Verdict {
     const h = this.handle;
     const r = this.r;
     if (!(floor instanceof Floor)) throw new InvalidInput("evaluate takes a Floor");
-    if (options === null || typeof options !== "object") throw new InvalidInput("evaluate options must be an object");
+    const checks = checksOf(options, "evaluate");
     const f = floor.handle;
     const { reasons, rows } = scoped(r.w, (a) => {
       const out = a.alloc(4);
-      call(r, "evaluate", (err) => r.core.gateOptionsCreate(out, err));
-      const opts = r.w.getU32(out);
-      try {
-        r.core.gateOptionsSetPerRow(opts, options.perRow === true ? 1 : 0);
-        call(r, "evaluate", (err) => r.core.diffEvaluate(h, f, opts, out, err));
-      } finally {
-        r.core.gateOptionsFree(opts);
-      }
+      call(r, "evaluate", (err) => r.core.diffEvaluate(h, f, checks, out, err));
       const v = r.w.getU32(out);
       try {
         const n = Number(r.core.verdictRowCount(v));

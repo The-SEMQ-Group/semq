@@ -291,34 +291,17 @@ impl Diff {
     /// row has a hamming above [`Floor::max_hamming`], and
     /// [`Verdict::rows`] lists those ids. `Incompatible` for a floor of
     /// another config, id kind or reference, and for the per-row check on a
-    /// floor without `max_hamming`.
+    /// floor without per-row data (from [`Floor::measure`], or saved by SEMQ
+    /// 1.0); measure it with [`Floor::measure_for`].
     pub fn evaluate(&self, floor: &Floor, options: &GateOptions) -> Result<Verdict> {
-        let mut opts: *mut sys::semq_gate_options_t = ptr::null_mut();
         let mut err = new_error();
-        // SAFETY: the out-pointers are live for the call.
-        let status = unsafe { sys::semq_gate_options_create(&mut opts, &mut err) };
-        check(status, &err, "evaluate")?;
-        let opts = NonNull::new(opts).ok_or_else(|| {
-            Error::native(
-                "evaluate",
-                sys::SEMQ_ERR_INTERNAL,
-                None,
-                None,
-                "core returned null options",
-            )
-        })?;
-        let opts = FreeOnDrop::new(opts, sys::semq_gate_options_free);
-        // SAFETY: the options handle is live and owned here.
-        unsafe {
-            sys::semq_gate_options_set_per_row(opts.ptr(), c_int::from(options.is_per_row()))
-        };
         let mut out: *mut sys::semq_verdict_t = ptr::null_mut();
         // SAFETY: every handle is live; the out-pointers are live for the call.
         let status = unsafe {
             sys::semq_diff_evaluate(
                 self.ptr.as_ptr(),
                 floor.as_ptr(),
-                opts.ptr(),
+                options.checks(),
                 &mut out,
                 &mut err,
             )
