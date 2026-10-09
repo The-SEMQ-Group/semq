@@ -200,7 +200,7 @@ POWER_DETECTORS = (
     "max_abs_calibrated",
     "cosine_calibrated",
 )
-DEVICES = {"cpu": "CPU", "mps": "Apple GPU (MPS)", "cuda": "CUDA GPU"}
+DEVICES = {"cpu": "CPU", "mps": "GPU", "cuda": "GPU"}
 FAULT_FAMILIES = ("replace", "truncate", "substitute", "diffuse", "sparse")
 
 
@@ -327,8 +327,8 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         "",
         "The real rebuilds above gave one state per device, so the floor had nothing "
         "to vary. To see what happens when every rebuild differs, this pool is "
-        f"synthetic: each of its {varying['regime']['nulls']} nulls is an Apple GPU "
-        f"(MPS) rebuild plus Gaussian noise (σ = {sci(sigma)} per coordinate), "
+        f"synthetic: each of its {varying['regime']['nulls']} nulls is a GPU "
+        f"rebuild plus Gaussian noise (σ = {sci(sigma)} per coordinate), "
         f"renormalized. Each changes {varying_rows[0]} to {varying_rows[-1]} rows. "
         "The bound is the worst case for nulls produced the same way as the candidate.",
         "",

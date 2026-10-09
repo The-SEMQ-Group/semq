@@ -70,7 +70,7 @@ Source: [`rebuild.json`](../assets/benchmarks/summary/rebuild.json), produced by
 
 ## False alarms and detection power
 
-A larger pool: 28 rebuilds of the same corpus that change only the device, the batch size and the input order. Every rebuild gave different floats from the reference, but there were only 2 SEMQ states: 24 Apple GPU (MPS) rebuilds gave one state, with 5 rows changed (hamming at most 1); 4 CPU rebuilds gave the reference state.
+A larger pool: 28 rebuilds of the same corpus that change only the device, the batch size and the input order. Every rebuild gave different floats from the reference, but there were only 2 SEMQ states: 24 GPU rebuilds gave one state, with 5 rows changed (hamming at most 1); 4 CPU rebuilds gave the reference state.
 
 Each of 2,000 draws holds out one rebuild, measures a floor from N of the others, and judges the held-out rebuild, then the same rebuild with one fault. Calibrated float checks take their threshold from the same N rebuilds. Intervals are 95% Clopper–Pearson.
 
@@ -110,7 +110,7 @@ On content faults the floor and the calibrated float checks agree. In documents 
 
 ### When the rebuild noise varies (synthetic)
 
-The real rebuilds above gave one state per device, so the floor had nothing to vary. To see what happens when every rebuild differs, this pool is synthetic: each of its 40 nulls is an Apple GPU (MPS) rebuild plus Gaussian noise (σ = 4.5e-6 per coordinate), renormalized. Each changes 223 to 281 rows. The bound is the worst case for nulls produced the same way as the candidate.
+The real rebuilds above gave one state per device, so the floor had nothing to vary. To see what happens when every rebuild differs, this pool is synthetic: each of its 40 nulls is a GPU rebuild plus Gaussian noise (σ = 4.5e-6 per coordinate), renormalized. Each changes 223 to 281 rows. The bound is the worst case for nulls produced the same way as the candidate.
 
 | Nulls in the floor | `within` | Bound | Per-row | Bound |
 | ---: | ---: | ---: | ---: | ---: |
