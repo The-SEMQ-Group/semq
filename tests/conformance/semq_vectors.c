@@ -236,11 +236,11 @@ static semq_status_t floor_of_fields(const semq_config_t* c, uint32_t kind, cons
     semq_status_t s = semq_floor_create(c, kind, rid, nulls, changed, total, hamming, out, err);
     if (s != SEMQ_OK || max_hamming == SEMQ_NONE) return s;
     const uint64_t n = semq_floor_json_size(*out);
-    char* text = (char*)xmalloc((size_t)n + 32u);
+    char* text = (char*)xmalloc((size_t)n + 48u);
     if (semq_floor_save(*out, (uint8_t*)text, n, err) != SEMQ_OK) die("floor save");
     semq_floor_free(*out);
     *out = NULL;
-    snprintf(text + n - 1u, 32u, ",\"max_hamming\":%llu}", (unsigned long long)max_hamming);
+    snprintf(text + n - 1u, 49u, ",\"max_hamming\":%llu}", (unsigned long long)max_hamming);
     s = semq_floor_load((const uint8_t*)text, strlen(text), out, err);
     free(text);
     return s;
