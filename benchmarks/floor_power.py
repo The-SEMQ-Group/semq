@@ -69,7 +69,7 @@ VARYING_SEED = 10_000
 REPLACE_K = (1, 2, 10)
 TRUNCATE_F = (0.02, 0.10, 0.50)
 SUBSTITUTE_M = (1, 3)
-DIFFUSE_C = (1, 4)
+DIFFUSE_C = (1, 10, 100)
 SPARSE = ((0.01, 1e-4), (0.1, 1e-4), (0.01, 1e-3))
 
 ALLCLOSE = {"rtol": 1e-5, "atol": 1e-8}
