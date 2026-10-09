@@ -4,7 +4,7 @@ site_description: >-
   identities, diffs and rebuild gates, for Python, Rust, Go, and TypeScript/WebAssembly.
 site_url: https://the-semq-group.github.io/semq/
 site_author: The SEMQ Group Inc.
-copyright: Copyright &copy; 2026 The SEMQ Group Inc.
+copyright: "&copy; 2026 The SEMQ Group Inc. All rights reserved."
 
 repo_name: The-SEMQ-Group/semq
 repo_url: https://github.com/The-SEMQ-Group/semq
@@ -24,6 +24,7 @@ watch:
 
 theme:
   name: material
+  custom_dir: overrides
   language: en
   logo: assets/images/semqgroup.png
   favicon: assets/images/favicon.ico
@@ -200,9 +201,17 @@ validation:
 # ---------------------------------------------------------------------
 
 extra:
+  homepage: https://www.thesemqgroup.ai/
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/The-SEMQ-Group/semq
+      link: https://github.com/The-SEMQ-Group
+      name: GitHub
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/company/thesemqgroup/
+      name: LinkedIn
+    - icon: fontawesome/brands/x-twitter
+      link: https://x.com/thesemqgroup
+      name: X
 
 extra_css:
   - assets/stylesheets/extra.css

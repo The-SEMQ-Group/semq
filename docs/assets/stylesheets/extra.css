@@ -10,6 +10,15 @@
   --md-accent-fg-color: #236f9c;
   --md-typeset-a-color: #236f9c;
 }
+:root {
+  --semq-site-width: 1280px;
+  --semq-site-gutter: 24px;
+}
+.md-grid { max-width: var(--semq-site-width); }
+.md-main__inner {
+  width: calc(100% - 2 * var(--semq-site-gutter));
+  margin-inline: auto;
+}
 .md-header {
   background: #fff;
   color: #171717;
@@ -17,11 +26,27 @@
   box-shadow: none;
 }
 .md-header[data-md-state="shadow"] { box-shadow: 0 2px 10px #17212b0a; }
-.md-header__inner { max-width: 78rem; min-height: 3.5rem; padding-inline: clamp(1rem, 3vw, 2rem); }
-.md-header__button.md-logo img { width: auto; height: 2rem; }
-.md-header__title { visibility: hidden; }
-.md-header__source { width: auto; color: #171717; }
-.md-header__source .md-source__repository { display: none; }
+.md-header__inner {
+  width: 100%;
+  min-height: 0;
+  padding: 12px var(--semq-site-gutter);
+  gap: 24px;
+}
+.semq-brand { display: inline-flex; flex: none; align-items: center; color: #171717; }
+.semq-brand:hover { opacity: .8; }
+.semq-brand img { display: block; width: 120px; height: auto; }
+.md-header__title { display: none; }
+.semq-header-actions { display: flex; align-items: center; gap: 24px; margin-left: auto; }
+.md-header__button { margin: 0; padding: 8px; }
+.semq-search-toggle { display: none; }
+.semq-docs-toggle { display: none; }
+.semq-brand-social { display: flex; align-items: center; gap: 16px; }
+.semq-brand-social a { display: flex; color: #000; transition: opacity .2s; }
+.semq-brand-social a:hover { opacity: .8; }
+.semq-brand-social svg { display: block; width: 20px; height: 20px; fill: currentColor; }
+.semq-brand:focus-visible,
+.semq-brand-social a:focus-visible,
+.semq-site-footer__legal a:focus-visible { outline: 2px solid #236f9c; outline-offset: 4px; }
 .md-search__form {
   background: #f7f8f9;
   border: 1px solid #e5e7eb;
@@ -37,12 +62,40 @@
 .md-content__inner:has(.semq-home)::before,
 .md-content__inner:has(.semq-home)::after { display: none; }
 .md-content__inner:has(.semq-home) > .md-content__button { display: none; }
-.md-footer { background: #fff; color: #59636d; border-top: 1px solid #e5e7eb; }
-.md-footer-meta { background: #fff; }
-.md-footer-meta__inner { max-width: 78rem; padding: .85rem clamp(1rem, 3vw, 2rem); }
-.md-footer .md-copyright, .md-footer .md-copyright__highlight { color: #59636d; }
-.md-footer .md-social__link { color: #59636d; }
-.md-footer .md-social__link:hover { color: #236f9c; }
+.semq-site-footer { padding: 16px var(--semq-site-gutter); background: #fff; color: #000; }
+.semq-site-footer__inner { width: 100%; max-width: var(--semq-site-width); margin: 0 auto; }
+.semq-site-footer__row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.semq-site-footer .semq-brand img { width: 100px; }
+.semq-site-footer__line { flex: 1; border-top: 1px solid #e5e7eb; margin-inline: 16px; }
+.semq-site-footer__legal { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 40px; color: #4b5563; font-size: 14px; line-height: 20px; text-align: center; }
+.semq-site-footer__legal p { margin: 0; }
+.semq-site-footer__legal a { color: inherit; }
+.semq-site-footer__legal a:hover { color: #000; }
+@media (max-width: 1219.98px) {
+  .semq-docs-toggle { display: block; }
+  .md-sidebar--primary[hidden] { display: block; }
+}
+@media (max-width: 959.98px) {
+  .semq-search-toggle { display: block; }
+  .semq-header-actions { gap: 8px; }
+}
+@media (max-width: 767.98px) {
+  .semq-header-actions > .semq-brand-social { display: none; }
+  .semq-site-footer__row { flex-direction: column; }
+  .semq-site-footer__line { display: none; }
+  .md-content__inner { margin-inline: 0; }
+  [dir] .md-content__inner > .tabbed-set .tabbed-labels {
+    min-width: 0;
+    max-width: 100%;
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+  [dir] .md-content__inner > .tabbed-set .tabbed-labels ~ .tabbed-control {
+    margin-inline: 0;
+    padding-inline: 0;
+    width: 24px;
+  }
+}
 
 /* Evidence: measured quality and storage, with linked source data. */
 .semq-benchmark-explorer {

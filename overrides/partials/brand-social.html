@@ -1,0 +1,9 @@
+{# Copyright (c) 2026 The SEMQ Group Inc.
+   Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms. #}
+<div class="semq-brand-social" aria-label="The SEMQ Group social links">
+  {% for social in config.extra.social %}
+    <a href="{{ social.link }}" target="_blank" rel="noopener noreferrer" aria-label="{{ social.name }}">
+      {% include '.icons/' ~ social.icon ~ '.svg' %}
+    </a>
+  {% endfor %}
+</div>
