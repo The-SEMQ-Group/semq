@@ -283,75 +283,7 @@ Each of 2,000 draws holds out one rebuild, measures a floor from N of the others
 
 The rebuilds above changed at most 2 rows each. To test rebuilds that change hundreds of rows every time, this pool adds noise: each of 40 nulls is a GPU rebuild plus Gaussian noise (σ = 4.5e-6 per coordinate), renormalized, and changes 223 to 286 rows. It is a controlled test of varying noise, not a model of a specific GPU kernel.
 
-**False alarms.** The floor keeps, for each statistic, the largest value over its N nulls. When the nulls and the candidate are produced the same way (exchangeable), an unchanged candidate exceeds that largest value with probability at most 1/(N+1), so a gate that checks s statistics rejects it at most s/(N+1) of the time. `within` checks two statistics and per-row adds a third. These are upper bounds, not predicted rates. The observed rates below are lower; dependence between statistics and tied Hamming values can make the bounds conservative.
-
-<p class="semq-chart-legend"><span class="is-within">within</span><span class="is-per-row">per-row</span><span class="is-bound">bound s/(N+1)</span></p>
-
-<figure class="semq-chart is-rebuild" tabindex="0" role="group" aria-label="False alarms against the number of nulls in the floor">
-<svg viewBox="0 0 760 294" xmlns="http://www.w3.org/2000/svg">
-<text class="semq-chart__axis" x="54" y="18">false-alarm rate (%)</text>
-<line class="semq-chart__grid" x1="62" x2="606" y1="250.0" y2="250.0"/>
-<text class="semq-chart__tick" x="54" y="254.0" text-anchor="end">0%</text>
-<line class="semq-chart__grid" x1="62" x2="606" y1="196.5" y2="196.5"/>
-<text class="semq-chart__tick" x="54" y="200.5" text-anchor="end">20%</text>
-<line class="semq-chart__grid" x1="62" x2="606" y1="143.0" y2="143.0"/>
-<text class="semq-chart__tick" x="54" y="147.0" text-anchor="end">40%</text>
-<line class="semq-chart__grid" x1="62" x2="606" y1="89.5" y2="89.5"/>
-<text class="semq-chart__tick" x="54" y="93.5" text-anchor="end">60%</text>
-<line class="semq-chart__grid" x1="62" x2="606" y1="36.0" y2="36.0"/>
-<text class="semq-chart__tick" x="54" y="40.0" text-anchor="end">80%</text>
-<text class="semq-chart__tick" x="62.0" y="268" text-anchor="middle">3</text>
-<text class="semq-chart__tick" x="170.3" y="268" text-anchor="middle">5</text>
-<text class="semq-chart__tick" x="317.4" y="268" text-anchor="middle">10</text>
-<text class="semq-chart__tick" x="464.4" y="268" text-anchor="middle">20</text>
-<text class="semq-chart__tick" x="606.0" y="268" text-anchor="middle">39</text>
-<text class="semq-chart__axis" x="334" y="288" text-anchor="middle">calibration rebuilds (N, log scale)</text>
-<polyline class="semq-chart__bound is-within" points="62.0,116.2 71.1,120.5 80.1,124.6 89.2,128.7 98.3,132.7 107.3,136.5 116.4,140.3 125.5,144.0 134.5,147.6 143.6,151.1 152.7,154.5 161.7,157.8 170.8,161.0 179.9,164.1 188.9,167.2 198.0,170.1 207.1,173.0 216.1,175.7 225.2,178.4 234.3,181.0 243.3,183.6 252.4,186.0 261.5,188.4 270.5,190.7 279.6,192.9 288.7,195.0 297.7,197.1 306.8,199.1 315.9,201.1 324.9,202.9 334.0,204.7 343.1,206.5 352.1,208.1 361.2,209.8 370.3,211.3 379.3,212.8 388.4,214.3 397.5,215.7 406.5,217.0 415.6,218.3 424.7,219.6 433.7,220.8 442.8,221.9 451.9,223.1 460.9,224.1 470.0,225.2 479.1,226.2 488.1,227.1 497.2,228.0 506.3,228.9 515.3,229.8 524.4,230.6 533.5,231.4 542.5,232.1 551.6,232.8 560.7,233.5 569.7,234.2 578.8,234.8 587.9,235.5 596.9,236.1 606.0,236.6"/>
-<text class="semq-chart__note" x="72.0" y="110.2">bound 2/(N+1)</text>
-<polyline class="semq-chart__line is-within" points="62.0,177.5 170.3,200.9 317.4,223.1 464.4,235.4 606.0,243.2"/>
-<path class="semq-chart__interval is-within" d="M62.0,182.7V172.1M58.0,182.7h8M58.0,172.1h8"/>
-<g><title>within, 3 nulls: 27.1% (95% interval 25.2%–29.1%; bound 50.0%)</title><circle class="semq-chart__point is-within" cx="62.0" cy="177.5" r="4.5"/></g>
-<path class="semq-chart__interval is-within" d="M170.3,205.4V196.2M166.3,205.4h8M166.3,196.2h8"/>
-<g><title>within, 5 nulls: 18.4% (95% interval 16.7%–20.1%; bound 33.3%)</title><circle class="semq-chart__point is-within" cx="170.3" cy="200.9" r="4.5"/></g>
-<path class="semq-chart__interval is-within" d="M317.4,226.5V219.4M313.4,226.5h8M313.4,219.4h8"/>
-<g><title>within, 10 nulls: 10.1% (95% interval 8.8%–11.5%; bound 18.2%)</title><circle class="semq-chart__point is-within" cx="317.4" cy="223.1" r="4.5"/></g>
-<path class="semq-chart__interval is-within" d="M464.4,238.0V232.5M460.4,238.0h8M460.4,232.5h8"/>
-<g><title>within, 20 nulls: 5.5% (95% interval 4.5%–6.5%; bound 9.5%)</title><circle class="semq-chart__point is-within" cx="464.4" cy="235.4" r="4.5"/></g>
-<path class="semq-chart__interval is-within" d="M606.0,244.9V241.1M602.0,244.9h8M602.0,241.1h8"/>
-<g><title>within, 39 nulls: 2.5% (95% interval 1.9%–3.3%; bound 5.0%)</title><circle class="semq-chart__point is-within" cx="606.0" cy="243.2" r="4.5"/></g>
-<polyline class="semq-chart__bound is-per-row" points="62.0,49.4 71.1,55.7 80.1,62.0 89.2,68.0 98.3,74.0 107.3,79.8 116.4,85.5 125.5,91.0 134.5,96.4 143.6,101.6 152.7,106.7 161.7,111.7 170.8,116.5 179.9,121.2 188.9,125.7 198.0,130.2 207.1,134.5 216.1,138.6 225.2,142.7 234.3,146.6 243.3,150.4 252.4,154.0 261.5,157.6 270.5,161.0 279.6,164.3 288.7,167.6 297.7,170.7 306.8,173.7 315.9,176.6 324.9,179.4 334.0,182.1 343.1,184.7 352.1,187.2 361.2,189.6 370.3,192.0 379.3,194.2 388.4,196.4 397.5,198.5 406.5,200.5 415.6,202.5 424.7,204.4 433.7,206.2 442.8,207.9 451.9,209.6 460.9,211.2 470.0,212.7 479.1,214.2 488.1,215.7 497.2,217.0 506.3,218.4 515.3,219.6 524.4,220.9 533.5,222.0 542.5,223.2 551.6,224.3 560.7,225.3 569.7,226.3 578.8,227.3 587.9,228.2 596.9,229.1 606.0,229.9"/>
-<text class="semq-chart__note" x="72.0" y="43.4">bound 3/(N+1)</text>
-<polyline class="semq-chart__line is-per-row" points="62.0,171.0 170.3,194.0 317.4,216.2 464.4,228.5 606.0,236.2"/>
-<path class="semq-chart__interval is-per-row" d="M62.0,176.3V165.5M58.0,176.3h8M58.0,165.5h8"/>
-<g><title>per-row, 3 nulls: 29.5% (95% interval 27.6%–31.6%; bound 75.0%)</title><circle class="semq-chart__point is-per-row" cx="62.0" cy="171.0" r="4.5"/></g>
-<path class="semq-chart__interval is-per-row" d="M170.3,198.7V189.0M166.3,198.7h8M166.3,189.0h8"/>
-<g><title>per-row, 5 nulls: 20.9% (95% interval 19.2%–22.8%; bound 50.0%)</title><circle class="semq-chart__point is-per-row" cx="170.3" cy="194.0" r="4.5"/></g>
-<path class="semq-chart__interval is-per-row" d="M317.4,220.0V212.1M313.4,220.0h8M313.4,212.1h8"/>
-<g><title>per-row, 10 nulls: 12.7% (95% interval 11.2%–14.2%; bound 27.3%)</title><circle class="semq-chart__point is-per-row" cx="317.4" cy="216.2" r="4.5"/></g>
-<path class="semq-chart__interval is-per-row" d="M464.4,231.6V225.0M460.4,231.6h8M460.4,225.0h8"/>
-<g><title>per-row, 20 nulls: 8.1% (95% interval 6.9%–9.3%; bound 14.3%)</title><circle class="semq-chart__point is-per-row" cx="464.4" cy="228.5" r="4.5"/></g>
-<path class="semq-chart__interval is-per-row" d="M606.0,238.7V233.4M602.0,238.7h8M602.0,233.4h8"/>
-<g><title>per-row, 39 nulls: 5.1% (95% interval 4.2%–6.2%; bound 7.5%)</title><circle class="semq-chart__point is-per-row" cx="606.0" cy="236.2" r="4.5"/></g>
-<text class="semq-chart__label" x="618" y="233.7">per-row 5.1%</text>
-<text class="semq-chart__label" x="618" y="253.7">within 2.5%</text>
-</svg>
-<figcaption class="semq-scroll-hint">Scroll horizontally to view the full chart.</figcaption>
-</figure>
-
-More calibration rebuilds reduced false alarms in this synthetic pool. Solid lines show observed rates, whiskers show 95% resampling intervals, and dashed lines show the theoretical upper bounds. Lower is better.
-
-??? info "False alarms by number of nulls"
-
-    | Calibration rebuilds | `within` | 95% interval | Upper bound | Per-row | 95% interval | Upper bound |
-    | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-    | 3 | 27.1% | 25.2%–29.1% | 50.0% | 29.5% | 27.6%–31.6% | 75.0% |
-    | 5 | 18.4% | 16.7%–20.1% | 33.3% | 20.9% | 19.2%–22.8% | 50.0% |
-    | 10 | 10.1% | 8.8%–11.5% | 18.2% | 12.7% | 11.2%–14.2% | 27.3% |
-    | 20 | 5.5% | 4.5%–6.5% | 9.5% | 8.1% | 6.9%–9.3% | 14.3% |
-    | 39 | 2.5% | 1.9%–3.3% | 5.0% | 5.1% | 4.2%–6.2% | 7.5% |
-
-
-**Why `within` misses a replaced document.** One candidate from these draws, with 20 nulls in the floor: its 243 changed rows, sorted by hamming. Rebuild noise moves 241 of them by 1 or 2 units; the two replaced documents change 260 and 267. The p99 ignores the ⌊243/100⌋ = 2 most-changed rows, so it reads 2, no more than the floor's p99, and `within` passes: its 243 changed rows also stay below the floor's limit of 280. Per-row compares every row with `max_hamming`, the largest hamming of any row in any null, and flags the two documents.
+**Why `within` can miss a localized change.** The p99 summarizes changed rows and can omit the largest individual changes. In this candidate, the changed-row count and p99 both stay within the floor, so `within` passes. Per-row also checks each row against `max_hamming` and flags the replaced documents.
 
 <figure class="semq-row-example" aria-label="Changed rows in the synthetic example">
 <div class="semq-row-example__bar" aria-hidden="true">
@@ -398,6 +330,74 @@ Per-row caught localized changes the p99 hid, at the cost of more false alarms i
     | --- | ---: | ---: | ---: | ---: |
     | Replace 1 document | 5.5% | 100% | 100% | 100% |
     | Replace 2 documents | 8.5% | 100% | 100% | 100% |
+
+
+??? info "How calibration affects false alarms"
+
+    **False-alarm bounds.** The floor keeps, for each statistic, the largest value over N calibration rebuilds. When those rebuilds and the candidate are produced the same way (exchangeable), an unchanged candidate exceeds that largest value with probability at most `1/(N+1)`. A gate checking s statistics therefore rejects it at most `s/(N+1)` of the time. `within` checks two statistics; per-row adds a third. These are upper bounds, not predicted rates. The observed rates below are lower; dependence between statistics and tied Hamming values can make the bounds conservative.
+
+    <p class="semq-chart-legend"><span class="is-within">within</span><span class="is-per-row">per-row</span><span class="is-bound">bound s/(N+1)</span></p>
+
+    <figure class="semq-chart is-rebuild" tabindex="0" role="group" aria-label="False alarms against the number of nulls in the floor">
+    <svg viewBox="0 0 760 294" xmlns="http://www.w3.org/2000/svg">
+    <text class="semq-chart__axis" x="54" y="18">false-alarm rate (%)</text>
+    <line class="semq-chart__grid" x1="62" x2="606" y1="250.0" y2="250.0"/>
+    <text class="semq-chart__tick" x="54" y="254.0" text-anchor="end">0%</text>
+    <line class="semq-chart__grid" x1="62" x2="606" y1="196.5" y2="196.5"/>
+    <text class="semq-chart__tick" x="54" y="200.5" text-anchor="end">20%</text>
+    <line class="semq-chart__grid" x1="62" x2="606" y1="143.0" y2="143.0"/>
+    <text class="semq-chart__tick" x="54" y="147.0" text-anchor="end">40%</text>
+    <line class="semq-chart__grid" x1="62" x2="606" y1="89.5" y2="89.5"/>
+    <text class="semq-chart__tick" x="54" y="93.5" text-anchor="end">60%</text>
+    <line class="semq-chart__grid" x1="62" x2="606" y1="36.0" y2="36.0"/>
+    <text class="semq-chart__tick" x="54" y="40.0" text-anchor="end">80%</text>
+    <text class="semq-chart__tick" x="62.0" y="268" text-anchor="middle">3</text>
+    <text class="semq-chart__tick" x="170.3" y="268" text-anchor="middle">5</text>
+    <text class="semq-chart__tick" x="317.4" y="268" text-anchor="middle">10</text>
+    <text class="semq-chart__tick" x="464.4" y="268" text-anchor="middle">20</text>
+    <text class="semq-chart__tick" x="606.0" y="268" text-anchor="middle">39</text>
+    <text class="semq-chart__axis" x="334" y="288" text-anchor="middle">calibration rebuilds (N, log scale)</text>
+    <polyline class="semq-chart__bound is-within" points="62.0,116.2 71.1,120.5 80.1,124.6 89.2,128.7 98.3,132.7 107.3,136.5 116.4,140.3 125.5,144.0 134.5,147.6 143.6,151.1 152.7,154.5 161.7,157.8 170.8,161.0 179.9,164.1 188.9,167.2 198.0,170.1 207.1,173.0 216.1,175.7 225.2,178.4 234.3,181.0 243.3,183.6 252.4,186.0 261.5,188.4 270.5,190.7 279.6,192.9 288.7,195.0 297.7,197.1 306.8,199.1 315.9,201.1 324.9,202.9 334.0,204.7 343.1,206.5 352.1,208.1 361.2,209.8 370.3,211.3 379.3,212.8 388.4,214.3 397.5,215.7 406.5,217.0 415.6,218.3 424.7,219.6 433.7,220.8 442.8,221.9 451.9,223.1 460.9,224.1 470.0,225.2 479.1,226.2 488.1,227.1 497.2,228.0 506.3,228.9 515.3,229.8 524.4,230.6 533.5,231.4 542.5,232.1 551.6,232.8 560.7,233.5 569.7,234.2 578.8,234.8 587.9,235.5 596.9,236.1 606.0,236.6"/>
+    <text class="semq-chart__note" x="72.0" y="110.2">bound 2/(N+1)</text>
+    <polyline class="semq-chart__line is-within" points="62.0,177.5 170.3,200.9 317.4,223.1 464.4,235.4 606.0,243.2"/>
+    <path class="semq-chart__interval is-within" d="M62.0,182.7V172.1M58.0,182.7h8M58.0,172.1h8"/>
+    <g><title>within, 3 nulls: 27.1% (95% interval 25.2%–29.1%; bound 50.0%)</title><circle class="semq-chart__point is-within" cx="62.0" cy="177.5" r="4.5"/></g>
+    <path class="semq-chart__interval is-within" d="M170.3,205.4V196.2M166.3,205.4h8M166.3,196.2h8"/>
+    <g><title>within, 5 nulls: 18.4% (95% interval 16.7%–20.1%; bound 33.3%)</title><circle class="semq-chart__point is-within" cx="170.3" cy="200.9" r="4.5"/></g>
+    <path class="semq-chart__interval is-within" d="M317.4,226.5V219.4M313.4,226.5h8M313.4,219.4h8"/>
+    <g><title>within, 10 nulls: 10.1% (95% interval 8.8%–11.5%; bound 18.2%)</title><circle class="semq-chart__point is-within" cx="317.4" cy="223.1" r="4.5"/></g>
+    <path class="semq-chart__interval is-within" d="M464.4,238.0V232.5M460.4,238.0h8M460.4,232.5h8"/>
+    <g><title>within, 20 nulls: 5.5% (95% interval 4.5%–6.5%; bound 9.5%)</title><circle class="semq-chart__point is-within" cx="464.4" cy="235.4" r="4.5"/></g>
+    <path class="semq-chart__interval is-within" d="M606.0,244.9V241.1M602.0,244.9h8M602.0,241.1h8"/>
+    <g><title>within, 39 nulls: 2.5% (95% interval 1.9%–3.3%; bound 5.0%)</title><circle class="semq-chart__point is-within" cx="606.0" cy="243.2" r="4.5"/></g>
+    <polyline class="semq-chart__bound is-per-row" points="62.0,49.4 71.1,55.7 80.1,62.0 89.2,68.0 98.3,74.0 107.3,79.8 116.4,85.5 125.5,91.0 134.5,96.4 143.6,101.6 152.7,106.7 161.7,111.7 170.8,116.5 179.9,121.2 188.9,125.7 198.0,130.2 207.1,134.5 216.1,138.6 225.2,142.7 234.3,146.6 243.3,150.4 252.4,154.0 261.5,157.6 270.5,161.0 279.6,164.3 288.7,167.6 297.7,170.7 306.8,173.7 315.9,176.6 324.9,179.4 334.0,182.1 343.1,184.7 352.1,187.2 361.2,189.6 370.3,192.0 379.3,194.2 388.4,196.4 397.5,198.5 406.5,200.5 415.6,202.5 424.7,204.4 433.7,206.2 442.8,207.9 451.9,209.6 460.9,211.2 470.0,212.7 479.1,214.2 488.1,215.7 497.2,217.0 506.3,218.4 515.3,219.6 524.4,220.9 533.5,222.0 542.5,223.2 551.6,224.3 560.7,225.3 569.7,226.3 578.8,227.3 587.9,228.2 596.9,229.1 606.0,229.9"/>
+    <text class="semq-chart__note" x="72.0" y="43.4">bound 3/(N+1)</text>
+    <polyline class="semq-chart__line is-per-row" points="62.0,171.0 170.3,194.0 317.4,216.2 464.4,228.5 606.0,236.2"/>
+    <path class="semq-chart__interval is-per-row" d="M62.0,176.3V165.5M58.0,176.3h8M58.0,165.5h8"/>
+    <g><title>per-row, 3 nulls: 29.5% (95% interval 27.6%–31.6%; bound 75.0%)</title><circle class="semq-chart__point is-per-row" cx="62.0" cy="171.0" r="4.5"/></g>
+    <path class="semq-chart__interval is-per-row" d="M170.3,198.7V189.0M166.3,198.7h8M166.3,189.0h8"/>
+    <g><title>per-row, 5 nulls: 20.9% (95% interval 19.2%–22.8%; bound 50.0%)</title><circle class="semq-chart__point is-per-row" cx="170.3" cy="194.0" r="4.5"/></g>
+    <path class="semq-chart__interval is-per-row" d="M317.4,220.0V212.1M313.4,220.0h8M313.4,212.1h8"/>
+    <g><title>per-row, 10 nulls: 12.7% (95% interval 11.2%–14.2%; bound 27.3%)</title><circle class="semq-chart__point is-per-row" cx="317.4" cy="216.2" r="4.5"/></g>
+    <path class="semq-chart__interval is-per-row" d="M464.4,231.6V225.0M460.4,231.6h8M460.4,225.0h8"/>
+    <g><title>per-row, 20 nulls: 8.1% (95% interval 6.9%–9.3%; bound 14.3%)</title><circle class="semq-chart__point is-per-row" cx="464.4" cy="228.5" r="4.5"/></g>
+    <path class="semq-chart__interval is-per-row" d="M606.0,238.7V233.4M602.0,238.7h8M602.0,233.4h8"/>
+    <g><title>per-row, 39 nulls: 5.1% (95% interval 4.2%–6.2%; bound 7.5%)</title><circle class="semq-chart__point is-per-row" cx="606.0" cy="236.2" r="4.5"/></g>
+    <text class="semq-chart__label" x="618" y="233.7">per-row 5.1%</text>
+    <text class="semq-chart__label" x="618" y="253.7">within 2.5%</text>
+    </svg>
+    <figcaption class="semq-scroll-hint">Scroll horizontally to view the full chart.</figcaption>
+    </figure>
+
+    More calibration rebuilds reduced false alarms in this synthetic pool. Solid lines show observed rates, whiskers show 95% resampling intervals, and dashed lines show the theoretical upper bounds. Lower is better.
+
+    | Calibration rebuilds | `within` | 95% interval | Upper bound | Per-row | 95% interval | Upper bound |
+    | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+    | 3 | 27.1% | 25.2%–29.1% | 50.0% | 29.5% | 27.6%–31.6% | 75.0% |
+    | 5 | 18.4% | 16.7%–20.1% | 33.3% | 20.9% | 19.2%–22.8% | 50.0% |
+    | 10 | 10.1% | 8.8%–11.5% | 18.2% | 12.7% | 11.2%–14.2% | 27.3% |
+    | 20 | 5.5% | 4.5%–6.5% | 9.5% | 8.1% | 6.9%–9.3% | 14.3% |
+    | 39 | 2.5% | 1.9%–3.3% | 5.0% | 5.1% | 4.2%–6.2% | 7.5% |
 
 
 Source: [`floor-power.json`](../assets/benchmarks/summary/floor-power.json), produced by `python -m benchmarks.floor_power`.

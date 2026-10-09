@@ -550,6 +550,62 @@ def tradeoff_table(vdet: dict[str, Any], far: dict[str, Any], n: int) -> list[st
     return out + ["</tbody></table>", "</figure>", ""]
 
 
+def calibration_details(vfar: dict[str, Any], vbound: dict[str, Any]) -> list[str]:
+    """Keep the bound, calibration chart and its values in one closed disclosure."""
+    body = [
+        "**False-alarm bounds.** The floor keeps, for each statistic, the largest "
+        "value over N calibration rebuilds. When those rebuilds and the candidate "
+        "are produced the same way (exchangeable), an unchanged candidate exceeds "
+        "that largest value with probability at most `1/(N+1)`. A gate checking s "
+        "statistics therefore rejects it at most `s/(N+1)` of the time. `within` "
+        "checks two statistics; per-row adds a third. These are upper bounds, not "
+        "predicted rates. The observed rates below are lower; dependence between "
+        "statistics and tied Hamming values can make the bounds conservative.",
+        "",
+        chart_legend(
+            [
+                ("is-within", "within"),
+                ("is-per-row", "per-row"),
+                ("is-bound", "bound s/(N+1)"),
+            ]
+        ),
+        "",
+        *false_alarm_chart(vfar),
+        "More calibration rebuilds reduced false alarms in this synthetic pool. "
+        "Solid lines show observed rates, whiskers show 95% resampling intervals, "
+        "and dashed lines show the theoretical upper bounds. Lower is better.",
+        "",
+        *table(
+            [
+                "Calibration rebuilds",
+                "`within`",
+                "95% interval",
+                "Upper bound",
+                "Per-row",
+                "95% interval",
+                "Upper bound",
+            ],
+            [
+                [
+                    key,
+                    *rate_cells(vfar[key]["floor_within"]),
+                    percent(100 * vbound[key]["floor_within"]),
+                    *rate_cells(vfar[key]["floor_per_row"]),
+                    percent(100 * vbound[key]["floor_per_row"]),
+                ]
+                for key in sorted(vfar, key=int)
+            ],
+            "rrrrrrr",
+        ),
+    ]
+    return [
+        '??? info "How calibration affects false alarms"',
+        "",
+        *["    " + line if line else "" for line in body],
+        "",
+    ]
+
+
 def power_panel(data: dict[str, Any]) -> list[str]:
     """False alarms and detection rates of the floor and of float checks, from
     ``results.pools`` of ``floor-power.json``."""
@@ -666,65 +722,11 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         f"{varying_rows[0]} to {varying_rows[-1]} rows. It is a controlled test of "
         "varying noise, not a model of a specific GPU kernel.",
         "",
-        "**False alarms.** The floor keeps, for each statistic, the largest value over "
-        "its N nulls. When the nulls and the candidate are produced the same way "
-        "(exchangeable), an unchanged candidate exceeds that largest value with "
-        "probability at most 1/(N+1), so a gate that checks s statistics rejects it at "
-        "most s/(N+1) of the time. `within` checks two statistics and "
-        "per-row adds a third. These are upper bounds, not predicted rates. The "
-        "observed rates below are lower; dependence between statistics and tied "
-        "Hamming values can make the bounds conservative.",
-        "",
-        chart_legend(
-            [
-                ("is-within", "within"),
-                ("is-per-row", "per-row"),
-                ("is-bound", "bound s/(N+1)"),
-            ]
-        ),
-        "",
-        *false_alarm_chart(vfar),
-        "More calibration rebuilds reduced false alarms in this synthetic pool. "
-        "Solid lines show observed rates, whiskers show 95% resampling intervals, "
-        "and dashed lines show the theoretical upper bounds. Lower is better.",
-        "",
-        *table_view(
-            [
-                "Calibration rebuilds",
-                "`within`",
-                "95% interval",
-                "Upper bound",
-                "Per-row",
-                "95% interval",
-                "Upper bound",
-            ],
-            [
-                [
-                    key,
-                    *rate_cells(vfar[key]["floor_within"]),
-                    percent(100 * vbound[key]["floor_within"]),
-                    *rate_cells(vfar[key]["floor_per_row"]),
-                    percent(100 * vbound[key]["floor_per_row"]),
-                ]
-                for key in sorted(vfar, key=int)
-            ],
-            "rrrrrrr",
-            "False alarms by number of nulls",
-        ),
-        "",
-        "**Why `within` misses a replaced document.** One candidate from these draws, "
-        f"with {example['nulls_in_floor']} nulls in the floor: its "
-        f"{example['changed_rows']} changed rows, sorted by hamming. Rebuild noise "
-        f"moves {example['changed_rows'] - len(example['faulted_hamming'])} of them by "
-        "1 or 2 units; the two replaced documents change "
-        f"{' and '.join(str(h) for h in sorted(example['faulted_hamming']))}. The p99 "
-        f"ignores the ⌊{example['changed_rows']}/100⌋ = "
-        f"{example['rows_ignored_by_p99']} most-changed rows, so it reads "
-        f"{example['candidate_p99']}, no more than the floor's p99, and `within` "
-        f"passes: its {example['changed_rows']} changed rows also stay below the "
-        f"floor's limit of {example['floor_changed_rows']}. Per-row compares every "
-        "row with `max_hamming`, the largest hamming "
-        "of any row in any null, and flags the two documents.",
+        "**Why `within` can miss a localized change.** The p99 summarizes changed "
+        "rows and can omit the largest individual changes. In this candidate, the "
+        "changed-row count and p99 both stay within the floor, so `within` passes. "
+        "Per-row also checks each row against `max_hamming` and flags the replaced "
+        "documents.",
         "",
         *rank_chart(example),
         "",
@@ -751,6 +753,7 @@ def power_panel(data: dict[str, Any]) -> list[str]:
             "Detection of replaced documents",
         ),
         "",
+        *calibration_details(vfar, vbound),
         "Source: [`floor-power.json`](../assets/benchmarks/summary/floor-power.json), "
         "produced by `python -m benchmarks.floor_power`.",
         "",

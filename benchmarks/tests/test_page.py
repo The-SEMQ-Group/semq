@@ -103,7 +103,7 @@ def test_power_panel_renders_from_a_small_report():
     assert "| Replace 2 documents |" in text
     assert "| 3 | 0% | 0%–30.0% | 50.0% | 0% | 0%–30.0% | 75.0% |" in text
     # The row-by-row example: what the p99 drops and what per-row compares.
-    assert "⌊241/100⌋ = 2 most-changed rows, so it reads 2" in text
+    assert "Of 241 changed rows" in text
     assert "the p99 ignores these 2 rows" in text
     assert "the per-row limit is 3 symbols" in text
 
