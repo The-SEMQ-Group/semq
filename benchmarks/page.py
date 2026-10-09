@@ -19,10 +19,10 @@ ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "docs/assets/benchmarks/summary"
 
 SCENARIOS = (
-    ("null_mps_b64", "GPU rebuild, different batch size"),
+    ("null_gpu_b64", "GPU rebuild, different batch size"),
     ("null_cpu_b1", "CPU rebuild, one document per batch"),
     ("change_model_v1", "Previous encoder revision"),
-    ("change_fp16_mps", "Half precision"),
+    ("change_fp16_gpu", "Half precision"),
     ("change_max_length_128", "128-token truncation"),
     ("change_cls_pooling", "CLS instead of mean pooling"),
     ("change_unnormalized_renorm64", "Normalization moved after the model"),
@@ -40,7 +40,7 @@ SIMPLE_CHECKS = {
 # normalization case moves no coordinate by more than 3e-8 and is not counted.
 REAL_CHANGES = {
     "change_model_v1": "the model",
-    "change_fp16_mps": "the precision",
+    "change_fp16_gpu": "the precision",
     "change_max_length_128": "the input",
     "change_cls_pooling": "the pooling",
 }

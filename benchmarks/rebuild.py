@@ -55,12 +55,12 @@ TORCH_THREADS = 4
 RUNS: dict[str, dict[str, Any]] = {
     "reference_cpu_b32": {"role": "reference"},
     "null_cpu_b128": {"role": "floor_null", "batch_size": 128},
-    "null_mps_b32": {"role": "floor_null", "device": "mps"},
-    "null_mps_b128": {"role": "floor_null", "device": "mps", "batch_size": 128},
+    "null_gpu_b32": {"role": "floor_null", "device": "gpu"},
+    "null_gpu_b128": {"role": "floor_null", "device": "gpu", "batch_size": 128},
     "null_cpu_b1": {"role": "extra_null", "batch_size": 1},
-    "null_mps_b64": {"role": "held_out_null", "device": "mps", "batch_size": 64},
+    "null_gpu_b64": {"role": "held_out_null", "device": "gpu", "batch_size": 64},
     "change_model_v1": {"role": "real_change", "model": PREVIOUS_MODEL},
-    "change_fp16_mps": {"role": "real_change", "device": "mps", "dtype": "float16"},
+    "change_fp16_gpu": {"role": "real_change", "device": "gpu", "dtype": "float16"},
     "change_max_length_128": {"role": "real_change", "max_length": 128},
     "change_unnormalized_renorm64": {"role": "real_change", "normalize": False},
     "change_cls_pooling": {"role": "real_change", "pooling": "cls"},
@@ -68,12 +68,12 @@ RUNS: dict[str, dict[str, Any]] = {
 DESCRIPTIONS = {
     "reference_cpu_b32": "reference: CPU, float32, batch 32",
     "null_cpu_b128": "null rebuild: CPU, batch 128",
-    "null_mps_b32": "null rebuild: MPS GPU, batch 32",
-    "null_mps_b128": "null rebuild: MPS GPU, batch 128",
+    "null_gpu_b32": "null rebuild: GPU, batch 32",
+    "null_gpu_b128": "null rebuild: GPU, batch 128",
     "null_cpu_b1": "null rebuild: CPU, batch 1 (not used for the floor)",
-    "null_mps_b64": "null rebuild held out as the candidate that should pass: MPS GPU, batch 64",
+    "null_gpu_b64": "null rebuild held out as the candidate that should pass: GPU, batch 64",
     "change_model_v1": "model revision change: intfloat/e5-small (v1) instead of e5-small-v2",
-    "change_fp16_mps": "precision change: float16 on MPS GPU",
+    "change_fp16_gpu": "precision change: float16 on the GPU",
     "change_max_length_128": "truncation change: max_length 128 instead of 512",
     "change_unnormalized_renorm64": (
         "normalization change: normalize_embeddings=False, then renormalized in float64"
@@ -85,7 +85,7 @@ CANDIDATES = [
     name for name, run in RUNS.items() if run["role"] not in ("reference", "floor_null")
 ]
 REFERENCE = "reference_cpu_b32"
-HELD_OUT = "null_mps_b64"
+HELD_OUT = "null_gpu_b64"
 HEADLINE_CHANGE = "change_model_v1"
 
 # Ids of the SEMQ configurations; the builders receive the dimension.
@@ -376,10 +376,20 @@ def embed(texts: list[str], spec: dict[str, Any], offline: bool = False) -> dict
     from sentence_transformers.sentence_transformer.modules import Pooling
 
     torch.set_num_threads(TORCH_THREADS)
+    device = spec["device"]
+    if device == "gpu":
+        if torch.backends.mps.is_available():
+            device = "mps"
+        elif torch.cuda.is_available():
+            device = "cuda"
+        else:
+            raise SystemExit(
+                "this run needs a GPU (MPS or CUDA), and none is available"
+            )
     model = SentenceTransformer(
         spec["model"]["repo"],
         revision=spec["model"]["revision"],
-        device=spec["device"],
+        device=device,
         local_files_only=offline,
         trust_remote_code=False,
     )
