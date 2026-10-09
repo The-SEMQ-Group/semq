@@ -40,6 +40,8 @@ Each language has a **Core API** page and an **Errors** page.
 | Save / load | `e.save(path)`, `Encoding.load(path)` | `e.to_bytes()`, `Encoding::from_bytes(&b)?` | `e.WriteTo(w)`, `semq.Load(b)` | `e.toBytes()`, `Encoding.fromBytes(u8)` |
 | Concat / diff | `a.concat(b, c)`, `a.diff(b)` | `a.concat(&[&b, &c])?`, `a.diff(&b)?` | `a.Concat(b, c)`, `a.Diff(b)` | `a.concat(b, c)`, `a.diff(b)` |
 | Within / measure | `d.within(f)`, `Floor.measure([d1, d2])` | `d.within(&f)?`, `Floor::measure(&nulls)?` | `d.Within(f)`, `semq.MeasureFloor(ds)` | `d.within(f)`, `Floor.measure([d1, d2])` |
+| Evaluate | `d.evaluate(f, per_row=True)` | `d.evaluate(&f, &GateOptions::new().per_row(true))?` | `d.Evaluate(f, semq.GateOptions{PerRow: true})` | `d.evaluate(f, { perRow: true })` |
+| Measure for per-row | `Floor.measure(ds, per_row=True)` | `Floor::measure_for(&nulls, &GateOptions::new().per_row(true))?` | `semq.MeasureFloorFor(ds, semq.GateOptions{PerRow: true})` | `Floor.measure(ds, { perRow: true })` |
 | Ids `u64` / `utf8` | `int` / `str` | `u64` / `&str` | `uint64` / `string` | `bigint` / `string` |
 | Digests | `bytes` (32) | `[u8; 32]` | `[32]byte` | `Uint8Array` (32) |
 | Release | garbage collector | `Drop` | `Close()` | `dispose()` |

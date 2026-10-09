@@ -717,7 +717,15 @@ describe("core", () => {
       expect(fa.config.equals(a0.config)).toBe(true);
       expect(fa.idKind).toBe("u64");
       expect(fa.referenceId).toEqual(a0.stateId);
+      expect([fa.maxHamming, fa.distinctNulls]).toEqual([undefined, undefined]);
       expect(fa.equals(new Floor(fields(a0, 1, 1, 100, 1)))).toBe(true);
+      // With perRow the floor also records its per-row data.
+      const perRow = Floor.measure([da], { perRow: true });
+      expect([perRow.maxHamming, perRow.distinctNulls]).toEqual([1, 1]);
+      expect(perRow.equals(fa)).toBe(false);
+      expect(Floor.measure([da, da], { perRow: true }).distinctNulls).toBe(1);
+      expect(Floor.measure([da, d2], { perRow: true }).distinctNulls).toBe(2);
+      expect(() => Floor.measure([da], null as never)).toThrow(InvalidInput);
       expect(da.within(fa)).toBe(true);
       expect(d2.within(fa)).toBe(false);
       const f2 = Floor.measure([da, d2]);
@@ -786,11 +794,43 @@ describe("core", () => {
       expect((encoder as InvalidInput).field).toBe(0);
     });
 
+    it("evaluates every check and lists the rows above max_hamming", () => {
+      // 200 rows; the null changes rows 0..99 by 2 units. The candidate
+      // changes rows 0..98 by 2 and row 150 by 10: its p99 ignores row 150,
+      // so it is within the floor, and only the per-row check catches it.
+      const base = rowsWithChanges(200, 0, 0, 4);
+      const nullDiff = base.diff(rowsWithChanges(200, 100, 2, 4));
+      const floor = Floor.measure([nullDiff], { perRow: true });
+      expect([floor.hamming, floor.maxHamming, floor.distinctNulls]).toEqual([2, 2, 1]);
+      const config = base.config;
+      const rows = new Uint8Array(200 * config.bytesPerVector);
+      for (let i = 0; i < 200; i++) {
+        const flip = i < 99 ? 2 : i === 150 ? 10 : 0;
+        const sym = Array.from({ length: 16 }, (_, u) => (u < flip ? 5 : 4));
+        rows.set(packQuant(sym, 3, config.bytesPerVector), i * config.bytesPerVector);
+      }
+      const ids = Array.from({ length: 200 }, (_, i) => BigInt(i));
+      const hidden = base.diff(new Encoding({ ids, rows, config }));
+      expect(hidden.within(floor)).toBe(true);
+      expect(hidden.evaluate(floor)).toEqual({ passed: true, reasons: [], rows: [] });
+      expect(hidden.evaluate(floor, { perRow: true })).toEqual({ passed: false, reasons: ["row_above_max"], rows: [150n] });
+      // Every failed check is named, not only the first.
+      const tight = Floor.fromDict({ ...new Floor(fields(base, 1, 1, 200, 1)).asDict(), max_hamming: 1 });
+      const all = hidden.evaluate(tight, { perRow: true });
+      expect(all.reasons).toEqual(["changed_ratio", "hamming", "row_above_max"]);
+      expect(all.rows.length).toBe(100);
+      // A floor without per-row data refuses the per-row check and keeps its plain verdict.
+      const v1 = Floor.measure([nullDiff]);
+      expect(hidden.evaluate(v1).passed).toBe(true);
+      expect(() => hidden.evaluate(v1, { perRow: true })).toThrow(Incompatible);
+      expect(() => hidden.evaluate({} as never)).toThrow(InvalidInput);
+    });
+
     it("round-trips the report form strictly", () => {
       const a0 = rowsWithChanges(100, 0, 0, 4);
-      const f = Floor.measure([a0.diff(rowsWithChanges(100, 1, 1, 4))]);
+      const f = Floor.measure([a0.diff(rowsWithChanges(100, 1, 1, 4))], { perRow: true });
       const d = f.asDict();
-      expect(Object.keys(d)).toEqual(REPORT_KEYS);
+      expect(Object.keys(d)).toEqual([...REPORT_KEYS, "max_hamming", "distinct_nulls"]);
       expect(Object.keys(d.config)).toEqual(["operator", "dim", "bins", "rule_revision"]);
       expect(d).toEqual({
         version: "semq-floor/1",
@@ -801,7 +841,28 @@ describe("core", () => {
         changed_rows: 1,
         total_rows: 100,
         hamming: 1,
+        max_hamming: 1,
+        distinct_nulls: 1,
       });
+      expect(f.toJson()).toBe(JSON.stringify(d));
+      expect(Floor.fromJson(f.toJson()).equals(f)).toBe(true);
+      expect(Floor.fromJson(new TextEncoder().encode(f.toJson())).equals(f)).toBe(true);
+      // Unknown keys are ignored. Without the per-row keys, as SEMQ 1.0 saved
+      // it and as measure without perRow writes it, the floor reads, records
+      // none, and writes back without them.
+      expect(Floor.fromDict({ ...d, extra: [1, { a: null }] }).equals(f)).toBe(true);
+      const without: Record<string, unknown> = { ...d };
+      delete without.max_hamming;
+      delete without.distinct_nulls;
+      const old = Floor.fromDict(without);
+      expect([old.maxHamming, old.distinctNulls]).toEqual([undefined, undefined]);
+      expect(old.asDict()).toEqual(without);
+      expect(old.toJson()).toBe(Floor.measure([a0.diff(rowsWithChanges(100, 1, 1, 4))]).toJson());
+      expect(old.equals(f)).toBe(false);
+      expect(() => Floor.fromJson("\ud800")).toThrow(InvalidInput);
+      expect(() => Floor.fromJson(1 as never)).toThrow(InvalidInput);
+      expect(() => Floor.fromDict(undefined)).toThrow(InvalidInput);
+      expect(() => Floor.fromDict({ nulls: 1n })).toThrow(InvalidInput);
       const back = Floor.fromDict(JSON.parse(JSON.stringify(d)));
       expect(back.equals(f)).toBe(true);
       expect(back.asDict()).toEqual(d);
@@ -827,9 +888,14 @@ describe("core", () => {
         for (const k of Object.keys(patch)) if (patch[k] === undefined) delete doc[k];
         expect(() => Floor.fromDict(doc), label).toThrow(InvalidInput);
       };
-      reject({ extra: 1 }, "extra key");
       reject({ hamming: undefined }, "missing key");
       reject({ version: "semq-floor/2" }, "other version");
+      reject({ max_hamming: null }, "null max_hamming");
+      reject({ max_hamming: 0 }, "max_hamming below hamming");
+      reject({ max_hamming: 17 }, "max_hamming exceeds units");
+      reject({ distinct_nulls: 0 }, "distinct_nulls zero");
+      reject({ distinct_nulls: 2 }, "distinct_nulls above nulls");
+      reject({ distinct_nulls: "1" }, "string distinct_nulls");
       reject({ version: 1 }, "version type");
       reject({ nulls: true }, "bool count");
       reject({ nulls: 1.5 }, "float count");
@@ -856,7 +922,7 @@ describe("core", () => {
       reject({ config: { operator: "quant", dim: 16, bins: 4, rule_revision: 2 ** 32 } }, "rule revision u32");
       reject({ config: { operator: "quant", dim: 2 ** 32, bins: 4, rule_revision: 0 } }, "dim u32");
       reject({ config: { operator: "quant", dim: 16, bins: 4 } }, "missing rule revision");
-      reject({ config: { operator: "quant", dim: 16, bins: 4, rule_revision: 0, extra: 1 } }, "extra config key");
+      reject({ config: { operator: "quant", dim: 16, bins: 4, sectors: 4, rule_revision: 0 } }, "parameter of another operator");
       reject({ config: { operator: "cube", dim: 16, bins: 4, rule_revision: 0 } }, "unknown operator");
       reject({ config: { operator: "constructor", dim: 16, bins: 4, rule_revision: 0 } }, "prototype operator");
       reject({ config: { operator: "quant", dim: 16, bins: 99, rule_revision: 0 } }, "bins out of range");

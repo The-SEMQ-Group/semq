@@ -1029,6 +1029,318 @@ static void test_p99_nearest_rank(void) {
     free(cand);
 }
 
+/* An encoding of n rows of quant(128, 4) where row i flips `flips[i]` units,
+ * with an optional manifest. */
+static semq_encoding_t* rows_flipped_with(uint64_t n, const uint32_t* flips, const semq_pair_t* manifest,
+                                          uint32_t n_pairs) {
+    semq_config_t c;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_config_quant(128u, 4u, &c, NULL));
+    const uint32_t bpv = semq_config_bytes_per_vector(&c);
+    uint64_t* ids = (uint64_t*)malloc((size_t)n * sizeof(uint64_t));
+    uint8_t* rows = (uint8_t*)calloc((size_t)n, bpv);
+    TEST_ASSERT_NOT_NULL(ids);
+    TEST_ASSERT_NOT_NULL(rows);
+    for (uint64_t i = 0u; i < n; i++) {
+        uint8_t sym[128];
+        memset(sym, 4, sizeof(sym));
+        for (uint32_t u = 0u; flips != NULL && u < flips[i]; u++) sym[u] = 5u;
+        ids[i] = i;
+        pack_quant(sym, 128u, 3u, rows + i * bpv, bpv);
+    }
+    semq_encoding_t* e = create_u64(&c, ids, n, rows, manifest, n_pairs);
+    free(ids);
+    free(rows);
+    return e;
+}
+
+static semq_encoding_t* rows_flipped(uint64_t n, const uint32_t* flips) {
+    return rows_flipped_with(n, flips, NULL, 0u);
+}
+
+static void test_evaluate_per_row(void) {
+    /* Null: rows 0..99 of 200 change by 2 units. Candidate: rows 0..98 change
+     * by 2 and row 150 by 90. The candidate's p99 ignores its one most-changed
+     * row, so it is within; the per-row check flags row 150. */
+    uint32_t null_flips[200] = { 0 }, cand_flips[200] = { 0 }, small_flips[200] = { 0 };
+    for (uint32_t i = 0u; i < 100u; i++) null_flips[i] = 2u;
+    for (uint32_t i = 0u; i < 99u; i++) cand_flips[i] = 2u;
+    cand_flips[150] = 90u;
+    small_flips[0] = 1u;
+    semq_encoding_t* ref = rows_flipped(200u, NULL);
+    semq_encoding_t* nul = rows_flipped(200u, null_flips);
+    semq_encoding_t* cand = rows_flipped(200u, cand_flips);
+    semq_encoding_t* small = rows_flipped(200u, small_flips);
+    semq_diff_t* dn = NULL; semq_diff_t* dc = NULL; semq_diff_t* ds = NULL;
+    semq_error_t err;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_encoding_diff(ref, nul, &dn, &err));
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_encoding_diff(ref, cand, &dc, &err));
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_encoding_diff(ref, small, &ds, &err));
+    const semq_diff_t* nulls[1] = { dn };
+    semq_floor_t* f = NULL;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_measure_for(nulls, 1u, SEMQ_CHECK_PER_ROW, &f, &err));
+    TEST_ASSERT_EQUAL_UINT64(2u, semq_floor_hamming(f));
+    TEST_ASSERT_EQUAL_UINT64(2u, semq_floor_max_hamming(f));
+    TEST_ASSERT_EQUAL_UINT64(1u, semq_floor_distinct_nulls(f));
+
+    int w = 0;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_diff_within(dc, f, &w, &err));
+    TEST_ASSERT_TRUE(w);
+    /* No checks: the same verdict as within, and no rows. */
+    semq_verdict_t* v = NULL;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_diff_evaluate(dc, f, 0u, &v, &err));
+    TEST_ASSERT_TRUE(semq_verdict_passed(v));
+    TEST_ASSERT_EQUAL_UINT32(0u, semq_verdict_reasons(v));
+    TEST_ASSERT_EQUAL_UINT64(0u, semq_verdict_row_count(v));
+    semq_verdict_free(v);
+    /* Per-row: fails on row 150, the 100th changed row in canonical order. */
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_diff_evaluate(dc, f, SEMQ_CHECK_PER_ROW, &v, &err));
+    TEST_ASSERT_FALSE(semq_verdict_passed(v));
+    TEST_ASSERT_EQUAL_UINT32((uint32_t)SEMQ_REASON_ROW_ABOVE_MAX, semq_verdict_reasons(v));
+    TEST_ASSERT_EQUAL_UINT64(1u, semq_verdict_row_count(v));
+    TEST_ASSERT_EQUAL_UINT64(99u, semq_verdict_row(v, 0u));
+    TEST_ASSERT_EQUAL_UINT64(SEMQ_NONE, semq_verdict_row(v, 1u));
+    uint64_t id = 0u;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_diff_id(dc, SEMQ_LIST_CHANGED, 99u, &id, NULL, NULL, &err));
+    TEST_ASSERT_EQUAL_UINT64(150u, id);
+    semq_verdict_free(v);
+    /* Every null is within its floor under the per-row check too. */
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_diff_evaluate(dn, f, SEMQ_CHECK_PER_ROW, &v, &err));
+    TEST_ASSERT_TRUE(semq_verdict_passed(v));
+    semq_verdict_free(v);
+    /* A check this version does not define is InvalidInput, in both calls. */
+    v = (semq_verdict_t*)1;
+    TEST_ASSERT_EQUAL_INT(SEMQ_ERR_INVALID_INPUT, semq_diff_evaluate(dc, f, 2u, &v, &err));
+    TEST_ASSERT_NULL(v);
+    semq_floor_t* none = (semq_floor_t*)1;
+    TEST_ASSERT_EQUAL_INT(SEMQ_ERR_INVALID_INPUT,
+                          semq_floor_measure_for(nulls, 1u, SEMQ_CHECK_PER_ROW | 0x80000000u, &none, &err));
+    TEST_ASSERT_NULL(none);
+
+    /* measure records no per-row data, and refuses the per-row check while
+     * keeping its other verdicts. measure_for with no checks is measure. */
+    semq_floor_t* f1 = NULL;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_measure(nulls, 1u, &f1, &err));
+    TEST_ASSERT_EQUAL_UINT64(SEMQ_NONE, semq_floor_max_hamming(f1));
+    TEST_ASSERT_EQUAL_UINT64(SEMQ_NONE, semq_floor_distinct_nulls(f1));
+    v = (semq_verdict_t*)1;
+    TEST_ASSERT_EQUAL_INT(SEMQ_ERR_INCOMPATIBLE, semq_diff_evaluate(dc, f1, SEMQ_CHECK_PER_ROW, &v, &err));
+    TEST_ASSERT_NULL(v);
+    TEST_ASSERT_NOT_NULL(strstr(err.message, "per-row"));
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_diff_evaluate(dc, f1, 0u, &v, &err));
+    TEST_ASSERT_TRUE(semq_verdict_passed(v));
+    semq_verdict_free(v);
+    semq_floor_t* f0 = NULL;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_measure_for(nulls, 1u, 0u, &f0, &err));
+    TEST_ASSERT_EQUAL_UINT64(SEMQ_NONE, semq_floor_max_hamming(f0));
+    TEST_ASSERT_EQUAL_UINT64(SEMQ_NONE, semq_floor_distinct_nulls(f0));
+    semq_floor_free(f0);
+
+    /* Every failed check is reported, not only the first. The null that
+     * changes one row by one unit gives ratio 1/200, hamming 1, max 1. */
+    const semq_diff_t* one_small[1] = { ds };
+    semq_floor_t* tight = NULL;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_measure_for(one_small, 1u, SEMQ_CHECK_PER_ROW, &tight, &err));
+    TEST_ASSERT_EQUAL_UINT64(1u, semq_floor_max_hamming(tight));
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_diff_evaluate(dc, tight, SEMQ_CHECK_PER_ROW, &v, &err));
+    TEST_ASSERT_EQUAL_UINT32((uint32_t)(SEMQ_REASON_CHANGED_RATIO | SEMQ_REASON_HAMMING | SEMQ_REASON_ROW_ABOVE_MAX),
+                             semq_verdict_reasons(v));
+    TEST_ASSERT_EQUAL_UINT64(100u, semq_verdict_row_count(v));
+    semq_verdict_free(v);
+    semq_floor_free(tight);
+
+    semq_floor_free(f1);
+    semq_floor_free(f);
+    semq_diff_free(ds);
+    semq_diff_free(dc);
+    semq_diff_free(dn);
+    semq_encoding_free(small);
+    semq_encoding_free(cand);
+    semq_encoding_free(nul);
+    semq_encoding_free(ref);
+}
+
+static void test_distinct_nulls(void) {
+    /* Two nulls are the same state when their candidates have the same
+     * content_digest; a manifest key other than the encoder's does not count. */
+    uint32_t a_flips[8] = { 1u }, b_flips[8] = { 0u, 2u };
+    semq_pair_t note = { (const uint8_t*)"note", 4u, (const uint8_t*)"rerun", 5u };
+    semq_encoding_t* ref = rows_flipped(8u, NULL);
+    semq_encoding_t* a = rows_flipped(8u, a_flips);
+    semq_encoding_t* a_note = rows_flipped_with(8u, a_flips, &note, 1u);
+    semq_encoding_t* b = rows_flipped(8u, b_flips);
+    semq_diff_t* da = NULL; semq_diff_t* dan = NULL; semq_diff_t* db = NULL;
+    semq_error_t err;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_encoding_diff(ref, a, &da, &err));
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_encoding_diff(ref, a_note, &dan, &err));
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_encoding_diff(ref, b, &db, &err));
+    struct { const semq_diff_t* nulls[4]; uint32_t k; uint64_t distinct; } cases[] = {
+        { { da }, 1u, 1u },
+        { { da, da, da }, 3u, 1u },
+        { { da, dan }, 2u, 1u },
+        { { da, db }, 2u, 2u },
+        { { db, da, dan, db }, 4u, 2u },
+    };
+    for (size_t i = 0u; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        semq_floor_t* f = NULL;
+        TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_measure_for(cases[i].nulls, cases[i].k, SEMQ_CHECK_PER_ROW, &f, &err));
+        TEST_ASSERT_EQUAL_UINT64(cases[i].k, semq_floor_nulls(f));
+        TEST_ASSERT_EQUAL_UINT64(cases[i].distinct, semq_floor_distinct_nulls(f));
+        semq_floor_free(f);
+    }
+    semq_diff_free(db);
+    semq_diff_free(dan);
+    semq_diff_free(da);
+    semq_encoding_free(b);
+    semq_encoding_free(a_note);
+    semq_encoding_free(a);
+    semq_encoding_free(ref);
+}
+
+/* Append `s` to the NUL-terminated `buf` of `cap` bytes. */
+static void append(char* buf, size_t cap, const char* s) {
+    const size_t n = strlen(buf);
+    snprintf(buf + n, cap - n, "%s", s);
+}
+
+static semq_status_t load_text(const char* text, semq_floor_t** out) {
+    semq_error_t err;
+    return semq_floor_load((const uint8_t*)text, strlen(text), out, &err);
+}
+
+static void test_floor_json(void) {
+    uint32_t flips[200] = { 0 };
+    for (uint32_t i = 0u; i < 100u; i++) flips[i] = 2u;
+    flips[7] = 9u;
+    semq_encoding_t* ref = rows_flipped(200u, NULL);
+    semq_encoding_t* nul = rows_flipped(200u, flips);
+    semq_diff_t* d = NULL;
+    semq_error_t err;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_encoding_diff(ref, nul, &d, &err));
+    const semq_diff_t* nulls[1] = { d };
+    semq_floor_t* f = NULL;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_measure_for(nulls, 1u, SEMQ_CHECK_PER_ROW, &f, &err));
+
+    /* Written form: one object, schema key order, no whitespace. */
+    char text[512];
+    const uint64_t n = semq_floor_json_size(f);
+    TEST_ASSERT_TRUE(n < sizeof(text));
+    TEST_ASSERT_EQUAL_INT(SEMQ_ERR_INVALID_INPUT, semq_floor_save(f, (uint8_t*)text, n - 1u, &err));
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_save(f, (uint8_t*)text, n, &err));
+    text[n] = '\0';
+    uint8_t rid[32];
+    semq_floor_reference_id(f, rid);
+    char want[512] = "{\"version\":\"semq-floor/1\",\"config\":{\"operator\":\"quant\",\"dim\":128,\"bins\":4,"
+                     "\"rule_revision\":0},\"id_kind\":\"u64\",\"reference_id\":\"";
+    for (int i = 0; i < 32; i++) snprintf(want + strlen(want), 3, "%02x", rid[i]);
+    append(want, sizeof(want),
+           "\",\"nulls\":1,\"changed_rows\":100,\"total_rows\":200,\"hamming\":2,\"max_hamming\":9,\"distinct_nulls\":1}");
+    TEST_ASSERT_EQUAL_STRING(want, text);
+
+    /* It reads back as the same floor, through whitespace and unknown keys. */
+    semq_floor_t* g = NULL;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, load_text(text, &g));
+    TEST_ASSERT_EQUAL_UINT64(9u, semq_floor_max_hamming(g));
+    TEST_ASSERT_EQUAL_UINT64(1u, semq_floor_distinct_nulls(g));
+    TEST_ASSERT_EQUAL_UINT64(2u, semq_floor_hamming(g));
+    semq_floor_free(g);
+    char extra[1024];
+    snprintf(extra, sizeof(extra), " { \"note\" : {\"a\": [1, -2.5e3, \"\\u00e9\\ud83d\\ude00\", true, null, {}]},%s ",
+             text + 1);
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, load_text(extra, &g));
+    TEST_ASSERT_EQUAL_UINT64(9u, semq_floor_max_hamming(g));
+    semq_floor_free(g);
+
+    /* The per-row keys are optional: without them the floor does not record
+     * them and saves without them, in the bytes measure writes (SEMQ 1.0's form). */
+    char* cut = strstr(text, ",\"max_hamming\"");
+    TEST_ASSERT_NOT_NULL(cut);
+    cut[0] = '}';
+    cut[1] = '\0';
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, load_text(text, &g));
+    TEST_ASSERT_EQUAL_UINT64(SEMQ_NONE, semq_floor_max_hamming(g));
+    TEST_ASSERT_EQUAL_UINT64(SEMQ_NONE, semq_floor_distinct_nulls(g));
+    char back[512];
+    const uint64_t m = semq_floor_json_size(g);
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_save(g, (uint8_t*)back, m, &err));
+    back[m] = '\0';
+    TEST_ASSERT_EQUAL_STRING(text, back);
+    semq_floor_free(g);
+    semq_floor_t* plain = NULL;
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_measure(nulls, 1u, &plain, &err));
+    TEST_ASSERT_EQUAL_UINT64(m, semq_floor_json_size(plain));
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, semq_floor_save(plain, (uint8_t*)back, m, &err));
+    TEST_ASSERT_EQUAL_STRING(text, back);
+    semq_floor_free(plain);
+    /* max_hamming without distinct_nulls reads. */
+    char partial[512];
+    snprintf(partial, sizeof(partial), "%.*s,\"max_hamming\":9}", (int)(strlen(text) - 1u), text);
+    TEST_ASSERT_EQUAL_INT(SEMQ_OK, load_text(partial, &g));
+    TEST_ASSERT_EQUAL_UINT64(9u, semq_floor_max_hamming(g));
+    TEST_ASSERT_EQUAL_UINT64(SEMQ_NONE, semq_floor_distinct_nulls(g));
+    semq_floor_free(g);
+
+    /* The value that marks an absent key is reserved, with a message that says so. */
+    const char* reserved[] = { ",\"max_hamming\":18446744073709551615}", ",\"distinct_nulls\":18446744073709551615}" };
+    for (size_t i = 0u; i < 2u; i++) {
+        snprintf(partial, sizeof(partial), "%.*s%s", (int)(strlen(text) - 1u), text, reserved[i]);
+        TEST_ASSERT_EQUAL_INT(SEMQ_ERR_INVALID_INPUT, semq_floor_load((const uint8_t*)partial, strlen(partial), &g, &err));
+        TEST_ASSERT_NOT_NULL_MESSAGE(strstr(err.message, "reserved"), err.message);
+    }
+
+    /* Every violation is InvalidInput and allocates nothing. */
+    const char* body = text + 1; /* "version":... without the opening brace */
+    const char* replace[][2] = {
+        { "\"nulls\":1", "\"nulls\":1.0" }, { "\"nulls\":1", "\"nulls\":1e0" }, { "\"nulls\":1", "\"nulls\":-1" },
+        { "\"nulls\":1", "\"nulls\":\"1\"" }, { "\"nulls\":1", "\"nulls\":true" }, { "\"nulls\":1", "\"nulls\":null" },
+        { "\"nulls\":1", "\"nulls\":01" }, { "\"nulls\":1", "\"nulls\":18446744073709551616" },
+        { "\"nulls\":1", "\"nulls\":0" }, { "\"hamming\":2", "\"hamming\":129" },
+        { "\"hamming\":2}", "\"hamming\":2,\"max_hamming\":1}" }, { "\"hamming\":2}", "\"hamming\":2,\"max_hamming\":129}" },
+        { "\"hamming\":2}", "\"hamming\":2,\"max_hamming\":18446744073709551615}" },
+        { "\"hamming\":2}", "\"hamming\":2,\"distinct_nulls\":0}" },
+        { "\"hamming\":2}", "\"hamming\":2,\"distinct_nulls\":2}" },
+        { "\"hamming\":2}", "\"hamming\":2,\"distinct_nulls\":1.0}" },
+        { "\"hamming\":2}", "\"hamming\":2,\"distinct_nulls\":-1}" },
+        { "\"hamming\":2}", "\"hamming\":2,\"distinct_nulls\":\"1\"}" },
+        { "\"hamming\":2}", "\"hamming\":2,\"distinct_nulls\":1,\"distinct_nulls\":1}" },
+        { "\"hamming\":2}", "\"hamming\":2,\"nulls\":1}" }, { "semq-floor/1", "semq-floor/2" },
+        { "\"bins\":4", "\"bins\":4,\"sectors\":4" }, { "\"bins\":4", "\"sectors\":4" },
+        { "\"rule_revision\":0", "\"rule_revision\":1" }, { "\"dim\":128", "\"dim\":4294967296" },
+        { "\"u64\"", "\"u32\"" }, { "\"reference_id\":\"", "\"reference_id\":\"0" },
+        { "\"hamming\":2}", "\"hamming\":2} x" }, { "\"hamming\":2}", "\"hamming\":2,}" },
+        { "\"hamming\":2}", "\"hamming\":2,\"x\":\"\\ud800\"}" }, { "\"hamming\":2}", "\"hamming\":2,\"x\":\"\xff\"}" },
+        { "\"hamming\":2}", "\"hamming\":2,\"x\":\"\x01\"}" }, { ",\"hamming\":2", "" },
+    };
+    for (size_t i = 0u; i < sizeof(replace) / sizeof(replace[0]); i++) {
+        char bad[1024];
+        const char* at = strstr(text, replace[i][0]);
+        TEST_ASSERT_NOT_NULL_MESSAGE(at, replace[i][0]);
+        const size_t head = (size_t)(at - text);
+        snprintf(bad, sizeof(bad), "%.*s%s%s", (int)head, text, replace[i][1], at + strlen(replace[i][0]));
+        g = (semq_floor_t*)1;
+        TEST_ASSERT_EQUAL_INT_MESSAGE(SEMQ_ERR_INVALID_INPUT, load_text(bad, &g), bad);
+        TEST_ASSERT_NULL(g);
+    }
+    /* An ignored value nests up to 64 levels, the floor object included. */
+    for (int arrays = 63; arrays <= 64; arrays++) {
+        char nested[1024] = "{\"x\":";
+        for (int i = 0; i < arrays; i++) append(nested, sizeof(nested), "[");
+        for (int i = 0; i < arrays; i++) append(nested, sizeof(nested), "]");
+        append(nested, sizeof(nested), ",");
+        append(nested, sizeof(nested), body);
+        TEST_ASSERT_EQUAL_INT_MESSAGE(arrays == 63 ? SEMQ_OK : SEMQ_ERR_INVALID_INPUT, load_text(nested, &g), nested);
+        if (arrays == 63) semq_floor_free(g);
+    }
+    const char* garbage[] = { "", "[]", "{}", "null", "{\"version\":\"semq-floor/1\"}", "{" };
+    for (size_t i = 0u; i < sizeof(garbage) / sizeof(garbage[0]); i++) {
+        TEST_ASSERT_EQUAL_INT_MESSAGE(SEMQ_ERR_INVALID_INPUT, load_text(garbage[i], &g), garbage[i]);
+    }
+
+    semq_floor_free(f);
+    semq_diff_free(d);
+    semq_encoding_free(nul);
+    semq_encoding_free(ref);
+}
+
 /* -------------------------------------------------------------------------- */
 /*  Build info                                                                */
 /* -------------------------------------------------------------------------- */
@@ -1093,6 +1405,9 @@ int main(void) {
     RUN_TEST(test_diff_lists_units_and_manifest);
     RUN_TEST(test_floor_measure_and_within);
     RUN_TEST(test_p99_nearest_rank);
+    RUN_TEST(test_evaluate_per_row);
+    RUN_TEST(test_distinct_nulls);
+    RUN_TEST(test_floor_json);
     RUN_TEST(test_build_info);
     return UNITY_END();
 }

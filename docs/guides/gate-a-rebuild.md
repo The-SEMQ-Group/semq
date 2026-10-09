@@ -75,7 +75,7 @@ Exit `0` means the candidate is within the floor. Exit `1` means it is not;
 a changed `encoder` or `encoder_revision` is never within. Exit `2` means the
 gate could not be evaluated (invalid file, invalid floor, or a floor measured
 against another reference, config or id kind).
-Changed manifest keys are listed on stderr; `within` is computed by the core. Add `--json` for
+Changed manifest keys are listed on stderr; the verdict is computed by the core. Add `--json` for
 the complete report; without `--floor`, `semq diff` is a report and always
 exits `0`.
 
@@ -91,8 +91,59 @@ print(floor)
 diff = reference.diff(Encoding.load("candidate.semq"))
 print(diff)
 print(diff.within(floor))
+print(diff.evaluate(floor).reasons)  # every failed check, not only the first
 print(diff.units(0)[:3])  # the first units of row 0 that moved: (unit, before, after)
 ```
+
+## 4. Check every row
+
+The p99 check ignores the most changed 1% of rows, so a few rows with a
+large change can pass. The per-row check also fails the verdict when any
+changed row moved more than any row of any null did. It needs a floor
+measured for it:
+
+```sh
+semq floor reference.semq null-1.semq null-2.semq null-3.semq --per-row > floor-per-row.json
+semq diff reference.semq candidate.semq --floor floor-per-row.json --per-row
+echo "exit $?"
+```
+
+With `--per-row`, `semq floor` also records `max_hamming`, the largest
+hamming of any changed row of any null, and `distinct_nulls`, how many of
+the nulls were different states (two nulls are the same state when their
+candidates have the same `content_digest`). When the gate fails, stderr
+lists the rows above `max_hamming`. `semq diff --per-row` exits `2` on a
+floor without these keys, such as one from `semq floor` without `--per-row`
+or one saved by SEMQ 1.0. SEMQ 1.0 cannot read a floor written with
+`--per-row`; a floor written without it reads in every version.
+
+In code:
+
+```python
+from semq import Encoding, Floor
+
+reference = Encoding.load("reference.semq")
+nulls = [reference.diff(Encoding.load(f"null-{k}.semq")) for k in (1, 2, 3)]
+floor = Floor.measure(nulls, per_row=True)
+print(floor.max_hamming, floor.distinct_nulls)
+verdict = reference.diff(Encoding.load("candidate.semq")).evaluate(floor, per_row=True)
+print(verdict.passed, verdict.reasons, verdict.rows)  # the rows above max_hamming
+```
+
+**How many nulls.** Each check compares one statistic of the candidate with
+the largest value of that statistic among the nulls. If an unchanged rebuild
+and the `N` nulls are exchangeable (produced the same way, so that any order
+of the `N + 1` is equally likely), the unchanged rebuild is above all `N`
+nulls with probability at most `1/(N+1)`, so each statistic rejects it with
+probability at most `1/(N+1)`. `within` uses two statistics, the changed
+ratio and the p99 hamming, so it rejects an unchanged rebuild with
+probability at most `2/(N+1)`. The per-row check adds a third, for at most `3/(N+1)`: 75% with 3 nulls, about 14% with 20. In
+practice it adds less, because hamming distances are integers and a tie with
+the largest null does not fail. When every null rebuild gave the same rows
+(`distinct_nulls` is `1`), the rebuild is deterministic: an unchanged
+rebuild gives those rows again, so the per-row check adds no false alarm. When the nulls vary, measure the floor
+from at least 20 nulls; `semq diff --per-row` prints a warning on stderr
+below that, without changing the exit code.
 
 ## What the verdict means
 
@@ -102,7 +153,8 @@ rows, its p99 hamming is at most the floor's, and neither `encoder` nor
 `encoder_revision` changed. Added rows do not affect it; they are listed so
 you can judge them. The floor is an envelope of what you observed, taken
 component-wise over the nulls; it does not estimate the probability of the
-next rebuild.
+next rebuild. The bound in step 4 holds only if the nulls and the candidate
+are exchangeable: it comes from how you produce them, not from the floor.
 
 ## Encode a large corpus in batches
 
@@ -141,4 +193,4 @@ same state as a single `encode` call.
 ## Next steps
 
 - [CLI reference](../reference/cli.md): every command, option and exit code.
-- [Core contracts](../reference/contracts.md): the exact definitions of `diff`, `within` and `measure`.
+- [Core contracts](../reference/contracts.md): the exact definitions of `diff`, `within`, `evaluate` and `measure`.

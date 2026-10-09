@@ -699,7 +699,7 @@ jobs:
           python3 - <<'PYSEED'
           from pathlib import Path
           import hashlib
-          for path in Path('tests/conformance').rglob('*.semq'):
+          for path in [*Path('tests/conformance').rglob('*.semq'), *Path('tests/conformance').rglob('floor-*.json')]:
               data = path.read_bytes()
               (Path('fuzz-corpus') / hashlib.sha256(data).hexdigest()).write_bytes(data)
           PYSEED

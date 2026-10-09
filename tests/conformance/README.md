@@ -28,8 +28,9 @@ schema, and the floating-point environment.
 directory, runs the reference, and compares with this directory. CI runs it
 on every architecture of the matrix; a byte or verdict difference fails the
 build. Regenerate with `--update` only together with a bump of
-`SEMQ_FILE_VERSION` (framing) or of the operator rule revision (rules), in
-the same pull request, and review the diff of the regenerated files like
+`SEMQ_FILE_VERSION` (framing) or of the operator rule revision (rules), or
+with a change to the [floor schema](../../docs/reference/contracts.md#floor-schema),
+in the same pull request, and review the diff of the regenerated files like
 code.
 
 Adding cases also takes `--update`, provided that no existing case and no

@@ -9,8 +9,8 @@ use std::collections::{BTreeMap, HashSet};
 use std::io::{Cursor, ErrorKind};
 
 use semq::{
-    build_info, Codec, CodecConfig, Diff, Encoding, Error, Floor, FloorReport, Id, IdKind, Ids,
-    Manifest, Operator, Which,
+    build_info, Codec, CodecConfig, Diff, Encoding, Error, Floor, FloorReport, GateOptions, Id,
+    IdKind, Ids, Manifest, Operator, Reason, Which,
 };
 
 // --------------------------------------------------------------------------
@@ -709,6 +709,16 @@ fn diff_over_utf8_ids() {
 }
 
 /// A valid floor bound to `d`'s config, id kind and reference.
+/// `floor`, which records no `max_hamming`, read back from JSON with one.
+fn with_max(floor: &Floor, max_hamming: u64) -> Option<Floor> {
+    let json = floor.to_json();
+    Floor::from_json(format!(
+        "{},\"max_hamming\":{max_hamming}}}",
+        &json[..json.len() - 1]
+    ))
+    .ok()
+}
+
 fn floor_for(d: &Diff, nulls: u64, changed: u64, total: u64, hamming: u64) -> Floor {
     Floor::new(
         d.config(),
@@ -744,9 +754,18 @@ fn floor_measure_and_within() {
         (f.nulls(), f.changed_rows(), f.total_rows(), f.hamming()),
         (1, 1, 100, 1)
     );
+    assert_eq!((f.max_hamming(), f.distinct_nulls()), (None, None));
     assert_eq!(f, floor_for(&da, 1, 1, 100, 1));
     assert_ne!(f, floor_for(&da, 2, 1, 100, 1));
     assert!(da.within(&f).unwrap());
+    // With the per-row check the floor also records its per-row data.
+    let per_row = Floor::measure_for([&da], &GateOptions::new().per_row(true)).unwrap();
+    assert_eq!(
+        (per_row.max_hamming(), per_row.distinct_nulls()),
+        (Some(1), Some(1))
+    );
+    assert_ne!(per_row, f);
+    assert_eq!(Floor::measure_for([&da], &GateOptions::new()).unwrap(), f);
 
     // Two nulls of the same reference: the envelope of both.
     let a2 = rows_with_changes(100, 2, 1, 4);
@@ -887,11 +906,74 @@ fn floor_never_admits_an_encoder_change() {
 }
 
 #[test]
+fn evaluate_names_every_failed_check_and_the_rows_above_max() {
+    // 200 rows; the null changes rows 0..99 by 2 units. The candidate changes
+    // rows 0..98 by 2 and row 150 by 10: its p99 ignores row 150, so it is
+    // within the floor, and only the per-row check catches it.
+    let base = rows_with_changes(200, 0, 0, 4);
+    let null = base.diff(&rows_with_changes(200, 100, 2, 4)).unwrap();
+    let floor = Floor::measure_for([&null], &GateOptions::new().per_row(true)).unwrap();
+    assert_eq!((floor.hamming(), floor.max_hamming()), (2, Some(2)));
+    assert_eq!(floor.distinct_nulls(), Some(1));
+    let config = CodecConfig::quant(16, 4).unwrap();
+    let bpv = config.bytes_per_vector() as usize;
+    let ids: Vec<u64> = (0..200).collect();
+    let mut rows = Vec::with_capacity(200 * bpv);
+    for i in 0..200u64 {
+        let flip = if i < 99 {
+            2
+        } else if i == 150 {
+            10
+        } else {
+            0
+        };
+        let mut symbols = [4u8; 16];
+        symbols.iter_mut().take(flip).for_each(|s| *s = 5);
+        rows.extend(pack_quant(&symbols, 3, bpv));
+    }
+    let hidden = base
+        .diff(&Encoding::new(&ids, &rows, &config, None).unwrap())
+        .unwrap();
+    assert!(hidden.within(&floor).unwrap());
+    let plain = hidden.evaluate(&floor, &GateOptions::new()).unwrap();
+    assert!(plain.passed() && plain.reasons().is_empty() && plain.rows().is_empty());
+    let strict = hidden
+        .evaluate(&floor, &GateOptions::new().per_row(true))
+        .unwrap();
+    assert!(!strict.passed());
+    assert_eq!(strict.reasons(), &[Reason::RowAboveMax]);
+    assert_eq!(strict.rows(), &[Id::U64(150)]);
+    // Every failed check is named, not only the first.
+    let tight = with_max(&floor_for(&hidden, 1, 1, 200, 1), 1).unwrap();
+    let all = hidden
+        .evaluate(&tight, &GateOptions::new().per_row(true))
+        .unwrap();
+    assert_eq!(
+        all.reasons(),
+        &[Reason::ChangedRatio, Reason::Hamming, Reason::RowAboveMax]
+    );
+    assert_eq!(
+        all.reasons().iter().map(|r| r.name()).collect::<Vec<_>>(),
+        ["changed_ratio", "hamming", "row_above_max"]
+    );
+    assert_eq!(all.rows().len(), 100);
+    // A floor without per-row data refuses the per-row check and keeps its plain verdict.
+    let v1 = Floor::measure([&null]).unwrap();
+    assert!(hidden.evaluate(&v1, &GateOptions::new()).unwrap().passed());
+    match hidden.evaluate(&v1, &GateOptions::new().per_row(true)) {
+        Err(Error::Incompatible { message, .. }) => {
+            assert!(message.contains("per-row"), "{message}")
+        }
+        other => panic!("expected Incompatible, got {other:?}"),
+    }
+}
+
+#[test]
 fn floor_report_and_its_strict_inverse() {
     let a0 = rows_with_changes(100, 0, 0, 4);
     let a1 = rows_with_changes(100, 1, 1, 4);
     let da = a0.diff(&a1).unwrap();
-    let f = Floor::measure([&da]).unwrap();
+    let f = Floor::measure_for([&da], &GateOptions::new().per_row(true)).unwrap();
 
     let r = f.as_report();
     assert_eq!(
@@ -912,18 +994,58 @@ fn floor_report_and_its_strict_inverse() {
         format!("{f:?}"),
         format!(
             "Floor {{ config: {:?}, id_kind: \"u64\", reference_id: {:?}, nulls: 1, \
-             changed_rows: 1, total_rows: 100, hamming: 1 }}",
+             changed_rows: 1, total_rows: 100, hamming: 1, max_hamming: Some(1), \
+             distinct_nulls: Some(1) }}",
             r.config, r.reference_id
         )
     );
 
-    // The inverse gives back the same floor; a serializer sees the same data.
+    // The report does not carry the per-row data, so from_report gives a
+    // floor without it, the one measure gives; the JSON form, written and
+    // read by the core, gives back the same floor.
     let back = Floor::from_report(&r).unwrap();
-    assert_eq!(back, f);
+    assert_eq!(back, Floor::measure([&da]).unwrap());
+    assert_eq!((back.max_hamming(), back.distinct_nulls()), (None, None));
     assert_eq!(back.as_report(), r);
     assert!(da.within(&back).unwrap());
-    let set: HashSet<Floor> = [f, back].into_iter().collect();
-    assert_eq!(set.len(), 1);
+    let json = f.to_json();
+    assert_eq!(
+        json,
+        format!(
+            "{{\"version\":\"semq-floor/1\",\"config\":{{\"operator\":\"quant\",\"dim\":16,\"bins\":4,\
+             \"rule_revision\":0}},\"id_kind\":\"u64\",\"reference_id\":\"{}\",\"nulls\":1,\
+             \"changed_rows\":1,\"total_rows\":100,\"hamming\":1,\"max_hamming\":1,\"distinct_nulls\":1}}",
+            r.reference_id
+        )
+    );
+    let from_json = Floor::from_json(&json).unwrap();
+    assert_eq!(from_json, f);
+    assert_eq!(from_json.to_json(), json);
+    assert_eq!(
+        Floor::from_json(back.to_json()).unwrap().max_hamming(),
+        None
+    );
+    assert_eq!(
+        Floor::from_json(json.replace('{', "{\"note\":[1,{}],")).unwrap(),
+        f
+    );
+    for bad in [
+        json.replace("\"max_hamming\":1", "\"max_hamming\":0"),
+        json.replace("\"max_hamming\":1", "\"max_hamming\":17"),
+        json.replace("\"distinct_nulls\":1", "\"distinct_nulls\":2"),
+        json.replace("\"nulls\":1", "\"nulls\":1.0"),
+        json.replace("semq-floor/1", "semq-floor/2"),
+        json.replace("\"hamming\":1,", ""),
+        format!("{json} x"),
+        String::from("{}"),
+    ] {
+        assert!(
+            matches!(Floor::from_json(&bad), Err(Error::InvalidInput { .. })),
+            "{bad}"
+        );
+    }
+    let set: HashSet<Floor> = [f, from_json, back].into_iter().collect();
+    assert_eq!(set.len(), 2);
 
     // Strict: version, id kind, reference id and every count.
     let invalid = |bad: FloorReport| {

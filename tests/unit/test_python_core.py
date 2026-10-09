@@ -28,6 +28,7 @@ from semq import (
     Native,
     Operator,
     Unsupported,
+    Verdict,
     build_info,
 )
 
@@ -111,9 +112,9 @@ def test_quant_diff_hamming_counts_changed_symbols(bins: int, dim: int) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_root_exports_are_the_fifteen_symbols() -> None:
+def test_root_exports_are_the_sixteen_symbols() -> None:
     assert set(semq.__all__) == {
-        "Operator", "CodecConfig", "Codec", "Encoding", "Diff", "Floor", "BuildInfo", "build_info",
+        "Operator", "CodecConfig", "Codec", "Encoding", "Diff", "Floor", "Verdict", "BuildInfo", "build_info",
         "InvalidInput", "Incompatible", "FormatError", "IntegrityError", "Unsupported", "Native",
         "__version__",
     }
@@ -538,6 +539,7 @@ def test_floor_measure_is_the_envelope_and_within_is_exact() -> None:
     assert (floor.changed_rows, floor.total_rows, floor.hamming, floor.nulls) == (2, 100, 1, 2)
     assert floor.config == base.config and floor.id_kind == "u64" and floor.reference_id == base.state_id
     assert floor == _floor(null_a, 2, 2, 100, 1)
+    assert (floor.max_hamming, floor.distinct_nulls) == (None, None)
     assert null_a.within(floor) and null_a2.within(floor)
     one = Floor.measure([null_a])
     assert one == _floor(null_a, 1, 1, 100, 1)
@@ -569,14 +571,67 @@ def test_floor_measure_is_the_envelope_and_within_is_exact() -> None:
         Floor.measure([_rows(2, 0, 0).diff(_rows(1, 0, 0))])  # removed a row
     with pytest.raises(InvalidInput):
         null_a.within("floor")  # type: ignore[arg-type]
-    assert repr(floor).startswith("Floor(changed_rows=2, total_rows=100, hamming=1, nulls=2, ")
+    assert repr(floor).startswith(
+        "Floor(changed_rows=2, total_rows=100, hamming=1, max_hamming=None, distinct_nulls=None, nulls=2, "
+    )
+
+
+def test_measure_per_row_records_max_hamming_and_distinct_nulls() -> None:
+    base = _rows(100, 0, 0)
+    null_a = base.diff(_rows(100, 1, 1))
+    null_a2 = base.diff(_rows(100, 2, 1))
+    plain = Floor.measure([null_a, null_a2])
+    per_row = Floor.measure([null_a, null_a2], per_row=True)
+    assert (per_row.max_hamming, per_row.distinct_nulls) == (1, 2)
+    assert per_row != plain
+    # Apart from the per-row keys, the JSON is that of measure, which is SEMQ 1.0's.
+    assert {k: v for k, v in per_row.as_dict().items() if k not in ("max_hamming", "distinct_nulls")} == plain.as_dict()
+    assert list(per_row.as_dict())[-2:] == ["max_hamming", "distinct_nulls"]
+    # The same null twice is one state: nulls 2, distinct_nulls 1.
+    twice = Floor.measure([null_a, null_a], per_row=True)
+    assert (twice.nulls, twice.distinct_nulls) == (2, 1)
+    assert "per_row=" not in repr(twice) and "distinct_nulls=1" in repr(twice)
+
+
+def test_evaluate_names_every_failed_check_and_the_rows_above_max() -> None:
+    # 200 rows; the null changes rows 0..99 by 2 units. The candidate changes
+    # rows 0..98 by 2 and row 150 by 10: its p99 ignores row 150, so it is
+    # within the floor, and only the per-row check catches it.
+    base = _rows(200, 0, 0)
+    null = base.diff(_rows(200, 100, 2))
+    floor = Floor.measure([null], per_row=True)
+    assert (floor.hamming, floor.max_hamming, floor.distinct_nulls) == (2, 2, 1)
+    cfg = base.config
+    symbols = np.full((200, 16), 4, dtype=np.uint8)
+    symbols[:99, :2] = 5
+    symbols[150, :10] = 5
+    hidden = base.diff(Encoding(np.arange(200, dtype=np.uint64), pack_quant(symbols, 3, cfg.bytes_per_vector), cfg, id_kind="u64"))
+    assert hidden.within(floor)
+    plain = hidden.evaluate(floor)
+    assert plain == Verdict(True, (), []) and plain
+    strict = hidden.evaluate(floor, per_row=True)
+    assert (strict.passed, strict.reasons, strict.rows) == (False, ("row_above_max",), [150]) and not strict
+    assert strict.as_dict() == {"passed": False, "reasons": ["row_above_max"], "rows": ["150"]}
+    # Every failed check is named, not only the first.
+    tight = Floor.from_dict(_floor(hidden, 1, 1, 200, 1).as_dict() | {"max_hamming": 1})
+    assert hidden.evaluate(tight, per_row=True).reasons == ("changed_ratio", "hamming", "row_above_max")
+    # A floor without per-row data refuses the per-row check and keeps its plain verdict.
+    v1 = Floor.measure([null])
+    assert hidden.evaluate(v1).passed
+    with pytest.raises(Incompatible, match="per-row"):
+        hidden.evaluate(v1, per_row=True)
+    with pytest.raises(InvalidInput):
+        hidden.evaluate("floor")  # type: ignore[arg-type]
 
 
 def test_floor_report_form_round_trips_and_is_strict(tmp_path) -> None:
     base = _rows(100, 0, 0)
-    floor = Floor.measure([base.diff(_rows(100, 1, 1))])
+    floor = Floor.measure([base.diff(_rows(100, 1, 1))], per_row=True)
     d = floor.as_dict()
-    assert list(d) == ["version", "config", "id_kind", "reference_id", "nulls", "changed_rows", "total_rows", "hamming"]
+    assert list(d) == [
+        "version", "config", "id_kind", "reference_id", "nulls", "changed_rows", "total_rows", "hamming", "max_hamming",
+        "distinct_nulls",
+    ]
     assert d["version"] == "semq-floor/1" and d["reference_id"] == base.state_id.hex()
     assert Floor.from_dict(json.loads(json.dumps(d))) == floor
     floor.save(tmp_path / "floor.json")
@@ -586,8 +641,14 @@ def test_floor_report_form_round_trips_and_is_strict(tmp_path) -> None:
         assert Floor.load(f) == floor
     for mutate in (
         lambda x: x.pop("nulls"),
-        lambda x: x.update(extra=1),
         lambda x: x.update(version="semq-floor/2"),
+        lambda x: x.update(max_hamming=None),
+        lambda x: x.update(max_hamming=0),
+        lambda x: x.update(max_hamming=2**64 - 1),
+        lambda x: x.update(distinct_nulls=0),
+        lambda x: x.update(distinct_nulls=2),
+        lambda x: x.update(distinct_nulls=2**64 - 1),
+        lambda x: x.update(distinct_nulls=1.0),
         lambda x: x.update(nulls="1"),
         lambda x: x.update(hamming=1.0),
         lambda x: x.update(changed_rows=True),
@@ -602,6 +663,18 @@ def test_floor_report_form_round_trips_and_is_strict(tmp_path) -> None:
             Floor.from_dict(bad)
     with pytest.raises(InvalidInput):
         Floor.load(b"not json")
+    with pytest.raises(InvalidInput):
+        Floor.from_dict({"nulls": float("nan")})
+    with pytest.raises(InvalidInput):
+        Floor.from_dict({1: object()})
+    # Unknown keys are ignored. Without the per-row keys, as SEMQ 1.0 saved
+    # it, the floor reads, records none, and writes back without them.
+    assert Floor.from_dict(d | {"extra": [1, {"a": None}]}) == floor
+    without = {k: v for k, v in d.items() if k not in ("max_hamming", "distinct_nulls")}
+    old = Floor.from_dict(without)
+    assert (old.max_hamming, old.distinct_nulls) == (None, None) and old.as_dict() == without and old != floor
+    with pytest.raises(InvalidInput, match="reserved"):
+        Floor.from_dict(d | {"max_hamming": 2**64 - 1})
     # Invalid UTF-8 is InvalidInput through every source, never a decode error.
     (tmp_path / "bad.json").write_bytes(b"\xff")
     with pytest.raises(InvalidInput):

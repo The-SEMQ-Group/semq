@@ -171,12 +171,20 @@ A floor is the envelope of variation seen in rebuilds that changed nothing
 on purpose, bound to where it was measured: `config`, `id_kind`,
 `reference_id` (the `state_id` of the reference every null was taken
 against), `nulls` (how many null diffs went in), `changed_rows`,
-`total_rows` and `hamming`.
+`total_rows` and `hamming`. A floor measured for the per-row check also
+records the per-row data, `max_hamming` and `distinct_nulls`. A floor
+without them, such as one from `measure` or saved by SEMQ 1.0, does not
+record them; its accessors return none (`SEMQ_NONE` in C, `None`, `nil`
+or `undefined` in the bindings).
 
 **Construction.** Every rule is checked when a floor is built or loaded, not
 when it is applied: the config is valid, `id_kind` is `u64` or `utf8`,
-`nulls >= 1`, `total_rows >= 1`, `changed_rows <= total_rows`, and
-`hamming <= units_per_row` of the config. Otherwise `InvalidInput`.
+`nulls >= 1`, `total_rows >= 1`, `changed_rows <= total_rows`,
+`hamming <= units_per_row` of the config, and, when present,
+`hamming <= max_hamming <= units_per_row` and
+`1 <= distinct_nulls <= nulls`. Otherwise `InvalidInput`. The constructors
+build a floor without per-row data; it comes only from `measure_for` or
+from the JSON form.
 
 **`Floor.measure(null_diffs)`.** Every null must share the config, the id
 kind and the reference of the first (else `Incompatible`, naming the index),
@@ -185,7 +193,24 @@ change to `encoder` or `encoder_revision` (else `InvalidInput`, naming the
 index). Then `(changed_rows, total_rows)` is the pair
 `(len(changed), n_common)` with the largest ratio among the nulls, compared
 exactly by cross-multiplication; `hamming` is the largest per-null p99 of
-the hamming distances; `nulls` is the count of nulls.
+the hamming distances; `nulls` is the count of nulls. The floor records no
+per-row data, so its JSON form is the one SEMQ 1.0 writes and reads.
+
+**`Floor.measure_for(null_diffs, checks)`.** `measure`, and also the data
+the checks in `checks` need. In C `checks` is a set of `semq_check_t`
+flags (`SEMQ_CHECK_PER_ROW = 1`; any other bit is `InvalidInput`), and
+`checks = 0` is `measure`. The bindings take their evaluate options:
+Python `Floor.measure(nulls, per_row=True)`, Rust
+`Floor::measure_for(&nulls, &GateOptions::new().per_row(true))`, Go
+`MeasureFloorFor(nulls, GateOptions{PerRow: true})`, TypeScript
+`Floor.measure(nulls, { perRow: true })`. The per-row check records:
+
+- `max_hamming`: the largest hamming distance of any changed row of any
+  null (`0` when no null changed a row);
+- `distinct_nulls`: how many distinct null states went in. Two nulls are
+  the same state when their candidates have the same `content_digest`
+  (rows, ids and config; the manifest does not count). It is `1` when every
+  null rebuild gave the same rows.
 
 `p99` of `m` integers is `0` when `m = 0`, and otherwise the `k`-th smallest
 with `k = m - floor(m / 100)`: nearest rank, with no product that can
@@ -207,28 +232,81 @@ Added rows and other manifest changes do not affect the verdict. Every null
 used to measure a floor is within it. The envelope is taken component by
 component, so the ratio may come from one null and the hamming from
 another, and the floor can be looser than any single null observed. It
-describes what was observed; it makes no probabilistic claim about the next
-rebuild. The core accepts a single null; the `semq` command asks for three
-by default, because one null only shows what that rebuild happened to do.
+describes what was observed and assumes no model of the rebuild noise. The
+core accepts a single null; the `semq` command asks for three by default,
+because one null only shows what that rebuild happened to do.
+
+**False alarms.** Each check compares one statistic of the candidate with
+the largest value among the nulls. If the `N` nulls and an unchanged
+candidate are exchangeable, the candidate exceeds all `N` with probability
+at most `1/(N+1)`, so each check rejects it with at most that probability:
+`2/(N+1)` for `within` (checks 3 and 4) and `3/(N+1)` with the per-row
+check. This bound comes from how the nulls and the candidate are produced,
+not from the floor, which promises nothing about a rebuild it has not seen.
+With `distinct_nulls = 1` an unchanged candidate equals every null, and the
+per-row check adds no false alarm.
+
+**`diff.evaluate(floor, options)`.** The same checks as `within`, and a
+verdict that names every one that failed, not only the first. With no
+options, `passed` equals `within`. The options select further checks; each
+is off by default, so a new one never changes an existing verdict:
+
+- **per row** (`SEMQ_CHECK_PER_ROW`): the verdict also fails when any
+  changed row has a hamming distance above `floor.max_hamming`, and `rows`
+  lists those ids in canonical order. It needs a floor with `max_hamming`;
+  otherwise `Incompatible`. The p99 of check 4 ignores the
+  `floor(m / 100)` most changed rows; this check does not ignore any.
+
+In C the checks are the `checks` flags of `semq_diff_evaluate`, the same
+`semq_check_t` flags as `measure_for`; `checks = 0` is `within`, and an
+unknown bit is `InvalidInput`.
+
+The verdict is `passed`, `reasons` and `rows`. `reasons` uses these names,
+in this order: `no_common_rows`, `removed_rows`, `changed_ratio`,
+`hamming`, `encoder` (checks 1 to 5), `row_above_max` (per row).
 
 ### Floor schema
 
 ```
 {
-  "version":      "semq-floor/1",
-  "config":       { "operator": "quant" | "phase" | "orbit", "dim": int,
-                    "bins" | "sectors" | "scale": int, "rule_revision": int },
-  "id_kind":      "u64" | "utf8",
-  "reference_id": hex64,
-  "nulls":        int,
-  "changed_rows": int,
-  "total_rows":   int,
-  "hamming":      int
+  "version":        "semq-floor/1",
+  "config":         { "operator": "quant" | "phase" | "orbit", "dim": int,
+                      "bins" | "sectors" | "scale": int, "rule_revision": int },
+  "id_kind":        "u64" | "utf8",
+  "reference_id":   hex64,
+  "nulls":          int,
+  "changed_rows":   int,
+  "total_rows":     int,
+  "hamming":        int,
+  "max_hamming":    int,         (optional, per-row data)
+  "distinct_nulls": int          (optional, per-row data)
 }
 ```
 
-Keys in this order, counts as JSON integers, the config as in the report
-schema. Bindings write it from a floor and read it back strictly: exactly
-these keys, this `version`, integers only (no booleans, floats or numeric
-strings) and a 64-character hex `reference_id`; any deviation is
-`InvalidInput`.
+The core writes and reads this form (`semq_floor_save`, `semq_floor_load`);
+every binding calls it, so the rules below are the same everywhere.
+
+**Writing.** One object, keys in this order, no whitespace, the config as in
+the report schema, `reference_id` as lowercase hex. `max_hamming` and
+`distinct_nulls` are written only when the floor records them, so a floor
+without per-row data is written byte for byte as SEMQ 1.0 writes it.
+
+**Reading.** Valid JSON in valid UTF-8, one object, nesting at most 64
+levels deep. The keys above are read strictly: each at most once, `version`
+exactly `"semq-floor/1"`, counts as JSON integers in `[0, 2^64)` without
+sign, fraction or exponent (no booleans, strings or `null`), `reference_id`
+as 64 hex characters in either case, and the config with exactly its
+operator's parameter. `max_hamming` and `distinct_nulls` are optional and
+independent of each other. `18446744073709551615` (`2^64 - 1`) is reserved
+in both: it is `SEMQ_NONE`, which marks an absent key, so a file that
+carries it is `InvalidInput`. Any other key is ignored, at the top level
+and inside `config`. Then the construction rules apply, including
+`hamming <= max_hamming <= units_per_row` and
+`1 <= distinct_nulls <= nulls`. Any violation is `InvalidInput`.
+
+**Evolution.** A key added later is optional, so older readers ignore it and
+newer readers accept files without it. `version` changes only when the
+meaning of an existing key changes. SEMQ 1.0 read this schema with no other
+keys allowed, so it rejects a file that carries `max_hamming` or
+`distinct_nulls`: upgrade the readers before writing floors with per-row
+data. A floor without it reads in every version.

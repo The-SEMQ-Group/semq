@@ -422,20 +422,37 @@ describe.skipIf(!AVAILABLE)("conformance", () => {
   describe("12-floor", () => {
     for (const { id, input: i, expect: e } of cases("12-floor")) {
       it(id, () => {
-        if ("null_diffs" in i) {
-          const diffs = nullDiffs("12-floor", i.null_diffs);
-          const floor = runExpecting(e, () => Floor.measure(diffs));
+        if ("floor_json" in i) {
+          const floor = runExpecting(e, () => Floor.fromJson(file("12-floor", i.floor_json)));
           if (floor !== undefined) {
             expectFloorReport(floor, e.floor);
-            for (const d of diffs) expect(d.within(floor)).toBe(true);
+            expect(floor.toJson()).toBe(e.json);
+          }
+          return;
+        }
+        if ("null_diffs" in i) {
+          const diffs = nullDiffs("12-floor", i.null_diffs);
+          const options = { perRow: i.per_row === true };
+          const floor = runExpecting(e, () => Floor.measure(diffs, options));
+          if (floor !== undefined) {
+            expectFloorReport(floor, e.floor);
+            for (const d of diffs) {
+              expect(d.within(floor)).toBe(true);
+              expect(d.evaluate(floor, options).passed).toBe(true);
+            }
           }
           return;
         }
         const ref = Encoding.fromBytes(file("12-floor", i.reference));
         const d = ref.diff(Encoding.fromBytes(file("12-floor", i.candidate)));
-        // The five `floor-*` cases are rejected by `fromDict` before `within` runs.
-        const result = runExpecting(e, () => d.within(Floor.fromDict(i.floor)));
-        if (result !== undefined) expect(result).toBe(e.within);
+        // Invalid floors are rejected by `fromDict` before the floor is applied.
+        const verdict = runExpecting(e, () => d.evaluate(Floor.fromDict(i.floor), { perRow: i.per_row === true }));
+        if (verdict !== undefined) {
+          const floor = Floor.fromDict(i.floor);
+          expect(floor.asDict()).toEqual(i.floor);
+          expect({ ...verdict, rows: verdict.rows.map(String) }).toEqual(e.evaluate);
+          expect(d.within(floor)).toBe(e.within);
+        }
       });
     }
   });

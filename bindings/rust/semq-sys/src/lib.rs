@@ -102,6 +102,20 @@ pub const SEMQ_LIST_ADDED: semq_list_t = 0;
 pub const SEMQ_LIST_REMOVED: semq_list_t = 1;
 pub const SEMQ_LIST_CHANGED: semq_list_t = 2;
 
+/// Checks beyond those of `semq_diff_within`: flags combined with `|`, for
+/// `semq_floor_measure_for` and `semq_diff_evaluate`.
+pub type semq_check_t = u32;
+pub const SEMQ_CHECK_PER_ROW: semq_check_t = 1;
+
+/// Why a verdict failed: flags combined with `|`.
+pub type semq_reason_t = u32;
+pub const SEMQ_REASON_NO_COMMON_ROWS: semq_reason_t = 1;
+pub const SEMQ_REASON_REMOVED_ROWS: semq_reason_t = 2;
+pub const SEMQ_REASON_CHANGED_RATIO: semq_reason_t = 4;
+pub const SEMQ_REASON_HAMMING: semq_reason_t = 8;
+pub const SEMQ_REASON_ENCODER: semq_reason_t = 16;
+pub const SEMQ_REASON_ROW_ABOVE_MAX: semq_reason_t = 32;
+
 // --------------------------------------------------------------------------
 // Plain structs
 // --------------------------------------------------------------------------
@@ -206,6 +220,13 @@ pub struct semq_diff_t {
 /// Opaque floor handle (`struct semq_floor`).
 #[repr(C)]
 pub struct semq_floor_t {
+    _data: [u8; 0],
+    _marker: PhantomData<(*mut u8, PhantomPinned)>,
+}
+
+/// Opaque verdict handle (`struct semq_verdict`).
+#[repr(C)]
+pub struct semq_verdict_t {
     _data: [u8; 0],
     _marker: PhantomData<(*mut u8, PhantomPinned)>,
 }
@@ -450,6 +471,16 @@ extern "C" {
         out: *mut *mut semq_floor_t,
         err: *mut semq_error_t,
     ) -> semq_status_t;
+    /// `semq_floor_measure` that also records what the `checks`
+    /// (`SEMQ_CHECK_*` flags) need: with `SEMQ_CHECK_PER_ROW`, `max_hamming`
+    /// and `distinct_nulls`. An unknown bit is `SEMQ_ERR_INVALID_INPUT`.
+    pub fn semq_floor_measure_for(
+        nulls: *const *const semq_diff_t,
+        k: u32,
+        checks: u32,
+        out: *mut *mut semq_floor_t,
+        err: *mut semq_error_t,
+    ) -> semq_status_t;
     /// The config, owned by the handle.
     pub fn semq_floor_config(floor: *const semq_floor_t) -> *const semq_config_t;
     /// 0 = u64, 1 = utf8.
@@ -460,6 +491,27 @@ extern "C" {
     pub fn semq_floor_changed_rows(floor: *const semq_floor_t) -> u64;
     pub fn semq_floor_total_rows(floor: *const semq_floor_t) -> u64;
     pub fn semq_floor_hamming(floor: *const semq_floor_t) -> u64;
+    /// `SEMQ_NONE` for a floor without per-row data.
+    pub fn semq_floor_max_hamming(floor: *const semq_floor_t) -> u64;
+    /// Distinct null states among the nulls; `SEMQ_NONE` when not recorded.
+    pub fn semq_floor_distinct_nulls(floor: *const semq_floor_t) -> u64;
+    /// Length in bytes of the floor's JSON form.
+    pub fn semq_floor_json_size(floor: *const semq_floor_t) -> u64;
+    /// Writes the floor's JSON form into `out` (`cap >= semq_floor_json_size`).
+    pub fn semq_floor_save(
+        floor: *const semq_floor_t,
+        out: *mut u8,
+        cap: u64,
+        err: *mut semq_error_t,
+    ) -> semq_status_t;
+    /// Reads a floor from its JSON form; strict on the schema's keys, other
+    /// keys ignored. `SEMQ_ERR_INVALID_INPUT` on any violation.
+    pub fn semq_floor_load(
+        buf: *const u8,
+        len: u64,
+        out: *mut *mut semq_floor_t,
+        err: *mut semq_error_t,
+    ) -> semq_status_t;
     /// `*out = 1` iff the diff is within the floor (exact integer
     /// arithmetic). The floor must match the diff's config, id kind and
     /// reference state_id (`SEMQ_ERR_INCOMPATIBLE` otherwise).
@@ -469,6 +521,26 @@ extern "C" {
         out: *mut c_int,
         err: *mut semq_error_t,
     ) -> semq_status_t;
+
+    // Gate evaluation
+    /// With `checks == 0`, `passed` equals `semq_diff_within`; an unknown
+    /// bit is `SEMQ_ERR_INVALID_INPUT`. `SEMQ_ERR_INCOMPATIBLE` for a floor of
+    /// another context, or for `SEMQ_CHECK_PER_ROW` on a floor without
+    /// `max_hamming`.
+    pub fn semq_diff_evaluate(
+        diff: *const semq_diff_t,
+        floor: *const semq_floor_t,
+        checks: u32,
+        out: *mut *mut semq_verdict_t,
+        err: *mut semq_error_t,
+    ) -> semq_status_t;
+    pub fn semq_verdict_free(verdict: *mut semq_verdict_t);
+    pub fn semq_verdict_passed(verdict: *const semq_verdict_t) -> c_int;
+    /// `SEMQ_REASON_*` flags; 0 when the verdict passed.
+    pub fn semq_verdict_reasons(verdict: *const semq_verdict_t) -> u32;
+    pub fn semq_verdict_row_count(verdict: *const semq_verdict_t) -> u64;
+    /// Index in the diff's changed list; `SEMQ_NONE` when out of range.
+    pub fn semq_verdict_row(verdict: *const semq_verdict_t, i: u64) -> u64;
 
     // Build information and utilities
     /// Core version string, from the repository `VERSION` file.

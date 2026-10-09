@@ -112,11 +112,50 @@ def test_diff_with_floor_gates(files, capsys) -> None:
     assert main(["diff", files["ref"], files["null"], "--floor", files["bad"]]) == 2
 
 
+def test_diff_per_row(files, capsys, tmp_path) -> None:
+    # The floor of `semq floor` without --per-row has no per-row data: refused, with the fix.
+    assert main(["diff", files["ref"], files["drift"], "--floor", files["floor"], "--per-row"]) == 2
+    assert "semq floor --per-row" in capsys.readouterr().err
+    # Nulls that are all the same state: the per-row check runs without a warning.
+    assert main(["floor", files["ref"], files["null"], files["null"], files["null"], "--per-row"]) == 0
+    same = tmp_path / "same.json"
+    same.write_text(capsys.readouterr().out)
+    assert (Floor.load(same).max_hamming, Floor.load(same).distinct_nulls) == (0, 1)
+    assert main(["diff", files["ref"], files["drift"], "--floor", str(same), "--per-row"]) == 1
+    err = capsys.readouterr().err
+    assert "(changed_ratio, hamming, row_above_max)" in err and "rows above max_hamming: 3" in err
+    assert "warning" not in err
+    assert main(["diff", files["ref"], files["drift"], "--floor", str(same), "--per-row", "--json"]) == 1
+    report = json.loads(capsys.readouterr().out)
+    assert report["within"] is False
+    assert report["verdict"] == {"passed": False, "reasons": ["changed_ratio", "hamming", "row_above_max"], "rows": ["3"]}
+    # Nulls that vary, and fewer than 20: a warning on stderr that leaves the exit code alone.
+    assert main(["floor", files["ref"], files["null"], files["drift"], "--per-row", "--min-nulls", "2"]) == 0
+    varied = tmp_path / "varied.json"
+    varied.write_text(capsys.readouterr().out)
+    assert Floor.load(varied).distinct_nulls == 2
+    assert main(["diff", files["ref"], files["null"], "--floor", str(varied), "--per-row"]) == 0
+    err = capsys.readouterr().err
+    assert "warning:" in err and "1/3" in err and "at least 20 nulls" in err
+    assert main(["diff", files["ref"], files["null"], "--floor", str(varied)]) == 0
+    assert "warning" not in capsys.readouterr().err
+    # A floor that records max_hamming but not whether its nulls vary: warned as well.
+    unknown = tmp_path / "unknown.json"
+    unknown.write_text(varied.read_text().replace(',"distinct_nulls":2', ""))
+    assert Floor.load(unknown).distinct_nulls is None
+    assert main(["diff", files["ref"], files["null"], "--floor", str(unknown), "--per-row"]) == 0
+    assert "does not record whether its nulls vary" in capsys.readouterr().err
+    assert main(["diff", files["ref"], files["null"], "--per-row"]) == 2
+    assert "--per-row needs --floor" in capsys.readouterr().err
+
+
 def test_floor_writes_only_json(files, capsys) -> None:
     assert main(["floor", files["ref"], files["null"], files["drift"], "--min-nulls", "2"]) == 0
     out = capsys.readouterr().out
     floor = Floor.load(out.encode())
     assert (floor.nulls, floor.changed_rows, floor.total_rows, floor.hamming) == (2, 1, 3, 2)
+    # Without --per-row the file has no per-row keys, so SEMQ 1.0 reads it.
+    assert "max_hamming" not in out and "distinct_nulls" not in out
     assert floor.reference_id == Encoding.load(files["ref"]).state_id
     # Fewer nulls than required is a usage error unless lowered explicitly.
     assert main(["floor", files["ref"], files["null"]]) == 2

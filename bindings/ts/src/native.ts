@@ -129,6 +129,7 @@ export interface CoreExports {
   ) => number;
   floorFree: (floor: number) => void;
   floorMeasure: (diffs: number, k: number, out: number, err: number) => number;
+  floorMeasureFor: (diffs: number, k: number, checks: number, out: number, err: number) => number;
   floorConfig: (floor: number) => number;
   floorIdKind: (floor: number) => number;
   floorReferenceId: (floor: number, out: number) => void;
@@ -136,7 +137,19 @@ export interface CoreExports {
   floorChangedRows: (floor: number) => bigint;
   floorTotalRows: (floor: number) => bigint;
   floorHamming: (floor: number) => bigint;
+  floorMaxHamming: (floor: number) => bigint;
+  floorDistinctNulls: (floor: number) => bigint;
+  floorJsonSize: (floor: number) => bigint;
+  floorSave: (floor: number, out: number, cap: bigint, err: number) => number;
+  floorLoad: (buf: number, len: bigint, out: number, err: number) => number;
   diffWithin: (diff: number, floor: number, out: number, err: number) => number;
+  // Gate evaluation
+  diffEvaluate: (diff: number, floor: number, checks: number, out: number, err: number) => number;
+  verdictFree: (verdict: number) => void;
+  verdictPassed: (verdict: number) => number;
+  verdictReasons: (verdict: number) => number;
+  verdictRowCount: (verdict: number) => bigint;
+  verdictRow: (verdict: number, i: bigint) => bigint;
   // Build information and utilities
   coreVersion: () => string;
   buildId: () => string;
@@ -155,7 +168,8 @@ export function bindCore(w: SemqWasm): CoreExports {
   };
   const big = (name: string) => {
     const f = w.raw(name);
-    return (...args: Args): bigint => f(...args) as bigint;
+    // WASM returns i64 as a signed BigInt; every uint64_t of the ABI is unsigned.
+    return (...args: Args): bigint => BigInt.asUintN(64, f(...args) as bigint);
   };
   const str = (name: string) => {
     const f = w.raw(name);
@@ -223,6 +237,7 @@ export function bindCore(w: SemqWasm): CoreExports {
     floorCreate: num("semq_floor_create"),
     floorFree: nil("semq_floor_free"),
     floorMeasure: num("semq_floor_measure"),
+    floorMeasureFor: num("semq_floor_measure_for"),
     floorConfig: num("semq_floor_config"),
     floorIdKind: num("semq_floor_id_kind"),
     floorReferenceId: nil("semq_floor_reference_id"),
@@ -230,7 +245,18 @@ export function bindCore(w: SemqWasm): CoreExports {
     floorChangedRows: big("semq_floor_changed_rows"),
     floorTotalRows: big("semq_floor_total_rows"),
     floorHamming: big("semq_floor_hamming"),
+    floorMaxHamming: big("semq_floor_max_hamming"),
+    floorDistinctNulls: big("semq_floor_distinct_nulls"),
+    floorJsonSize: big("semq_floor_json_size"),
+    floorSave: num("semq_floor_save"),
+    floorLoad: num("semq_floor_load"),
     diffWithin: num("semq_diff_within"),
+    diffEvaluate: num("semq_diff_evaluate"),
+    verdictFree: nil("semq_verdict_free"),
+    verdictPassed: num("semq_verdict_passed"),
+    verdictReasons: num("semq_verdict_reasons"),
+    verdictRowCount: big("semq_verdict_row_count"),
+    verdictRow: big("semq_verdict_row"),
     coreVersion: str("semq_core_version"),
     buildId: str("semq_build_id"),
     backendName: str("semq_backend_name"),

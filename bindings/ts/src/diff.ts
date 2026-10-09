@@ -13,6 +13,39 @@ import { call, type Runtime } from "./runtime.js";
 const LIST_ADDED = ABI.constants.SEMQ_LIST_ADDED;
 const LIST_REMOVED = ABI.constants.SEMQ_LIST_REMOVED;
 const LIST_CHANGED = ABI.constants.SEMQ_LIST_CHANGED;
+const CHECK_PER_ROW = ABI.constants.SEMQ_CHECK_PER_ROW;
+
+/** A check that failed in a {@link Verdict}; the same names in every binding. */
+export type Reason = "no_common_rows" | "removed_rows" | "changed_ratio" | "hamming" | "encoder" | "row_above_max";
+
+/** The reasons by bit of `semq_reason_t`, in the order a verdict lists them. */
+const REASONS: readonly Reason[] = ["no_common_rows", "removed_rows", "changed_ratio", "hamming", "encoder", "row_above_max"];
+
+/** Which checks {@link Diff.evaluate} applies beyond those of {@link Diff.within}, and which data
+ * {@link Floor.measure} records for them; every check is off by default. */
+export interface GateOptions {
+  /** Also fail when any changed row has a hamming above the floor's `maxHamming`, and list those rows.
+   * Needs a floor from `Floor.measure(diffs, { perRow: true })`. */
+  perRow?: boolean;
+}
+
+/** @internal The options as `semq_check_t` flags. */
+export function checksOf(options: GateOptions, operation: string): number {
+  if (options === null || typeof options !== "object") throw new InvalidInput(`${operation} options must be an object`);
+  return options.perRow === true ? CHECK_PER_ROW : 0;
+}
+
+/** The result of {@link Diff.evaluate}. */
+export interface Verdict {
+  /** True iff no check failed. */
+  passed: boolean;
+  /** Every failed check, in the order `no_common_rows`, `removed_rows`,
+   * `changed_ratio`, `hamming`, `encoder`, `row_above_max`. */
+  reasons: Reason[];
+  /** Ids of the changed rows above the floor's `maxHamming`, canonical order;
+   * empty unless the per-row check ran. */
+  rows: Array<bigint | string>;
+}
 
 /**
  * The result of `reference.diff(candidate)`. Keeps the rows it needs alive
@@ -226,6 +259,39 @@ export class Diff {
       call(r, "within", (err) => r.core.diffWithin(h, f, out, err));
       return r.w.getU32(out) !== 0;
     });
+  }
+
+  /**
+   * The verdict of `floor` on this diff, with every check that failed.
+   *
+   * With no options, `passed` equals {@link Diff.within}. With
+   * `perRow: true` the verdict also fails when any changed row has a hamming
+   * above `floor.maxHamming`, and `rows` lists those ids. `Incompatible` for
+   * a floor of another config, id kind or reference, and for the per-row
+   * check on a floor without per-row data (from `Floor.measure` without
+   * `perRow`, or saved by SEMQ 1.0).
+   */
+  evaluate(floor: Floor, options: GateOptions = {}): Verdict {
+    const h = this.handle;
+    const r = this.r;
+    if (!(floor instanceof Floor)) throw new InvalidInput("evaluate takes a Floor");
+    const checks = checksOf(options, "evaluate");
+    const f = floor.handle;
+    const { reasons, rows } = scoped(r.w, (a) => {
+      const out = a.alloc(4);
+      call(r, "evaluate", (err) => r.core.diffEvaluate(h, f, checks, out, err));
+      const v = r.w.getU32(out);
+      try {
+        const n = Number(r.core.verdictRowCount(v));
+        const indices = Array.from({ length: n }, (_, i) => Number(r.core.verdictRow(v, BigInt(i))));
+        return { reasons: r.core.verdictReasons(v), rows: indices };
+      } finally {
+        r.core.verdictFree(v);
+      }
+    });
+    const changed: Array<bigint | string> = rows.length > 0 ? this.list(LIST_CHANGED) : [];
+    const names = REASONS.filter((_, bit) => (reasons & (1 << bit)) !== 0);
+    return { passed: reasons === 0, reasons: names, rows: rows.map((i) => changed[i]!) };
   }
 
   /** The report schema: digests as lowercase hex, `u64` ids as decimal

@@ -14,6 +14,7 @@ ability to reproduce identities and verdicts.
 | Public C ABI and the root exports of each binding | The project's SemVer policy covers `include/semq.h` and the root exports of every binding: the five types, the build information and the six errors, in each host's idiom. |
 | `.semq` file format | Version `2`, written into every file. Readers reject other versions. |
 | Operator rules | The rule revision `p2` inside every config, currently `0`. A change to a symbol mapping increments it; states with different revisions are incompatible. |
+| Floor JSON | Version `semq-floor/1`, written into every floor. Added keys are optional and ignored by readers that do not know them; the version changes only when the meaning of a key changes. See the [floor schema](reference/contracts.md#floor-schema). |
 | Conformance vectors | Every byte and verdict pinned under `tests/conformance/`; a change requires a version or revision bump in the same change. |
 
 CI enforces the first row: every pull request's C ABI and binding APIs are

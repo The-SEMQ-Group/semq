@@ -11,6 +11,7 @@ Cases a host cannot execute (setting the FP rounding mode) are skipped as
 
 from __future__ import annotations
 
+import io
 import json
 import math
 import struct
@@ -306,18 +307,29 @@ def test_11_diff(case: dict[str, Any]) -> None:
 @pytest.mark.parametrize("case", cases("12-floor"))
 def test_12_floor(case: dict[str, Any]) -> None:
     i, e = case["input"], case["expect"]
+    if "floor_json" in i:
+        loaded = run_expecting(e, lambda: Floor.load(ROOT / "12-floor" / i["floor_json"]))
+        if loaded is not None:
+            out = io.StringIO()
+            loaded.save(out)
+            assert loaded.as_dict() == e["floor"] and out.getvalue() == e["json"] + "\n"
+        return
     if "null_diffs" in i:
         diffs = [Encoding.load(ROOT / "12-floor" / a).diff(Encoding.load(ROOT / "12-floor" / b)) for a, b in i["null_diffs"]]
-        floor = run_expecting(e, lambda: Floor.measure(diffs))
+        per_row = i.get("per_row", False)
+        floor = run_expecting(e, lambda: Floor.measure(diffs, per_row=per_row))
         if floor is not None:
             assert floor.as_dict() == e["floor"]
             for d in diffs:
-                assert d.within(floor)
+                assert d.within(floor) and d.evaluate(floor, per_row=per_row).passed
         return
     d = Encoding.load(ROOT / "12-floor" / i["reference"]).diff(Encoding.load(ROOT / "12-floor" / i["candidate"]))
-    result = run_expecting(e, lambda: d.within(Floor.from_dict(i["floor"])))
-    if result is not None:
-        assert result == e["within"]
+    verdict = run_expecting(e, lambda: d.evaluate(Floor.from_dict(i["floor"]), per_row=i.get("per_row", False)))
+    if verdict is not None:
+        floor = Floor.from_dict(i["floor"])
+        assert floor.as_dict() == i["floor"]
+        assert verdict.as_dict() == e["evaluate"]
+        assert d.within(floor) == e["within"]
 
 
 @pytest.mark.parametrize("case", cases("13-report"))
@@ -345,5 +357,5 @@ def test_15_fp_environment(case: dict[str, Any]) -> None:
 
 
 def test_root_surface_is_generated_from_the_host_table() -> None:
-    assert len(semq.__all__) == 15
+    assert len(semq.__all__) == 16
     assert math.isfinite(CodecConfig.quant(4, 4).max_magnitude)

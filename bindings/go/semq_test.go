@@ -11,7 +11,6 @@ import (
 	"math"
 	"os"
 	"reflect"
-	"slices"
 	"strings"
 	"testing"
 )
@@ -981,13 +980,115 @@ func TestFloorMeasureAndWithin(t *testing.T) {
 	}
 }
 
+// 200 rows; the null changes rows 0..99 by 2 units. The candidate changes
+// rows 0..98 by 2 and row 150 by 10: its p99 ignores row 150, so it is
+// within the floor, and only the per-row check catches it.
+func TestEvaluateNamesEveryFailedCheckAndTheRowsAboveMax(t *testing.T) {
+	ref := rowsWithChanges(t, 200, 0, 0, 4)
+	null := rowsWithChanges(t, 200, 100, 2, 4)
+	defer ref.Close()
+	defer null.Close()
+	dn := mustDiff(t, ref, null)
+	f, err := MeasureFloorFor([]*Diff{dn}, GateOptions{PerRow: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	if m, ok := f.MaxHamming(); !ok || m != 2 || f.Hamming() != 2 {
+		t.Fatalf("floor: %v", f.Report())
+	}
+	if n, ok := f.DistinctNulls(); !ok || n != 1 {
+		t.Fatalf("DistinctNulls: %d %v", n, ok)
+	}
+	c := ref.Config()
+	bpv := int(c.BytesPerVector())
+	ids := make([]uint64, 200)
+	rows := make([]byte, 0, 200*bpv)
+	for i := range ids {
+		sym := make([]uint8, 16)
+		flip := 0
+		if i < 99 {
+			flip = 2
+		} else if i == 150 {
+			flip = 10
+		}
+		for u := range sym {
+			sym[u] = 4
+			if u < flip {
+				sym[u] = 5
+			}
+		}
+		ids[i] = uint64(i)
+		rows = append(rows, packQuant(sym, 3, bpv)...)
+	}
+	cand := mustEncoding(t, U64IDs(ids...), rows, c, nil)
+	defer cand.Close()
+	d := mustDiff(t, ref, cand)
+	if w, err := d.Within(f); err != nil || !w {
+		t.Fatalf("within: %v %v", w, err)
+	}
+	plain, err := d.Evaluate(f, GateOptions{})
+	if err != nil || !plain.Passed || len(plain.Reasons) != 0 || len(plain.Rows) != 0 {
+		t.Fatalf("plain: %+v %v", plain, err)
+	}
+	strict, err := d.Evaluate(f, GateOptions{PerRow: true})
+	if err != nil || strict.Passed || !reflect.DeepEqual(strict.Reasons, []Reason{ReasonRowAboveMax}) ||
+		!reflect.DeepEqual(strict.Rows, []ID{U64ID(150)}) {
+		t.Fatalf("per row: %+v %v", strict, err)
+	}
+	// Every failed check is named, not only the first.
+	tight, err := NewFloor(c, IDU64, ref.StateID(), 1, 1, 200, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tight.Close()
+	tightJSON, err := json.Marshal(tight)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tightMax, err := LoadFloor(append(tightJSON[:len(tightJSON)-1], `,"max_hamming":1}`...))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tightMax.Close()
+	all, err := d.Evaluate(tightMax, GateOptions{PerRow: true})
+	if err != nil || !reflect.DeepEqual(all.Reasons, []Reason{ReasonChangedRatio, ReasonHamming, ReasonRowAboveMax}) || len(all.Rows) != 100 {
+		t.Fatalf("tight: %+v %v", all.Reasons, err)
+	}
+	// A floor without per-row data refuses the per-row check and keeps its
+	// plain verdict: one from MeasureFloor, and one through FloorReport.
+	plainFloor, err := MeasureFloor([]*Diff{dn})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer plainFloor.Close()
+	fromReport, err := FloorFromReport(f.Report())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fromReport.Close()
+	for _, g := range []*Floor{plainFloor, fromReport, tight} {
+		if _, ok := g.MaxHamming(); ok {
+			t.Fatalf("per-row data on %v", g)
+		}
+		if v, err := d.Evaluate(g, GateOptions{}); err != nil || v.Passed != (g != tight) {
+			t.Fatalf("plain on a floor without per-row data: %+v %v", v, err)
+		}
+		_, err = d.Evaluate(g, GateOptions{PerRow: true})
+		asIncompatible(t, err)
+		if !strings.Contains(err.Error(), "per-row") {
+			t.Fatalf("message: %v", err)
+		}
+	}
+}
+
 func TestFloorReportAndInverse(t *testing.T) {
 	ref := rowsWithChanges(t, 100, 0, 0, 4)
 	a := rowsWithChanges(t, 100, 1, 1, 4)
 	defer ref.Close()
 	defer a.Close()
 	da := mustDiff(t, ref, a)
-	f, err := MeasureFloor([]*Diff{da})
+	f, err := MeasureFloorFor([]*Diff{da}, GateOptions{PerRow: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1000,6 +1101,61 @@ func TestFloorReportAndInverse(t *testing.T) {
 		`"id_kind":"u64","reference_id":"` + hexOf(ref.StateID()) + `","nulls":1,"changed_rows":1,"total_rows":100,"hamming":1}`
 	if string(raw) != want {
 		t.Fatalf("report\n got %s\nwant %s", raw, want)
+	}
+	if m, ok := f.MaxHamming(); !ok || m != 1 {
+		t.Fatalf("MaxHamming: %d %v", m, ok)
+	}
+	// The Floor's own JSON form, written and read by the core, carries the
+	// per-row data. Without it, the form is the report's, as SEMQ 1.0 wrote it.
+	full, err := json.Marshal(f)
+	if err != nil || string(full) != want[:len(want)-1]+`,"max_hamming":1,"distinct_nulls":1}` {
+		t.Fatalf("floor json %s %v", full, err)
+	}
+	plain, err := MeasureFloor([]*Diff{da})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer plain.Close()
+	if b, err := json.Marshal(plain); err != nil || string(b) != want {
+		t.Fatalf("measure json %s %v", b, err)
+	}
+	back, err := LoadFloor(full)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(back.Close)
+	if m, ok := back.MaxHamming(); !ok || m != 1 || back.Report() != f.Report() {
+		t.Fatalf("LoadFloor: %+v", back.Report())
+	}
+	if n, ok := back.DistinctNulls(); !ok || n != 1 {
+		t.Fatalf("LoadFloor DistinctNulls: %d %v", n, ok)
+	}
+	// encoding/json round trip of a Floor field reads through the core too.
+	var holder struct{ Floor *Floor }
+	if err := json.Unmarshal([]byte(`{"Floor":`+string(full)+`}`), &holder); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(holder.Floor.Close)
+	if n, ok := holder.Floor.DistinctNulls(); !ok || n != 1 || holder.Floor.Report() != f.Report() {
+		t.Fatalf("Unmarshal: %+v", holder.Floor.Report())
+	}
+	if err := json.Unmarshal([]byte(`{"Floor":{}}`), &holder); err == nil {
+		t.Fatal("unmarshaled an empty floor")
+	}
+	withNote, err := LoadFloor([]byte(`{"note":[1,{}],` + string(full[1:])))
+	if err != nil {
+		t.Fatal(err)
+	}
+	withNote.Close()
+	for _, bad := range []string{"", "{}", string(full) + " x", strings.Replace(string(full), `"max_hamming":1`, `"max_hamming":0`, 1),
+		strings.Replace(string(full), `"distinct_nulls":1`, `"distinct_nulls":2`, 1)} {
+		_, err := LoadFloor([]byte(bad))
+		asInvalid(t, err)
+	}
+	closed, _ := LoadFloor(full)
+	closed.Close()
+	if _, err := json.Marshal(closed); err == nil {
+		t.Fatal("marshaled a closed floor")
 	}
 	// The inverse, from the report and from its JSON, yields the same floor.
 	var decoded FloorReport
@@ -1050,55 +1206,23 @@ func TestFloorReportAndInverse(t *testing.T) {
 	}
 }
 
-// The JSON reader of FloorReport is strict: exactly the eight keys of the
-// floor schema, strings and non-negative integers where it says so, and
-// the config through ConfigReport's reader. Any other shape is
+// The JSON reader of FloorReport applies the core's rules for the floor
+// schema: the known keys strictly, other keys ignored. Any violation is
 // InvalidInputError and leaves the target untouched.
-func TestFloorReportJSONIsStrict(t *testing.T) {
+func TestFloorReportJSONUsesTheCore(t *testing.T) {
 	const ref = "c742dfed3bdd20edb3f5d3e4f7086528f56b95a33ae03048a228d216d2452ce1"
-	const cfg = `{"operator":"quant","dim":16,"bins":4,"rule_revision":0}`
-	type field struct{ key, raw string }
-	base := []field{
-		{"version", `"semq-floor/1"`}, {"config", cfg}, {"id_kind", `"u64"`}, {"reference_id", `"` + ref + `"`},
-		{"nulls", "1"}, {"changed_rows", "1"}, {"total_rows", "100"}, {"hamming", "1"},
-	}
-	render := func(fields []field) string {
-		parts := make([]string, len(fields))
-		for i, f := range fields {
-			parts[i] = `"` + f.key + `":` + f.raw
-		}
-		return "{" + strings.Join(parts, ",") + "}"
-	}
-	with := func(key, raw string) string {
-		out := slices.Clone(base)
-		for i := range out {
-			if out[i].key == key {
-				out[i].raw = raw
-			}
-		}
-		return render(out)
-	}
-	without := func(key string) string {
-		return render(slices.DeleteFunc(slices.Clone(base), func(f field) bool { return f.key == key }))
-	}
-	withConfig := func(edit func([]field) []field) string {
-		fields := []field{{"operator", `"quant"`}, {"dim", "16"}, {"bins", "4"}, {"rule_revision", "0"}}
-		return with("config", render(edit(fields)))
-	}
-	valid := render(base)
+	valid := `{"version":"semq-floor/1","config":{"operator":"quant","dim":16,"bins":4,"rule_revision":0},` +
+		`"id_kind":"u64","reference_id":"` + ref + `","nulls":1,"changed_rows":1,"total_rows":100,"hamming":1}`
 	want := FloorReport{
 		Version: FloorVersion, Config: ConfigReport{Operator: "quant", Dim: 16, Parameter: 4, RuleRevision: 0},
 		IDKind: "u64", ReferenceID: ref, Nulls: 1, ChangedRows: 1, TotalRows: 100, Hamming: 1,
 	}
-
 	// Round trip: the document decodes, builds a floor and marshals back
-	// byte for byte. Key order and whitespace are not part of what is read.
+	// byte for byte. Key order, whitespace and unknown keys are not part of
+	// what is read.
 	var r FloorReport
-	if err := json.Unmarshal([]byte(valid), &r); err != nil {
-		t.Fatal(err)
-	}
-	if r != want {
-		t.Fatalf("decoded %+v", r)
+	if err := json.Unmarshal([]byte(valid), &r); err != nil || r != want {
+		t.Fatalf("decoded %+v %v", r, err)
 	}
 	f, err := FloorFromReport(r)
 	if err != nil {
@@ -1109,118 +1233,35 @@ func TestFloorReportJSONIsStrict(t *testing.T) {
 		t.Fatalf("round trip\n got %s\nwant %s (%v)", out, valid, err)
 	}
 	reordered := "{ \"hamming\" : 1 ,\"total_rows\":100, \"changed_rows\":1, \"nulls\":1, \"reference_id\":\"" + ref +
-		"\", \"id_kind\":\"u64\", \"config\": { \"rule_revision\":0, \"bins\":4, \"dim\":16, \"operator\":\"quant\" }, \"version\":\"semq-floor/1\" }"
+		"\", \"id_kind\":\"u64\", \"config\": { \"rule_revision\":0, \"bins\":4, \"dim\":16, \"operator\":\"quant\" }, " +
+		"\"version\":\"semq-floor/1\", \"max_hamming\": 1, \"note\": [1, {\"a\": null}] }"
 	var r2 FloorReport
 	if err := json.Unmarshal([]byte(reordered), &r2); err != nil || r2 != want {
 		t.Fatalf("reordered: %+v %v", r2, err)
 	}
-
-	// reject decodes text into a copy of want and requires InvalidInputError
-	// whose message contains each of the given fragments; the copy must be
-	// left as it was.
-	reject := func(name, text string, fragments ...string) {
-		t.Helper()
+	for _, text := range []string{
+		`null`, `[]`, `{}`, `"semq-floor/1"`,
+		strings.Replace(valid, `"nulls":1`, `"nulls":1.0`, 1),
+		strings.Replace(valid, `"nulls":1`, `"nulls":"1"`, 1),
+		strings.Replace(valid, `"nulls":1`, `"nulls":-1`, 1),
+		strings.Replace(valid, `"nulls":1`, `"nulls":18446744073709551616`, 1),
+		strings.Replace(valid, `"hamming":1`, `"hamming":1,"hamming":1`, 1),
+		strings.Replace(valid, `,"hamming":1`, ``, 1),
+		strings.Replace(valid, "semq-floor/1", "semq-floor/2", 1),
+		strings.Replace(valid, `"u64"`, `"u32"`, 1),
+		strings.Replace(valid, `"rule_revision":0`, `"rule_revision":1`, 1),
+	} {
 		r := want
 		err := json.Unmarshal([]byte(text), &r)
 		if err == nil {
-			t.Fatalf("%s: %s decoded", name, text)
+			t.Fatalf("%s decoded", text)
 		}
-		ie := asInvalid(t, err)
-		for _, fragment := range fragments {
-			if !strings.Contains(ie.Message, fragment) {
-				t.Errorf("%s: message %q does not name %q", name, ie.Message, fragment)
-			}
+		var ie *InvalidInputError
+		if !errors.As(err, &ie) {
+			t.Fatalf("%s: %T %v", text, err, err)
 		}
 		if r != want {
-			t.Errorf("%s: target modified: %+v", name, r)
-		}
-	}
-
-	// Not an object.
-	for _, text := range []string{`null`, `[]`, `1`, `"semq-floor/1"`, `true`, `[` + valid + `]`} {
-		reject("document "+text, text, "floor report", "object")
-	}
-	// Missing and unknown keys are named.
-	for _, f := range base {
-		reject("missing "+f.key, without(f.key), "missing key", `"`+f.key+`"`)
-	}
-	for _, extra := range []field{{"extra", "1"}, {"Nulls", "1"}, {"nulls ", "1"}, {"", "1"}} {
-		reject("extra "+extra.key, render(append(slices.Clone(base), extra)), "unknown key", `"`+extra.key+`"`)
-	}
-	reject("two unknown keys", render(append(slices.Clone(base), field{"z", "1"}, field{"a", "1"})), "unknown key", `"a"`)
-	// Counts: null and every other non-integer shape, and beyond 64 bits.
-	for _, key := range []string{"nulls", "changed_rows", "total_rows", "hamming"} {
-		for _, raw := range []string{
-			`null`, `true`, `false`, `1.5`, `1.0`, `"1"`, `-1`, `-0`, `1e3`, `1E3`, `1e-3`, `[1]`, `{}`, `""`, `"null"`,
-		} {
-			reject(key+" = "+raw, with(key, raw), "non-negative integer", `"`+key+`"`)
-		}
-		reject(key+" beyond 64 bits", with(key, "18446744073709551616"), "64 bits", `"`+key+`"`)
-	}
-	// The largest count decodes; its range is the core's business.
-	var big FloorReport
-	if err := json.Unmarshal([]byte(with("nulls", "18446744073709551615")), &big); err != nil || big.Nulls != math.MaxUint64 {
-		t.Fatalf("max nulls: %v %d", err, big.Nulls)
-	}
-	// Strings.
-	for _, key := range []string{"version", "id_kind", "reference_id"} {
-		for _, raw := range []string{`null`, `1`, `true`, `[]`, `{}`, `["u64"]`} {
-			reject(key+" = "+raw, with(key, raw), "must be a string", `"`+key+`"`)
-		}
-	}
-	// A non-empty string of the wrong value is the constructor's business.
-	for _, key := range []string{"version", "id_kind", "reference_id"} {
-		var r FloorReport
-		if err := json.Unmarshal([]byte(with(key, `"other"`)), &r); err != nil {
-			t.Fatalf("%s = \"other\": %v", key, err)
-		}
-		if _, err := FloorFromReport(r); err == nil {
-			t.Fatalf("%s = \"other\" accepted", key)
-		} else {
-			asInvalid(t, err)
-		}
-	}
-	// Config: the same rules, with the parameter under the operator's key.
-	for _, raw := range []string{`null`, `1`, `"quant"`, `[]`, `true`} {
-		reject("config = "+raw, with("config", raw), "config report", "object")
-	}
-	for _, key := range []string{"operator", "dim", "bins", "rule_revision"} {
-		reject("config missing "+key, withConfig(func(f []field) []field {
-			return slices.DeleteFunc(f, func(x field) bool { return x.key == key })
-		}), "config report", "missing key", `"`+key+`"`)
-	}
-	reject("config extra key", withConfig(func(f []field) []field { return append(f, field{"extra", "1"}) }),
-		"config report", "unknown key", `"extra"`)
-	reject("config with two parameter keys", withConfig(func(f []field) []field { return append(f, field{"sectors", "4"}) }),
-		"config report", "unknown key", `"sectors"`)
-	reject("config parameter under another operator's key", withConfig(func(f []field) []field {
-		f[2] = field{"sectors", "4"}
-		return f
-	}), "config report", "missing key", `"bins"`)
-	reject("config empty", with("config", `{}`), "config report", "missing key", `"operator"`)
-	for _, raw := range []string{`null`, `1`, `true`, `["quant"]`} {
-		reject("config operator = "+raw, withConfig(func(f []field) []field { f[0].raw = raw; return f }),
-			"config report", "must be a string", `"operator"`)
-	}
-	reject("config unknown operator", withConfig(func(f []field) []field { f[0].raw = `"other"`; return f }),
-		"config report", "operator must be orbit, phase or quant")
-	for i, key := range []string{"dim", "bins", "rule_revision"} {
-		for _, raw := range []string{`null`, `true`, `1.5`, `"16"`, `-1`, `1e1`, `[16]`, `{}`} {
-			reject("config "+key+" = "+raw, withConfig(func(f []field) []field { f[i+1].raw = raw; return f }),
-				"config report", "non-negative integer", `"`+key+`"`)
-		}
-		reject("config "+key+" beyond 32 bits", withConfig(func(f []field) []field { f[i+1].raw = "4294967296"; return f }),
-			"config report", "32 bits", `"`+key+`"`)
-	}
-	// The other operators read their own parameter key.
-	for _, c := range []struct{ op, key string }{{"phase", "sectors"}, {"orbit", "scale"}} {
-		var r FloorReport
-		text := with("config", `{"operator":"`+c.op+`","dim":16,"`+c.key+`":4,"rule_revision":0}`)
-		if err := json.Unmarshal([]byte(text), &r); err != nil {
-			t.Fatalf("%s: %v", c.op, err)
-		}
-		if r.Config != (ConfigReport{Operator: c.op, Dim: 16, Parameter: 4, RuleRevision: 0}) {
-			t.Fatalf("%s: %+v", c.op, r.Config)
+			t.Errorf("%s: target modified: %+v", text, r)
 		}
 	}
 }

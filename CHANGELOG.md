@@ -9,6 +9,69 @@ surface.
 
 ## [Unreleased]
 
+### Added
+
+- **`Diff.evaluate(floor, options)`**, a verdict that names every failed
+  check (`reasons`) instead of a single boolean. With no options it agrees
+  with `within`. Options are off by default, so a new one never changes an
+  existing verdict. Python `diff.evaluate(floor, per_row=...)`, Rust
+  `diff.evaluate(&floor, &GateOptions::new().per_row(...))`, Go
+  `d.Evaluate(f, semq.GateOptions{PerRow: ...})`, TypeScript
+  `diff.evaluate(floor, { perRow })`; C `semq_diff_evaluate(diff, floor,
+  checks, ...)` with `semq_check_t` flags and `semq_verdict_t`. An unknown
+  flag is `InvalidInput`.
+- **Per-row check.** `per_row` also fails the verdict when any changed row
+  has a hamming distance above the floor's `max_hamming`, the largest of any
+  changed row of any null, and lists those rows. The p99 check ignores the
+  most changed 1% of rows; this one ignores none. `semq diff --floor F
+  --per-row` applies it from the command line.
+- **Floors with per-row data.** `Floor.measure(nulls, per_row=True)` (Rust
+  `Floor::measure_for`, Go `MeasureFloorFor`, TypeScript
+  `Floor.measure(nulls, { perRow: true })`, C `semq_floor_measure_for`,
+  CLI `semq floor --per-row`) also records `max_hamming` and
+  `distinct_nulls`, the number of distinct null states (two nulls are the
+  same when their candidates have the same `content_digest`). Both are
+  optional keys of the floor JSON, with accessors in every binding (C
+  `semq_floor_max_hamming`, `semq_floor_distinct_nulls`). `measure` and
+  the constructors record neither.
+- **The floor JSON is written and read by the core** (`semq_floor_save`,
+  `semq_floor_load`), so every binding applies the same rules. Rust
+  `Floor::to_json` and `Floor::from_json`, Go `json.Marshal(floor)` and
+  `semq.LoadFloor`, TypeScript `floor.toJson()` and `Floor.fromJson`; Python
+  `save`, `load`, `as_dict` and `from_dict` now call the core.
+- `semq diff --per-row` warns on stderr when the floor's nulls were not all
+  the same state and there are fewer than 20 of them. With `N` such nulls,
+  each check can reject an unchanged rebuild with probability up to
+  `1/(N+1)`; the warning does not change the exit code. The
+  [gate guide](docs/guides/gate-a-rebuild.md) explains the bound.
+
+### Changed
+
+- Reading floor JSON ignores keys it does not know, at the top level and
+  inside `config`, so a floor saved by a later version with an added key
+  still reads. Known keys stay strict, and `18446744073709551615` is
+  reserved in `max_hamming` and `distinct_nulls`. `version` remains
+  `semq-floor/1`; it changes only when the meaning of a key changes.
+  A floor from `measure` carries only the keys SEMQ 1.0 knows, so every
+  version reads it. SEMQ 1.0 rejects a floor that carries `max_hamming` or
+  `distinct_nulls`: upgrade the readers before writing floors with
+  `per_row`.
+- Every binding writes the floor JSON in the core's compact form, with no
+  whitespace. Python 1.0 wrote spaces after `:` and `,`, so a floor saved
+  again from Python differs in bytes, not in content.
+- `semq diff --floor --json` keeps `within` as the result of `Diff.within`;
+  with `--per-row`, the full verdict is in `verdict.passed`, and the text
+  output adds a `passed:` line.
+- Go `*Floor` implements `UnmarshalJSON` through the core, so a `Floor`
+  field survives an `encoding/json` round trip.
+- In Rust and TypeScript, `Verdict.passed` reads the core's reason flags, so
+  a reason this version does not name still fails the verdict.
+- Go `FloorReport.UnmarshalJSON` and `FloorFromReport` read through the
+  core, and so check every value, not only the shape. `FloorReport` keeps
+  its 1.0 fields and drops the per-row data; read a floor with per-row data
+  with `LoadFloor` (Rust `Floor::from_json`).
+- `semq diff --floor --json` adds a `verdict` object next to `within`.
+
 ## [1.0.0] - 2026-10-05
 
 First public release.

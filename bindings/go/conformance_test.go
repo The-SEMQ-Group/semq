@@ -926,10 +926,10 @@ func conformance11(t *testing.T, dir string, c conformanceCase) {
 	}
 }
 
-// assertFloor compares the report form of f with the manifest's floor.
+// assertFloor compares the JSON form of f with the manifest's floor.
 func assertFloor(t *testing.T, f *semq.Floor, want json.RawMessage) {
 	t.Helper()
-	got, err := json.Marshal(f.Report())
+	got, err := json.Marshal(f)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -941,16 +941,11 @@ func assertFloor(t *testing.T, f *semq.Floor, want json.RawMessage) {
 	}
 }
 
-// floorOf reads the floor a manifest gives in the report form and
-// constructs it; the error, from the reader or the constructor, is the
-// host's verdict on that form.
+// floorOf reads the floor a manifest gives as a JSON object, by the core's
+// rules; the error is the host's verdict on that object.
 func floorOf(t *testing.T, raw json.RawMessage) (*semq.Floor, error) {
 	t.Helper()
-	var r semq.FloorReport
-	if err := json.Unmarshal(raw, &r); err != nil {
-		return nil, err
-	}
-	f, err := semq.FloorFromReport(r)
+	f, err := semq.LoadFloor(raw)
 	if err == nil {
 		t.Cleanup(f.Close)
 	}
@@ -972,14 +967,37 @@ func conformance12(t *testing.T, dir string, c conformanceCase) {
 		Reference string          `json:"reference"`
 		Candidate string          `json:"candidate"`
 		Floor     json.RawMessage `json:"floor"`
+		PerRow    bool            `json:"per_row"`
+		FloorJSON string          `json:"floor_json"`
 	}
 	decodeJSON(t, c.Input, &in)
+	if in.FloorJSON != "" {
+		b, err := os.ReadFile(filepath.Join(dir, in.FloorJSON))
+		if err != nil {
+			t.Fatal(err)
+		}
+		f, err := floorOf(t, b)
+		if outcome(t, c.Expect, err) {
+			return
+		}
+		var expect struct {
+			Floor json.RawMessage `json:"floor"`
+			JSON  string          `json:"json"`
+		}
+		decodeJSON(t, c.Expect, &expect)
+		assertFloor(t, f, expect.Floor)
+		if got, _ := json.Marshal(f); string(got) != expect.JSON {
+			t.Errorf("json:\n got %s\nwant %s", got, expect.JSON)
+		}
+		return
+	}
 	if in.NullDiffs != nil {
 		var expect struct {
 			Floor json.RawMessage `json:"floor"`
 		}
 		diffs := nullDiffs(t, dir, in.NullDiffs)
-		floor, err := semq.MeasureFloor(diffs)
+		opts := semq.GateOptions{PerRow: in.PerRow}
+		floor, err := semq.MeasureFloorFor(diffs, opts)
 		if outcome(t, c.Expect, err) {
 			return
 		}
@@ -994,25 +1012,50 @@ func conformance12(t *testing.T, dir string, c conformanceCase) {
 			if !within {
 				t.Errorf("null diff %d is not within its own floor", i)
 			}
+			if v, err := d.Evaluate(floor, opts); err != nil || !v.Passed {
+				t.Errorf("null diff %d does not pass its own floor: %+v %v", i, v, err)
+			}
 		}
 		return
 	}
 	var expect struct {
-		Within bool `json:"within"`
+		Within   bool `json:"within"`
+		Evaluate struct {
+			Passed  bool     `json:"passed"`
+			Reasons []string `json:"reasons"`
+			Rows    []string `json:"rows"`
+		} `json:"evaluate"`
 	}
 	d := diffVectorFiles(t, dir, in.Reference, in.Candidate)
 	// A floor is validated at construction, so an invalid one is rejected
-	// before Within is called.
+	// before it is applied.
 	floor, err := floorOf(t, in.Floor)
 	if err != nil {
 		outcome(t, c.Expect, err)
 		return
 	}
-	within, err := d.Within(floor)
+	assertFloor(t, floor, in.Floor)
+	verdict, err := d.Evaluate(floor, semq.GateOptions{PerRow: in.PerRow})
 	if outcome(t, c.Expect, err) {
 		return
 	}
 	decodeJSON(t, c.Expect, &expect)
+	reasons := []string{}
+	for _, r := range verdict.Reasons {
+		reasons = append(reasons, string(r))
+	}
+	rows := []string{}
+	for _, id := range verdict.Rows {
+		rows = append(rows, id.String())
+	}
+	e := expect.Evaluate
+	if verdict.Passed != e.Passed || !reflect.DeepEqual(reasons, e.Reasons) || !reflect.DeepEqual(rows, e.Rows) {
+		t.Errorf("evaluate: got %v %v %v, want %v %v %v", verdict.Passed, reasons, rows, e.Passed, e.Reasons, e.Rows)
+	}
+	within, err := d.Within(floor)
+	if err != nil {
+		t.Fatalf("Within: %v", err)
+	}
 	if within != expect.Within {
 		t.Errorf("within: got %v, want %v", within, expect.Within)
 	}

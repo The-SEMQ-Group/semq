@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from .diff import Diff
 
 FLOOR_VERSION = "semq-floor/1"
-_KEYS = ("version", "config", "id_kind", "reference_id", "nulls", "changed_rows", "total_rows", "hamming")
 _COUNTS = ("nulls", "changed_rows", "total_rows", "hamming")
 
 Source = Union[str, "os.PathLike[str]", bytes, bytearray, memoryview, TextOrBinaryReader]
@@ -45,6 +44,15 @@ class Floor:
     verdict. Applying a floor to a diff of another config, id kind or
     reference raises ``Incompatible``. The floor describes what was
     observed; it claims no probabilistic coverage of the next rebuild.
+
+    ``Floor.measure(nulls, per_row=True)`` also records the per-row data
+    for the per-row check of ``Diff.evaluate``: ``max_hamming``, the largest
+    hamming of any changed row of any null, and ``distinct_nulls``. Without
+    it, or for a floor saved by SEMQ 1.0, both are ``None`` and the JSON form
+    is the one SEMQ 1.0 reads. The constructor never records them.
+
+    The JSON form is written and read by the core: ``save``/``load`` and
+    ``as_dict``/``from_dict`` apply the same rules in every binding.
     """
 
     __slots__ = ("_config", "_f")
@@ -73,7 +81,8 @@ class Floor:
         counts = [_count(n, v) for n, v in zip(_COUNTS, (nulls, changed_rows, total_rows, hamming), strict=True)]
         out = ffi.new("semq_floor_t**")
         err = _ffi.new_error()
-        status = _ffi.lib().semq_floor_create(config._c, _convert._KINDS[id_kind], rid, *counts, out, err)
+        kind = _convert._KINDS[id_kind]
+        status = _ffi.lib().semq_floor_create(config._c, kind, rid, *counts, out, err)
         _ffi.check(status, err, "floor")
         self._f = ffi.gc(out[0], _ffi.lib().semq_floor_free)
         self._config = config
@@ -86,8 +95,14 @@ class Floor:
         return self
 
     @classmethod
-    def measure(cls, null_diffs: Iterable[Diff]) -> Floor:
-        """The envelope of one or more null diffs of one reference; every input is within the result."""
+    def measure(cls, null_diffs: Iterable[Diff], *, per_row: bool = False) -> Floor:
+        """The envelope of one or more null diffs of one reference; every input is within the result.
+
+        With ``per_row=True`` the floor also records ``max_hamming`` and
+        ``distinct_nulls``, which ``Diff.evaluate(floor, per_row=True)``
+        needs. SEMQ 1.0 cannot read a floor saved with them; without them the
+        saved form is the one SEMQ 1.0 writes.
+        """
         from .diff import Diff
 
         diffs = list(null_diffs)
@@ -99,7 +114,8 @@ class Floor:
         arr = ffi.new("const semq_diff_t*[]", [d._d for d in diffs])
         out = ffi.new("semq_floor_t**")
         err = _ffi.new_error()
-        _ffi.check(_ffi.lib().semq_floor_measure(arr, len(diffs), out, err), err, "measure")
+        checks = _ffi.CHECK_PER_ROW if per_row else 0
+        _ffi.check(_ffi.lib().semq_floor_measure_for(arr, len(diffs), checks, out, err), err, "measure")
         return cls._from_handle(out[0])
 
     # ---- fields ----------------------------------------------------------
@@ -147,48 +163,75 @@ class Floor:
         """
         return int(_ffi.lib().semq_floor_hamming(self._f))
 
+    @property
+    def max_hamming(self) -> int | None:
+        """The largest hamming of any changed row of any null (``0`` when no null changed a row).
+
+        ``Diff.evaluate(floor, per_row=True)`` flags every changed row above
+        it. ``None`` for a floor without per-row data: one from the
+        constructor, from ``measure`` without ``per_row=True``, or read from
+        JSON without it.
+        """
+        v = int(_ffi.lib().semq_floor_max_hamming(self._f))
+        return None if v == _ffi.NONE else v
+
+    @property
+    def distinct_nulls(self) -> int | None:
+        """How many of the nulls were distinct states (``1`` to ``nulls``); ``None`` without per-row data.
+
+        Two nulls are the same state when their candidates have the same
+        ``content_digest``. With ``1``, every null rebuild gave the same rows
+        and the per-row check adds no false alarm; when the nulls vary, each
+        check can reject an unchanged rebuild with probability up to
+        ``1 / (nulls + 1)``.
+        """
+        v = int(_ffi.lib().semq_floor_distinct_nulls(self._f))
+        return None if v == _ffi.NONE else v
+
     # ---- report form -----------------------------------------------------
 
+    def _json(self) -> bytes:
+        """The floor's JSON form, written by the core."""
+        lib = _ffi.lib()
+        n = int(lib.semq_floor_json_size(self._f))
+        buf = ffi.new("uint8_t[]", max(n, 1))
+        err = _ffi.new_error()
+        _ffi.check(lib.semq_floor_save(self._f, buf, n, err), err, "save")
+        return bytes(ffi.buffer(buf, n))
+
+    @classmethod
+    def _from_json(cls, raw: bytes) -> Floor:
+        out = ffi.new("semq_floor_t**")
+        err = _ffi.new_error()
+        _ffi.check(_ffi.lib().semq_floor_load(raw, len(raw), out, err), err, "load")
+        return cls._from_handle(out[0])
+
     def as_dict(self) -> dict[str, Any]:
-        """The ``semq-floor/1`` schema: the config as in reports, the reference id as hex."""
-        return {
-            "version": FLOOR_VERSION,
-            "config": self.config.as_dict(),
-            "id_kind": self.id_kind,
-            "reference_id": self.reference_id.hex(),
-            "nulls": self.nulls,
-            "changed_rows": self.changed_rows,
-            "total_rows": self.total_rows,
-            "hamming": self.hamming,
-        }
+        """The floor schema as a dict: the config as in reports, the reference id as hex.
+
+        ``max_hamming`` and ``distinct_nulls`` are present only when the floor records them.
+        """
+        out: dict[str, Any] = json.loads(self._json())
+        return out
 
     @classmethod
     def from_dict(cls, data: object) -> Floor:
-        """The inverse of ``as_dict``, strictly: those keys, that version, integers only."""
-        if not isinstance(data, dict) or set(data) != set(_KEYS):
-            raise InvalidInput(f"floor must have exactly the keys {', '.join(_KEYS)}")
-        if data["version"] != FLOOR_VERSION:
-            raise InvalidInput(f"floor.version must be {FLOOR_VERSION!r}")
-        rid = data["reference_id"]
+        """The inverse of ``as_dict``, by the core's rules for the floor schema.
+
+        Unknown keys are ignored; known keys are checked strictly (integers
+        only, no booleans or floats). Anything else is ``InvalidInput``.
+        """
         try:
-            reference_id = bytes.fromhex(rid) if isinstance(rid, str) and len(rid) == 64 else b""
-        except ValueError:
-            reference_id = b""
-        return cls(
-            _config_from_dict(data["config"]),
-            id_kind=data["id_kind"] if isinstance(data["id_kind"], str) else "",
-            reference_id=reference_id,
-            nulls=data["nulls"],
-            changed_rows=data["changed_rows"],
-            total_rows=data["total_rows"],
-            hamming=data["hamming"],
-        )
+            text = json.dumps(data, allow_nan=False)
+        except (TypeError, ValueError) as exc:
+            raise InvalidInput(f"floor is not a JSON value: {exc}") from exc
+        return cls._from_json(text.encode("utf-8", "surrogatepass"))
 
     # ---- persistence -----------------------------------------------------
 
     def save(self, target: str | os.PathLike[str] | TextWriter) -> None:
-        """Write ``as_dict()`` as JSON to a path or a text stream."""
-        text = json.dumps(self.as_dict()) + "\n"
+        """Write the floor's JSON form, and a newline, to a path or a text stream."""
+        text = self._json().decode("utf-8") + "\n"
         if isinstance(target, (str, os.PathLike)):
             with open(target, "w", encoding="utf-8") as f:
                 f.write(text)
@@ -199,7 +242,7 @@ class Floor:
 
     @classmethod
     def load(cls, source: Source) -> Floor:
-        """Parse ``as_dict()`` JSON from a path, a text or binary stream, or bytes."""
+        """Read the floor's JSON form from a path, a text or binary stream, or bytes."""
         if isinstance(source, (bytes, bytearray, memoryview)):
             raw: bytes | str = bytes(source)
         elif isinstance(source, (str, os.PathLike)):
@@ -211,20 +254,15 @@ class Floor:
                 raise InvalidInput("load needs a text or binary stream")
         else:
             raise InvalidInput("load takes a path, a stream or bytes")
-        try:
-            text = raw.decode("utf-8") if isinstance(raw, (bytes, bytearray)) else raw
-        except UnicodeDecodeError as exc:
-            raise InvalidInput("floor is not UTF-8") from exc
-        try:
-            data = json.loads(text)
-        except ValueError as exc:
-            raise InvalidInput(f"floor is not valid JSON: {exc}") from exc
-        return cls.from_dict(data)
+        return cls._from_json(raw.encode("utf-8", "surrogatepass") if isinstance(raw, str) else bytes(raw))
 
     # ---- value semantics -------------------------------------------------
 
-    def _key(self) -> tuple[CodecConfig, str, bytes, int, int, int, int]:
-        return (self._config, self.id_kind, self.reference_id, self.nulls, self.changed_rows, self.total_rows, self.hamming)
+    def _key(self) -> tuple[CodecConfig, str, bytes, int, int, int, int, int | None, int | None]:
+        return (
+            self._config, self.id_kind, self.reference_id, self.nulls, self.changed_rows, self.total_rows, self.hamming,
+            self.max_hamming, self.distinct_nulls,
+        )
 
     def __eq__(self, other: object) -> bool:
         return isinstance(other, Floor) and self._key() == other._key()
@@ -239,27 +277,7 @@ class Floor:
     def __repr__(self) -> str:
         return (
             f"Floor(changed_rows={self.changed_rows}, total_rows={self.total_rows}, hamming={self.hamming}, "
+            f"max_hamming={self.max_hamming}, distinct_nulls={self.distinct_nulls}, "
             f"nulls={self.nulls}, config={self._config!r}, id_kind={self.id_kind!r}, "
             f"reference_id={self.reference_id.hex()!r})"
         )
-
-
-_OPERATORS = {"orbit": (0, "scale"), "phase": (1, "sectors"), "quant": (2, "bins")}
-
-
-def _config_from_dict(data: object) -> CodecConfig:
-    """The report form of a config back into a ``CodecConfig``.
-
-    The host checks the shape (those four keys, integers that fit the ABI);
-    every validity rule, the rule revision included, is the core's, through
-    the ABI fields.
-    """
-    if not isinstance(data, dict) or not isinstance(data.get("operator"), str) or data["operator"] not in _OPERATORS:
-        raise InvalidInput("floor.config must be a config report")
-    op, parameter = _OPERATORS[data["operator"]]
-    if set(data) != {"operator", "dim", parameter, "rule_revision"}:
-        raise InvalidInput("floor.config must be a config report")
-    fields = [_count(f"config.{k}", data[k]) for k in ("dim", parameter, "rule_revision")]
-    if any(v >= 2**32 for v in fields):
-        raise InvalidInput("floor.config fields must fit in 32 bits")
-    return CodecConfig._from_fields(op, *fields)

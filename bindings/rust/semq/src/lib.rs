@@ -71,6 +71,7 @@ mod diff;
 mod encoding;
 mod error;
 mod floor;
+mod gate;
 mod ids;
 
 pub use build::{build_info, BuildInfo};
@@ -81,4 +82,5 @@ pub use diff::{Diff, DiffReport};
 pub use encoding::Encoding;
 pub use error::{Error, Result, Which};
 pub use floor::{Floor, FloorReport};
+pub use gate::{GateOptions, Reason, Verdict};
 pub use ids::{Id, IdKind, Ids};

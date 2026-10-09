@@ -1,11 +1,13 @@
 # Reader fuzzing
 
-`load.c` exercises the public loader and requires an exact save/load roundtrip
-for accepted images. When validation reaches the integrity checks, the harness
+`load.c` exercises the public loaders and requires an exact save/load roundtrip
+for accepted images. It also reads every input as floor JSON and requires an
+accepted floor to save to a form that reads back and saves to the same bytes. When validation reaches the integrity checks, the harness
 repairs both digests and retries to exercise row canonicity behind the footer.
 All checks remain active in Release builds.
 
-`fuzz_load_smoke` runs the same harness against every `.semq` conformance image,
+`fuzz_load_smoke` runs the same harness against every `.semq` conformance image
+and every `floor-*.json` conformance file,
 every truncation up to 4096 bytes, appended bytes and 1024 deterministic
 mutations per image. It runs under `ctest`, including the sanitizer jobs.
 

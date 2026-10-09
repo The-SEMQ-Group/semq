@@ -5,8 +5,8 @@ search:
 
 # Python API
 
-The root exports fifteen names: `Operator`, `CodecConfig`, `Codec`,
-`Encoding`, `Diff`, `Floor`, `BuildInfo`, `build_info`, the six errors and
+The root exports sixteen names: `Operator`, `CodecConfig`, `Codec`,
+`Encoding`, `Diff`, `Verdict`, `Floor`, `BuildInfo`, `build_info`, the six errors and
 `__version__`. Start with the [quickstart](../quickstart.md) for a complete
 program.
 
@@ -53,6 +53,12 @@ program.
       show_root_full_path: false
 
 ::: semq.Diff
+    options:
+      show_if_no_docstring: true
+      heading_level: 2
+      show_root_full_path: false
+
+::: semq.Verdict
     options:
       show_if_no_docstring: true
       heading_level: 2

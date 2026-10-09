@@ -165,6 +165,21 @@ uint64_t      semq_floor_changed_rows(const semq_floor_t* floor);
 uint64_t      semq_floor_total_rows(const semq_floor_t* floor);
 uint64_t      semq_floor_hamming(const semq_floor_t* floor);
 semq_status_t semq_diff_within(const semq_diff_t* diff, const semq_floor_t* floor, int* out, semq_error_t* err);
+semq_status_t semq_floor_measure_for(const semq_diff_t* const* nulls, uint32_t k, uint32_t checks,
+                                     semq_floor_t** out, semq_error_t* err);
+uint64_t      semq_floor_max_hamming(const semq_floor_t* floor);
+uint64_t      semq_floor_distinct_nulls(const semq_floor_t* floor);
+uint64_t      semq_floor_json_size(const semq_floor_t* floor);
+semq_status_t semq_floor_save(const semq_floor_t* floor, uint8_t* out, uint64_t cap, semq_error_t* err);
+semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_floor_t** out, semq_error_t* err);
+typedef struct semq_verdict semq_verdict_t;
+semq_status_t semq_diff_evaluate(const semq_diff_t* diff, const semq_floor_t* floor, uint32_t checks,
+                                 semq_verdict_t** out, semq_error_t* err);
+void          semq_verdict_free(semq_verdict_t* verdict);
+int           semq_verdict_passed(const semq_verdict_t* verdict);
+uint32_t      semq_verdict_reasons(const semq_verdict_t* verdict);
+uint64_t      semq_verdict_row_count(const semq_verdict_t* verdict);
+uint64_t      semq_verdict_row(const semq_verdict_t* verdict, uint64_t i);
 
 const char*   semq_core_version(void);
 const char*   semq_build_id(void);
@@ -194,6 +209,9 @@ ID_UTF8 = 1
 LIST_ADDED = 0
 LIST_REMOVED = 1
 LIST_CHANGED = 2
+
+# semq_check_t
+CHECK_PER_ROW = 1
 
 
 def _platform_lib_name() -> str:
