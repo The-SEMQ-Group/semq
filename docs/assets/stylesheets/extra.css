@@ -269,3 +269,37 @@
 .semq-chart-legend .is-per-row::before { background: #eb6834; }
 .semq-chart-legend .is-bound::before { height: 0; background: none; border-top: 2px dashed #737e87; }
 .semq-chart-legend .is-faulted::before { width: .5rem; height: .5rem; border-radius: 50%; background: #171717; }
+/* Detection against fault size: the floor as a ring, float checks as gray marks. */
+.semq-chart__region { fill: #f4f6f8; }
+.semq-chart__mark.is-floor { fill: none; stroke: #236f9c; stroke-width: 2; }
+.semq-chart__mark.is-maxabs { fill: #8a959e; }
+.semq-chart__mark.is-cosine { fill: #46535c; }
+.semq-chart-legend .is-floor::before { width: .55rem; height: .55rem; border: 2px solid #236f9c; border-radius: 50%; background: none; }
+.semq-chart-legend .is-maxabs::before { width: .45rem; height: .45rem; background: #8a959e; }
+.semq-chart-legend .is-cosine::before { width: .42rem; height: .42rem; background: #46535c; transform: rotate(45deg); }
+.md-typeset figure.semq-figure { display: block; width: 100%; max-width: 100%; margin: 1rem 0; }
+.semq-figure img { display: block; width: 100%; height: auto; }
+/* The gate diagram on the rebuild page. */
+.md-typeset figure.semq-diagram { display: block; width: 100%; max-width: 100%; margin: 1.2rem 0 .6rem; }
+.semq-diagram svg { display: block; width: 100%; height: auto; font-family: var(--md-text-font-family); }
+.semq-diagram__box { fill: #fff; stroke: #c9d1d7; stroke-width: 1.2; }
+.semq-diagram__box.is-input { fill: #f7f9fa; }
+.semq-diagram__box.is-floor { stroke: #236f9c; stroke-width: 1.6; }
+.semq-diagram__box.is-fail { stroke: #a34d3b; stroke-width: 1.6; fill: #fbf4f2; }
+.semq-diagram__box.is-pass { stroke: #276b59; stroke-width: 1.6; fill: #f2f8f5; }
+.semq-diagram__title { fill: #171717; font-size: 12.5px; font-weight: 600; }
+.semq-diagram__text { fill: #46535c; font-size: 12px; }
+.semq-diagram__value { fill: #171717; font-size: 12px; font-variant-numeric: tabular-nums; font-family: var(--md-code-font-family); }
+.semq-diagram__edge { fill: #59636d; font-size: 11px; }
+.semq-diagram__ok { fill: #276b59; font-size: 12px; font-weight: 600; }
+.semq-diagram__bad { fill: #a34d3b; font-size: 12px; font-weight: 600; }
+.semq-diagram__arrow { fill: none; stroke: #8a959e; stroke-width: 1.4; }
+.semq-diagram__link { fill: none; stroke: #8a959e; stroke-width: 1.2; stroke-dasharray: 3 3; }
+.semq-diagram__head { fill: #8a959e; }
+/* On narrow screens, charts keep a legible size and scroll sideways. */
+@media (max-width: 44.9375em) {
+  .md-typeset figure.semq-chart, .md-typeset figure.semq-diagram { overflow-x: auto; }
+  .semq-chart svg, .semq-diagram svg { min-width: 640px; }
+  .md-typeset figure.semq-figure { overflow-x: auto; }
+  .semq-figure img { min-width: 640px; }
+}

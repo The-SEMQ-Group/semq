@@ -1,11 +1,11 @@
 {
-  "generated_utc": "2026-10-09T04:27:34Z",
+  "generated_utc": "2026-10-09T21:21:52Z",
   "hardware": {
-    "arch": "arm64",
-    "cpu_threads": 12,
-    "gpu": "Apple M4 Pro (MPS)",
-    "machine": "Apple M4 Pro",
-    "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O"
+    "arch": "x86_64",
+    "cpu_threads": 4,
+    "gpu": "NVIDIA A10G",
+    "machine": "AMD EPYC 7R32",
+    "os": "Linux-6.8.0-1066-aws-x86_64-with-glibc2.35"
   },
   "inputs": {
     "floor-power/faults.json": {
@@ -13,128 +13,128 @@
       "source": "python -m benchmarks.floor_power --embed"
     },
     "floor-power/null_cpu_b16_o1.npz": {
-      "sha256": "6a3e6630b7c1764f30b922291121d44c6d34207306146f1dfeaf3537c83c24fd",
+      "sha256": "c6062ec27069dae49647964dc7706ad5e582584de637e1dea230ce650e2cc278",
       "source": "python -m benchmarks.floor_power --embed"
     },
     "floor-power/null_cpu_b256_o1.npz": {
-      "sha256": "2137af1d3c5911785fcc5c0a5951293745e5275e604ca994c900e9ea5a1bbb7c",
+      "sha256": "141cef6ff9d070b3ee83a0f9780fbaee47c26165d9cda9f572050c8cb1c99e12",
       "source": "python -m benchmarks.floor_power --embed"
     },
     "floor-power/null_cpu_b64_o1.npz": {
-      "sha256": "445e5fce948d3a7bbd0be8b31a46a832d2fa4f3d6d5ca77bb9464dee52d6aaa1",
+      "sha256": "8346bd6f17d3a31fa8a8ca8ff0514dcbe8a85b140a0c6dcdf312d515ec01d381",
       "source": "python -m benchmarks.floor_power --embed"
     },
     "floor-power/null_cpu_b8_o1.npz": {
-      "sha256": "e0fab13aafc5dd658b988774713e02a275c969b6429b9dc4be9c8c69d827c69b",
+      "sha256": "01635d3fffc7501685658c02112f7ce311020065114489012b75eb439e6e371c",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b128_o0.npz": {
-      "sha256": "fab523156f16cdea14dcd8f6be097063e044a1ff6a838c1d17e166951a88f745",
+    "floor-power/null_cuda_b128_o0.npz": {
+      "sha256": "0de9a19f3bfd21a1f69dc80f127d1c632604a4631a331647d059911b675dbad7",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b128_o1.npz": {
-      "sha256": "8055a75906b047fa2871235c2836c3e7bab2e2e585ba6e306305968c92cc7f3f",
+    "floor-power/null_cuda_b128_o1.npz": {
+      "sha256": "0de9a19f3bfd21a1f69dc80f127d1c632604a4631a331647d059911b675dbad7",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b128_o2.npz": {
-      "sha256": "d52b12f6a3f96024c7d5bc74820f7fdb71631db00f4bf8b5772486831e9b0be0",
+    "floor-power/null_cuda_b128_o2.npz": {
+      "sha256": "0de9a19f3bfd21a1f69dc80f127d1c632604a4631a331647d059911b675dbad7",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b16_o0.npz": {
-      "sha256": "8853826b1392dfcd78f17c210791745c146b60b8e2d9bf7ad9fce2e9abf15bba",
+    "floor-power/null_cuda_b16_o0.npz": {
+      "sha256": "e1001ae21b7c941b122dd4c9f406dfc170728eb139e934035644c38ab56a4f27",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b16_o1.npz": {
-      "sha256": "6a11a2bc34da0ceb599efb3c9a418b6e6ecc286a12d46d958bcfcb26c6e465e5",
+    "floor-power/null_cuda_b16_o1.npz": {
+      "sha256": "2e7f6904de0520bfd449bce727b919c091b6aba44e0870a5f2ef186bed54a6bc",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b16_o2.npz": {
-      "sha256": "5a978bf7a251f574cd06ba5ee19e29d71be5295db50c107651395379d6b0c876",
+    "floor-power/null_cuda_b16_o2.npz": {
+      "sha256": "a892fd061f532d8c37ec42db4023d7f490cb20b8f9be8591329fc0ccd0970365",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b192_o0.npz": {
-      "sha256": "88c227cfc7f5a8fb1066d4e2e1d2f6725ffdea9d2b913c8945c90c76a4cfce6e",
+    "floor-power/null_cuda_b192_o0.npz": {
+      "sha256": "1403445d9f273664a27cca5146d68255deeb931b834cae16a53b3c6f73d68a38",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b192_o1.npz": {
-      "sha256": "f775347f63cafdcda24dc6cdc78896cf23ff0a8adc2f7d7450722ce1d60a7951",
+    "floor-power/null_cuda_b192_o1.npz": {
+      "sha256": "1403445d9f273664a27cca5146d68255deeb931b834cae16a53b3c6f73d68a38",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b192_o2.npz": {
-      "sha256": "0a6b8597147c64e7467e7a999e93b97959bb5367773bc680331d2b1fbfabab64",
+    "floor-power/null_cuda_b192_o2.npz": {
+      "sha256": "12b4444560a4dc0263f466237ce8c74ce2ba1d54b82fabe10ea7fdedcad25ebc",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b24_o0.npz": {
-      "sha256": "d499ae83cce456d6d0aa9ae38843193fec9dc5e6acc185fbb40f5d5eb906132e",
+    "floor-power/null_cuda_b24_o0.npz": {
+      "sha256": "31547562e8b8b6eadbedeecff6c67e3030454181b406fc901d904b8af56e471f",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b24_o1.npz": {
-      "sha256": "14a110d210146a89ca8ee57c7a5750301bbc476805f6ac2a4f1492bec3fbdf36",
+    "floor-power/null_cuda_b24_o1.npz": {
+      "sha256": "d698467c6e33d1ba3f8a8a71e4b0f577a618faa52c427ab72268a3bd6c533a2e",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b24_o2.npz": {
-      "sha256": "29fa77b765530a77290eff5d326a9f6d31e6e83fae66e3e76d9d242c6702c6d2",
+    "floor-power/null_cuda_b24_o2.npz": {
+      "sha256": "7e3520c501f994e45dbcf5120efac2042ce7b7a1c2f62ce3403e1c903006d8d1",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b32_o0.npz": {
-      "sha256": "6974f029a3ba500867930b383660621ffadeb8f9c9789aa8001c537a2c26e74e",
+    "floor-power/null_cuda_b32_o0.npz": {
+      "sha256": "b38f21ef731fbe42aeb793e36fd1d4fb1336ce3c9fd21fed19041ccfc57e0dbc",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b32_o1.npz": {
-      "sha256": "972fce3722548ef3161f1af1a91b3472e04a8c12959cf90d89b1f2146de3450f",
+    "floor-power/null_cuda_b32_o1.npz": {
+      "sha256": "d83f3f3a7f5d10082416e0b1e247069218674d5b188d94c5e408579c4015c78b",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b32_o2.npz": {
-      "sha256": "bcb339addf50046a4480e7c36aaf1b245d3f02be291a0057d62d0b035332d9a5",
+    "floor-power/null_cuda_b32_o2.npz": {
+      "sha256": "0f62f9ad58fb220b69d50f7d5a56407d3b5d6665a2a19babd74e8a3e0410a696",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b48_o0.npz": {
-      "sha256": "9bc74c5b598d2d693b6813c9ca36fc3edc73f4ee56973360e14045c099a81f33",
+    "floor-power/null_cuda_b48_o0.npz": {
+      "sha256": "3e5d9c0dbaf9f980ddc166654c8a1990c757678d4b7ecb343d2c84c3e5b0b3ef",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b48_o1.npz": {
-      "sha256": "af746b8e963d8a1e72e47a782a42240e6cab8f63f25d884b333acd20e081aabb",
+    "floor-power/null_cuda_b48_o1.npz": {
+      "sha256": "bba7039bbf2f7022dd1a6dced708cb26624878a5eaf87d1d6dd157982b5587a5",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b48_o2.npz": {
-      "sha256": "e72939649c6d29cc484e8a81d25f0d9ef1df6d8f945fcff577a431fcd268ec92",
+    "floor-power/null_cuda_b48_o2.npz": {
+      "sha256": "e37632577ffbd392214a211e4a9206281e105641a9fa3cede956a9664c7d9522",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b64_o0.npz": {
-      "sha256": "bb99df64baa874139a623f49a4ab48d1d4110891fff24dacd5f2efb8fe0f4f30",
+    "floor-power/null_cuda_b64_o0.npz": {
+      "sha256": "8acf711ca39c4ade664abf538f4751a1214a4d6433751b426e55fc358df7bc4d",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b64_o1.npz": {
-      "sha256": "cbb0b45b03c2f9b2faa01caf002e4e09453d7f88114534cf8f79a9efdf8c661b",
+    "floor-power/null_cuda_b64_o1.npz": {
+      "sha256": "cc8673880ce4dd9ddf57310e5fdb4cd745d794a029971c7adf026f160319c3e6",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b64_o2.npz": {
-      "sha256": "2888bc50d5d7990d03cb78bb25296093fdb7017d4c90cc95a2098594aba69152",
+    "floor-power/null_cuda_b64_o2.npz": {
+      "sha256": "d8ad5024cbc9cd66b8563b1fc8d9e14efe2cd83d29fd8bda66363e1207b8bc84",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b96_o0.npz": {
-      "sha256": "0eb39d68520ea1c91647ed4d92bf6c2c9ff06e89210678e0fe653cc9ad19b04c",
+    "floor-power/null_cuda_b96_o0.npz": {
+      "sha256": "6b72c5d491eabdf0d7c096c4bdf421d45189f2ccb95b87bcd6f4358f3ddcace1",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b96_o1.npz": {
-      "sha256": "b9533cd022e0ade580766caf57b12f3e21d89697af2d4c1b39a52cca9db5f22f",
+    "floor-power/null_cuda_b96_o1.npz": {
+      "sha256": "9cfa0337bc7e953d9496c3f973de2ad590d5e4227f1a22d5c19d05b3e164c0e4",
       "source": "python -m benchmarks.floor_power --embed"
     },
-    "floor-power/null_mps_b96_o2.npz": {
-      "sha256": "ec1bb22d2a18b7945f3cb6ad2172693ac6a065ec658afad51a890c181f4f505c",
+    "floor-power/null_cuda_b96_o2.npz": {
+      "sha256": "65a27618ab1cb604e2daa984cc424dde6b76ebc7198eb9f0ca74be8e035c6b28",
       "source": "python -m benchmarks.floor_power --embed"
     },
     "floor-power/pool.json": {
-      "sha256": "2e0a13fc777c73b53071fa34ef15583dc2f9da1bd4b79b9a88e716b8d074803a",
+      "sha256": "b15393ca9974c361c093921dfc114d219ac3f45a0825a94de2e5e3a4734e5fb9",
       "source": "python -m benchmarks.floor_power --embed"
     },
     "floor-power/ref_cpu_b32_o0.npz": {
-      "sha256": "a73411568b8a74586d07199b4a1abaefe53b6b58460c6837b3fd4a723da298fa",
+      "sha256": "2693aa2432d0fd477b680d61c52d5675ea803dcef97be73c77be2b92cf964a3a",
       "source": "python -m benchmarks.floor_power --embed"
     }
   },
   "results": {
-    "accelerator": "mps",
+    "accelerator": "cuda",
     "config": "semq_quant4",
     "corpus": {
       "dataset": "BeIR/scifact",
@@ -225,30 +225,30 @@
                 },
                 "cosine_calibrated": {
                   "ci95": [
-                    0.519866,
-                    0.56401
+                    0.503842,
+                    0.548082
                   ],
-                  "count": 1084,
+                  "count": 1052,
                   "draws": 2000,
-                  "rate": 0.542
+                  "rate": 0.526
                 },
                 "floor_per_row": {
                   "ci95": [
-                    0.374977,
-                    0.418327
+                    0.043593,
+                    0.063743
                   ],
-                  "count": 793,
+                  "count": 106,
                   "draws": 2000,
-                  "rate": 0.3965
+                  "rate": 0.053
                 },
                 "floor_within": {
                   "ci95": [
-                    0.374977,
-                    0.418327
+                    0.043593,
+                    0.063743
                   ],
-                  "count": 793,
+                  "count": 106,
                   "draws": 2000,
-                  "rate": 0.3965
+                  "rate": 0.053
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -261,19 +261,19 @@
                 },
                 "max_abs_calibrated": {
                   "ci95": [
-                    0.409657,
-                    0.453544
+                    0.296638,
+                    0.3379
                   ],
-                  "count": 863,
+                  "count": 634,
                   "draws": 2000,
-                  "rate": 0.4315
+                  "rate": 0.317
                 }
               },
               "family": "diffuse",
               "noise_x_null_scale": 1,
-              "size_median_1_minus_cos": 2.3647750424515834e-14
+              "size_median_1_minus_cos": 1.8984813721090177e-13
             },
-            "diffuse_4": {
+            "diffuse_10": {
               "detectors": {
                 "allclose_default": {
                   "ci95": [
@@ -295,30 +295,30 @@
                 },
                 "cosine_calibrated": {
                   "ci95": [
-                    0.761706,
-                    0.798468
+                    0.998157,
+                    1.0
                   ],
-                  "count": 1561,
+                  "count": 2000,
                   "draws": 2000,
-                  "rate": 0.7805
+                  "rate": 1.0
                 },
                 "floor_per_row": {
                   "ci95": [
-                    0.303019,
-                    0.3445
+                    0.998157,
+                    1.0
                   ],
-                  "count": 647,
+                  "count": 2000,
                   "draws": 2000,
-                  "rate": 0.3235
+                  "rate": 1.0
                 },
                 "floor_within": {
                   "ci95": [
-                    0.303019,
-                    0.3445
+                    0.998157,
+                    1.0
                   ],
-                  "count": 647,
+                  "count": 2000,
                   "draws": 2000,
-                  "rate": 0.3235
+                  "rate": 1.0
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -331,17 +331,87 @@
                 },
                 "max_abs_calibrated": {
                   "ci95": [
-                    0.44196,
-                    0.486145
+                    0.998157,
+                    1.0
                   ],
-                  "count": 928,
+                  "count": 2000,
                   "draws": 2000,
-                  "rate": 0.464
+                  "rate": 1.0
                 }
               },
               "family": "diffuse",
-              "noise_x_null_scale": 4,
-              "size_median_1_minus_cos": 3.7470027081099033e-13
+              "noise_x_null_scale": 10,
+              "size_median_1_minus_cos": 1.8963497439017374e-11
+            },
+            "diffuse_100": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "family": "diffuse",
+              "noise_x_null_scale": 100,
+              "size_median_1_minus_cos": 1.896218793095983e-09
             },
             "replace_1": {
               "detectors": {
@@ -411,7 +481,7 @@
               },
               "documents": 1,
               "family": "replace",
-              "size_median_1_minus_cos": 0.19176026943507712
+              "size_median_1_minus_cos": 0.19176023523968377
             },
             "replace_10": {
               "detectors": {
@@ -481,7 +551,7 @@
               },
               "documents": 10,
               "family": "replace",
-              "size_median_1_minus_cos": 0.19203930590222396
+              "size_median_1_minus_cos": 0.1920393448261332
             },
             "replace_2": {
               "detectors": {
@@ -551,7 +621,7 @@
               },
               "documents": 2,
               "family": "replace",
-              "size_median_1_minus_cos": 0.19268550715321558
+              "size_median_1_minus_cos": 0.19268550390831926
             },
             "sparse_0.01_0.0001": {
               "coordinates": 0.01,
@@ -585,21 +655,21 @@
                 },
                 "floor_per_row": {
                   "ci95": [
-                    0.799344,
-                    0.833722
+                    0.654485,
+                    0.695999
                   ],
-                  "count": 1634,
+                  "count": 1351,
                   "draws": 2000,
-                  "rate": 0.817
+                  "rate": 0.6755
                 },
                 "floor_within": {
                   "ci95": [
-                    0.799344,
-                    0.833722
+                    0.654485,
+                    0.695999
                   ],
-                  "count": 1634,
+                  "count": 1351,
                   "draws": 2000,
-                  "rate": 0.817
+                  "rate": 0.6755
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -622,7 +692,7 @@
               },
               "family": "sparse",
               "scale": 0.0001,
-              "size_median_1_minus_cos": 4.0492331709884866e-11
+              "size_median_1_minus_cos": 4.122208130397098e-11
             },
             "sparse_0.01_0.001": {
               "coordinates": 0.01,
@@ -693,7 +763,7 @@
               },
               "family": "sparse",
               "scale": 0.001,
-              "size_median_1_minus_cos": 3.991943220427174e-09
+              "size_median_1_minus_cos": 4.082109372749443e-09
             },
             "sparse_0.1_0.0001": {
               "coordinates": 0.1,
@@ -764,7 +834,7 @@
               },
               "family": "sparse",
               "scale": 0.0001,
-              "size_median_1_minus_cos": 4.3437892172093484e-10
+              "size_median_1_minus_cos": 4.3626052770306956e-10
             },
             "substitute_1": {
               "detectors": {
@@ -797,21 +867,21 @@
                 },
                 "floor_per_row": {
                   "ci95": [
-                    0.968304,
-                    0.982253
+                    0.958762,
+                    0.974829
                   ],
-                  "count": 1952,
+                  "count": 1935,
                   "draws": 2000,
-                  "rate": 0.976
+                  "rate": 0.9675
                 },
                 "floor_within": {
                   "ci95": [
-                    0.968304,
-                    0.982253
+                    0.958762,
+                    0.974829
                   ],
-                  "count": 1952,
+                  "count": 1935,
                   "draws": 2000,
-                  "rate": 0.976
+                  "rate": 0.9675
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -834,7 +904,7 @@
               },
               "documents": 1,
               "family": "substitute",
-              "size_median_1_minus_cos": 0.0007575791317244729,
+              "size_median_1_minus_cos": 0.0007575847775698197,
               "words": 1
             },
             "substitute_3": {
@@ -905,7 +975,7 @@
               },
               "documents": 1,
               "family": "substitute",
-              "size_median_1_minus_cos": 0.0032911528468516638,
+              "size_median_1_minus_cos": 0.0032911759771283577,
               "words": 3
             },
             "truncate_0.02": {
@@ -977,7 +1047,7 @@
               },
               "documents": 1,
               "family": "truncate",
-              "size_median_1_minus_cos": 0.0014019751365256239
+              "size_median_1_minus_cos": 0.0014019703681527051
             },
             "truncate_0.1": {
               "cut": 0.1,
@@ -1048,7 +1118,7 @@
               },
               "documents": 1,
               "family": "truncate",
-              "size_median_1_minus_cos": 0.002927799251638219
+              "size_median_1_minus_cos": 0.0029277940396609248
             },
             "truncate_0.5": {
               "cut": 0.5,
@@ -1119,9 +1189,30 @@
               },
               "documents": 1,
               "family": "truncate",
-              "size_median_1_minus_cos": 0.015269963905887085
+              "size_median_1_minus_cos": 0.015269980426402152
             }
           }
+        },
+        "example": {
+          "candidate_p99": 265,
+          "changed_rows": 3,
+          "faulted_hamming": [
+            247,
+            265
+          ],
+          "floor_changed_rows": 2,
+          "floor_hamming": 1,
+          "floor_max_hamming": 1,
+          "floor_total_rows": 5183,
+          "hamming_counts": {
+            "1": 1,
+            "247": 1,
+            "265": 1
+          },
+          "nulls_in_floor": 20,
+          "per_row": false,
+          "rows_ignored_by_p99": 0,
+          "within": false
         },
         "false_alarm_bounds": {
           "10": {
@@ -1199,12 +1290,12 @@
             },
             "max_abs_calibrated": {
               "ci95": [
-                0.0,
-                0.001843
+                0.000812,
+                0.005824
               ],
-              "count": 0,
+              "count": 5,
               "draws": 2000,
-              "rate": 0.0
+              "rate": 0.0025
             }
           },
           "20": {
@@ -1293,30 +1384,30 @@
             },
             "cosine_calibrated": {
               "ci95": [
-                0.000309,
-                0.004377
+                0.046331,
+                0.066995
               ],
-              "count": 3,
+              "count": 112,
               "draws": 2000,
-              "rate": 0.0015
+              "rate": 0.056
             },
             "floor_per_row": {
               "ci95": [
-                0.000309,
-                0.004377
+                0.075011,
+                0.100216
               ],
-              "count": 3,
+              "count": 174,
               "draws": 2000,
-              "rate": 0.0015
+              "rate": 0.087
             },
             "floor_within": {
               "ci95": [
-                0.000309,
-                0.004377
+                0.075011,
+                0.100216
               ],
-              "count": 3,
+              "count": 174,
               "draws": 2000,
-              "rate": 0.0015
+              "rate": 0.087
             },
             "fp32_hash": {
               "ci95": [
@@ -1329,12 +1420,12 @@
             },
             "max_abs_calibrated": {
               "ci95": [
-                0.000309,
-                0.004377
+                0.085786,
+                0.112404
               ],
-              "count": 3,
+              "count": 197,
               "draws": 2000,
-              "rate": 0.0015
+              "rate": 0.0985
             }
           },
           "5": {
@@ -1358,30 +1449,30 @@
             },
             "cosine_calibrated": {
               "ci95": [
-                0.0,
-                0.001843
+                0.008105,
+                0.018397
               ],
-              "count": 0,
+              "count": 25,
               "draws": 2000,
-              "rate": 0.0
+              "rate": 0.0125
             },
             "floor_per_row": {
               "ci95": [
-                0.0,
-                0.001843
+                0.021219,
+                0.036208
               ],
-              "count": 0,
+              "count": 56,
               "draws": 2000,
-              "rate": 0.0
+              "rate": 0.028
             },
             "floor_within": {
               "ci95": [
-                0.0,
-                0.001843
+                0.021219,
+                0.036208
               ],
-              "count": 0,
+              "count": 56,
               "draws": 2000,
-              "rate": 0.0
+              "rate": 0.028
             },
             "fp32_hash": {
               "ci95": [
@@ -1394,12 +1485,12 @@
             },
             "max_abs_calibrated": {
               "ci95": [
-                0.0,
-                0.001843
+                0.028272,
+                0.045123
               ],
-              "count": 0,
+              "count": 72,
               "draws": 2000,
-              "rate": 0.0
+              "rate": 0.036
             }
           }
         },
@@ -1408,56 +1499,84 @@
           "null_cpu_b256_o1",
           "null_cpu_b64_o1",
           "null_cpu_b8_o1",
-          "null_mps_b128_o0",
-          "null_mps_b128_o1",
-          "null_mps_b128_o2",
-          "null_mps_b16_o0",
-          "null_mps_b16_o1",
-          "null_mps_b16_o2",
-          "null_mps_b192_o0",
-          "null_mps_b192_o1",
-          "null_mps_b192_o2",
-          "null_mps_b24_o0",
-          "null_mps_b24_o1",
-          "null_mps_b24_o2",
-          "null_mps_b32_o0",
-          "null_mps_b32_o1",
-          "null_mps_b32_o2",
-          "null_mps_b48_o0",
-          "null_mps_b48_o1",
-          "null_mps_b48_o2",
-          "null_mps_b64_o0",
-          "null_mps_b64_o1",
-          "null_mps_b64_o2",
-          "null_mps_b96_o0",
-          "null_mps_b96_o1",
-          "null_mps_b96_o2"
+          "null_cuda_b128_o0",
+          "null_cuda_b128_o1",
+          "null_cuda_b128_o2",
+          "null_cuda_b16_o0",
+          "null_cuda_b16_o1",
+          "null_cuda_b16_o2",
+          "null_cuda_b192_o0",
+          "null_cuda_b192_o1",
+          "null_cuda_b192_o2",
+          "null_cuda_b24_o0",
+          "null_cuda_b24_o1",
+          "null_cuda_b24_o2",
+          "null_cuda_b32_o0",
+          "null_cuda_b32_o1",
+          "null_cuda_b32_o2",
+          "null_cuda_b48_o0",
+          "null_cuda_b48_o1",
+          "null_cuda_b48_o2",
+          "null_cuda_b64_o0",
+          "null_cuda_b64_o1",
+          "null_cuda_b64_o2",
+          "null_cuda_b96_o0",
+          "null_cuda_b96_o1",
+          "null_cuda_b96_o2"
         ],
         "regime": {
-          "distinct_float_arrays": 28,
-          "distinct_states": 2,
-          "distinct_states_including_reference": 2,
+          "distinct_float_arrays": 25,
+          "distinct_states": 5,
+          "distinct_states_including_reference": 5,
           "float_arrays_equal_to_reference": 0,
-          "null_scale": 1.1064222871226548e-08,
+          "null_scale": 3.1495176244789036e-08,
           "nulls": 28,
           "states": [
             {
               "devices": [
-                "mps"
+                "cuda"
               ],
               "equals_reference": false,
               "max_hamming": 1,
-              "nulls": 24,
-              "rows_changed": 5
+              "nulls": 12,
+              "rows_changed": 2
+            },
+            {
+              "devices": [
+                "cpu",
+                "cuda"
+              ],
+              "equals_reference": true,
+              "max_hamming": 0,
+              "nulls": 9,
+              "rows_changed": 0
+            },
+            {
+              "devices": [
+                "cuda"
+              ],
+              "equals_reference": false,
+              "max_hamming": 1,
+              "nulls": 3,
+              "rows_changed": 1
+            },
+            {
+              "devices": [
+                "cuda"
+              ],
+              "equals_reference": false,
+              "max_hamming": 1,
+              "nulls": 3,
+              "rows_changed": 1
             },
             {
               "devices": [
                 "cpu"
               ],
-              "equals_reference": true,
-              "max_hamming": 0,
-              "nulls": 4,
-              "rows_changed": 0
+              "equals_reference": false,
+              "max_hamming": 1,
+              "nulls": 1,
+              "rows_changed": 1
             }
           ]
         },
@@ -1534,9 +1653,9 @@
               },
               "family": "diffuse",
               "noise_x_null_scale": 1,
-              "size_median_1_minus_cos": 7.721903616531023e-09
+              "size_median_1_minus_cos": 7.722115336061819e-09
             },
-            "diffuse_4": {
+            "diffuse_10": {
               "detectors": {
                 "allclose_default": {
                   "ci95": [
@@ -1603,8 +1722,78 @@
                 }
               },
               "family": "diffuse",
-              "noise_x_null_scale": 4,
-              "size_median_1_minus_cos": 1.2355179301870578e-07
+              "noise_x_null_scale": 10,
+              "size_median_1_minus_cos": 7.722207424065708e-07
+            },
+            "diffuse_100": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "family": "diffuse",
+              "noise_x_null_scale": 100,
+              "size_median_1_minus_cos": 7.721245874681149e-05
             },
             "replace_1": {
               "detectors": {
@@ -1646,12 +1835,12 @@
                 },
                 "floor_within": {
                   "ci95": [
-                    0.049535,
-                    0.07078
+                    0.044961,
+                    0.06537
                   ],
-                  "count": 119,
+                  "count": 109,
                   "draws": 2000,
-                  "rate": 0.0595
+                  "rate": 0.0545
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -1674,7 +1863,7 @@
               },
               "documents": 1,
               "family": "replace",
-              "size_median_1_minus_cos": 0.1925461641178896
+              "size_median_1_minus_cos": 0.1925461668694588
             },
             "replace_10": {
               "detectors": {
@@ -1744,7 +1933,7 @@
               },
               "documents": 10,
               "family": "replace",
-              "size_median_1_minus_cos": 0.19223840445114734
+              "size_median_1_minus_cos": 0.19223842786083226
             },
             "replace_2": {
               "detectors": {
@@ -1786,12 +1975,12 @@
                 },
                 "floor_within": {
                   "ci95": [
-                    0.085786,
-                    0.112404
+                    0.072676,
+                    0.097558
                   ],
-                  "count": 197,
+                  "count": 169,
                   "draws": 2000,
-                  "rate": 0.0985
+                  "rate": 0.0845
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -1814,7 +2003,7 @@
               },
               "documents": 2,
               "family": "replace",
-              "size_median_1_minus_cos": 0.1923264106459361
+              "size_median_1_minus_cos": 0.1923264084801138
             },
             "sparse_0.01_0.0001": {
               "coordinates": 0.01,
@@ -1839,30 +2028,30 @@
                 },
                 "cosine_calibrated": {
                   "ci95": [
-                    0.109391,
-                    0.138723
+                    0.118414,
+                    0.148671
                   ],
-                  "count": 247,
+                  "count": 266,
                   "draws": 2000,
-                  "rate": 0.1235
+                  "rate": 0.133
                 },
                 "floor_per_row": {
                   "ci95": [
-                    0.077348,
-                    0.10287
+                    0.065229,
+                    0.089031
                   ],
-                  "count": 179,
+                  "count": 153,
                   "draws": 2000,
-                  "rate": 0.0895
+                  "rate": 0.0765
                 },
                 "floor_within": {
                   "ci95": [
-                    0.054129,
-                    0.076169
+                    0.041773,
+                    0.06157
                   ],
-                  "count": 129,
+                  "count": 102,
                   "draws": 2000,
-                  "rate": 0.0645
+                  "rate": 0.051
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -1875,17 +2064,17 @@
                 },
                 "max_abs_calibrated": {
                   "ci95": [
-                    0.458894,
-                    0.503162
+                    0.429525,
+                    0.473617
                   ],
-                  "count": 962,
+                  "count": 903,
                   "draws": 2000,
-                  "rate": 0.481
+                  "rate": 0.4515
                 }
               },
               "family": "sparse",
               "scale": 0.0001,
-              "size_median_1_minus_cos": 4.1286307705945546e-11
+              "size_median_1_minus_cos": 4.1272985029650044e-11
             },
             "sparse_0.01_0.001": {
               "coordinates": 0.01,
@@ -1919,21 +2108,21 @@
                 },
                 "floor_per_row": {
                   "ci95": [
-                    0.412635,
-                    0.456557
+                    0.387845,
+                    0.431421
                   ],
-                  "count": 869,
+                  "count": 819,
                   "draws": 2000,
-                  "rate": 0.4345
+                  "rate": 0.4095
                 },
                 "floor_within": {
                   "ci95": [
-                    0.382399,
-                    0.425883
+                    0.359654,
+                    0.402695
                   ],
-                  "count": 808,
+                  "count": 762,
                   "draws": 2000,
-                  "rate": 0.404
+                  "rate": 0.381
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -1956,7 +2145,7 @@
               },
               "family": "sparse",
               "scale": 0.001,
-              "size_median_1_minus_cos": 4.107676809805838e-09
+              "size_median_1_minus_cos": 4.124664221283325e-09
             },
             "sparse_0.1_0.0001": {
               "coordinates": 0.1,
@@ -1981,30 +2170,30 @@
                 },
                 "cosine_calibrated": {
                   "ci95": [
-                    0.996392,
-                    0.999879
+                    0.998157,
+                    1.0
                   ],
-                  "count": 1998,
+                  "count": 2000,
                   "draws": 2000,
-                  "rate": 0.999
+                  "rate": 1.0
                 },
                 "floor_per_row": {
                   "ci95": [
-                    0.146586,
-                    0.17941
+                    0.107968,
+                    0.13715
                   ],
-                  "count": 325,
+                  "count": 244,
                   "draws": 2000,
-                  "rate": 0.1625
+                  "rate": 0.122
                 },
                 "floor_within": {
                   "ci95": [
-                    0.124126,
-                    0.154941
+                    0.085786,
+                    0.112404
                   ],
-                  "count": 278,
+                  "count": 197,
                   "draws": 2000,
-                  "rate": 0.139
+                  "rate": 0.0985
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -2017,17 +2206,17 @@
                 },
                 "max_abs_calibrated": {
                   "ci95": [
-                    0.968871,
-                    0.982683
+                    0.962671,
+                    0.977907
                   ],
-                  "count": 1953,
+                  "count": 1942,
                   "draws": 2000,
-                  "rate": 0.9765
+                  "rate": 0.971
                 }
               },
               "family": "sparse",
               "scale": 0.0001,
-              "size_median_1_minus_cos": 4.346077941974613e-10
+              "size_median_1_minus_cos": 4.411518372826606e-10
             },
             "substitute_1": {
               "detectors": {
@@ -2060,21 +2249,21 @@
                 },
                 "floor_per_row": {
                   "ci95": [
-                    0.941152,
-                    0.960497
+                    0.943881,
+                    0.962759
                   ],
-                  "count": 1903,
+                  "count": 1908,
                   "draws": 2000,
-                  "rate": 0.9515
+                  "rate": 0.954
                 },
                 "floor_within": {
                   "ci95": [
-                    0.049535,
-                    0.07078
+                    0.044961,
+                    0.06537
                   ],
-                  "count": 119,
+                  "count": 109,
                   "draws": 2000,
-                  "rate": 0.0595
+                  "rate": 0.0545
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -2087,17 +2276,17 @@
                 },
                 "max_abs_calibrated": {
                   "ci95": [
-                    0.972291,
-                    0.98525
+                    0.971719,
+                    0.984824
                   ],
-                  "count": 1959,
+                  "count": 1958,
                   "draws": 2000,
-                  "rate": 0.9795
+                  "rate": 0.979
                 }
               },
               "documents": 1,
               "family": "substitute",
-              "size_median_1_minus_cos": 0.0007574872440758162,
+              "size_median_1_minus_cos": 0.0007574920584835221,
               "words": 1
             },
             "substitute_3": {
@@ -2140,12 +2329,12 @@
                 },
                 "floor_within": {
                   "ci95": [
-                    0.049535,
-                    0.07078
+                    0.044961,
+                    0.06537
                   ],
-                  "count": 119,
+                  "count": 109,
                   "draws": 2000,
-                  "rate": 0.0595
+                  "rate": 0.0545
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -2168,7 +2357,7 @@
               },
               "documents": 1,
               "family": "substitute",
-              "size_median_1_minus_cos": 0.0032911137657446465,
+              "size_median_1_minus_cos": 0.0032911303990222907,
               "words": 3
             },
             "truncate_0.02": {
@@ -2194,30 +2383,30 @@
                 },
                 "cosine_calibrated": {
                   "ci95": [
-                    0.870727,
-                    0.899132
+                    0.870201,
+                    0.898659
                   ],
-                  "count": 1771,
+                  "count": 1770,
                   "draws": 2000,
-                  "rate": 0.8855
+                  "rate": 0.885
                 },
                 "floor_per_row": {
                   "ci95": [
-                    0.875462,
-                    0.903384
+                    0.878095,
+                    0.905742
                   ],
-                  "count": 1780,
+                  "count": 1785,
                   "draws": 2000,
-                  "rate": 0.89
+                  "rate": 0.8925
                 },
                 "floor_within": {
                   "ci95": [
-                    0.049535,
-                    0.07078
+                    0.044961,
+                    0.06537
                   ],
-                  "count": 119,
+                  "count": 109,
                   "draws": 2000,
-                  "rate": 0.0595
+                  "rate": 0.0545
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -2230,17 +2419,17 @@
                 },
                 "max_abs_calibrated": {
                   "ci95": [
-                    0.870201,
-                    0.898659
+                    0.86915,
+                    0.897714
                   ],
-                  "count": 1770,
+                  "count": 1768,
                   "draws": 2000,
-                  "rate": 0.885
+                  "rate": 0.884
                 }
               },
               "documents": 1,
               "family": "truncate",
-              "size_median_1_minus_cos": 0.001495826213585183
+              "size_median_1_minus_cos": 0.0014958330474787451
             },
             "truncate_0.1": {
               "cut": 0.1,
@@ -2274,21 +2463,21 @@
                 },
                 "floor_per_row": {
                   "ci95": [
-                    0.949362,
-                    0.967261
+                    0.950462,
+                    0.968157
                   ],
-                  "count": 1918,
+                  "count": 1920,
                   "draws": 2000,
-                  "rate": 0.959
+                  "rate": 0.96
                 },
                 "floor_within": {
                   "ci95": [
-                    0.049535,
-                    0.07078
+                    0.044961,
+                    0.06537
                   ],
-                  "count": 119,
+                  "count": 109,
                   "draws": 2000,
-                  "rate": 0.0595
+                  "rate": 0.0545
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -2301,17 +2490,17 @@
                 },
                 "max_abs_calibrated": {
                   "ci95": [
-                    0.947166,
-                    0.965464
+                    0.946617,
+                    0.965014
                   ],
-                  "count": 1914,
+                  "count": 1913,
                   "draws": 2000,
-                  "rate": 0.957
+                  "rate": 0.9565
                 }
               },
               "documents": 1,
               "family": "truncate",
-              "size_median_1_minus_cos": 0.0028803785813203975
+              "size_median_1_minus_cos": 0.002880403270372145
             },
             "truncate_0.5": {
               "cut": 0.5,
@@ -2354,12 +2543,12 @@
                 },
                 "floor_within": {
                   "ci95": [
-                    0.049535,
-                    0.07078
+                    0.044961,
+                    0.06537
                   ],
-                  "count": 119,
+                  "count": 109,
                   "draws": 2000,
-                  "rate": 0.0595
+                  "rate": 0.0545
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -2382,7 +2571,7 @@
               },
               "documents": 1,
               "family": "truncate",
-              "size_median_1_minus_cos": 0.0155373748623846
+              "size_median_1_minus_cos": 0.015537399658880846
             }
           },
           "39": {
@@ -2454,9 +2643,9 @@
               },
               "family": "diffuse",
               "noise_x_null_scale": 1,
-              "size_median_1_minus_cos": 7.721903616531023e-09
+              "size_median_1_minus_cos": 7.722115336061819e-09
             },
-            "diffuse_4": {
+            "diffuse_10": {
               "detectors": {
                 "allclose_default": {
                   "ci95": [
@@ -2523,8 +2712,78 @@
                 }
               },
               "family": "diffuse",
-              "noise_x_null_scale": 4,
-              "size_median_1_minus_cos": 1.2355179301870578e-07
+              "noise_x_null_scale": 10,
+              "size_median_1_minus_cos": 7.722207424065708e-07
+            },
+            "diffuse_100": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "family": "diffuse",
+              "noise_x_null_scale": 100,
+              "size_median_1_minus_cos": 7.721245874681149e-05
             },
             "replace_1": {
               "detectors": {
@@ -2566,12 +2825,12 @@
                 },
                 "floor_within": {
                   "ci95": [
-                    0.025171,
-                    0.041238
+                    0.019044,
+                    0.033393
                   ],
-                  "count": 65,
+                  "count": 51,
                   "draws": 2000,
-                  "rate": 0.0325
+                  "rate": 0.0255
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -2594,7 +2853,7 @@
               },
               "documents": 1,
               "family": "replace",
-              "size_median_1_minus_cos": 0.1925461641178896
+              "size_median_1_minus_cos": 0.1925461668694588
             },
             "replace_10": {
               "detectors": {
@@ -2664,7 +2923,7 @@
               },
               "documents": 10,
               "family": "replace",
-              "size_median_1_minus_cos": 0.19223840445114734
+              "size_median_1_minus_cos": 0.19223842786083226
             },
             "replace_2": {
               "detectors": {
@@ -2706,12 +2965,12 @@
                 },
                 "floor_within": {
                   "ci95": [
-                    0.07221,
-                    0.097026
+                    0.042228,
+                    0.062113
                   ],
-                  "count": 168,
+                  "count": 103,
                   "draws": 2000,
-                  "rate": 0.084
+                  "rate": 0.0515
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -2734,7 +2993,7 @@
               },
               "documents": 2,
               "family": "replace",
-              "size_median_1_minus_cos": 0.1923264106459361
+              "size_median_1_minus_cos": 0.1923264084801138
             },
             "sparse_0.01_0.0001": {
               "coordinates": 0.01,
@@ -2759,30 +3018,30 @@
                 },
                 "cosine_calibrated": {
                   "ci95": [
-                    0.066622,
-                    0.090632
+                    0.088136,
+                    0.115047
                   ],
-                  "count": 156,
+                  "count": 202,
                   "draws": 2000,
-                  "rate": 0.078
+                  "rate": 0.101
                 },
                 "floor_per_row": {
                   "ci95": [
-                    0.055051,
-                    0.077244
+                    0.041773,
+                    0.06157
                   ],
-                  "count": 131,
+                  "count": 102,
                   "draws": 2000,
-                  "rate": 0.0655
+                  "rate": 0.051
                 },
                 "floor_within": {
                   "ci95": [
-                    0.032291,
-                    0.050089
+                    0.019044,
+                    0.033393
                   ],
-                  "count": 81,
+                  "count": 51,
                   "draws": 2000,
-                  "rate": 0.0405
+                  "rate": 0.0255
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -2795,17 +3054,17 @@
                 },
                 "max_abs_calibrated": {
                   "ci95": [
-                    0.371515,
-                    0.4148
+                    0.345834,
+                    0.388556
                   ],
-                  "count": 786,
+                  "count": 734,
                   "draws": 2000,
-                  "rate": 0.393
+                  "rate": 0.367
                 }
               },
               "family": "sparse",
               "scale": 0.0001,
-              "size_median_1_minus_cos": 4.1286307705945546e-11
+              "size_median_1_minus_cos": 4.1272985029650044e-11
             },
             "sparse_0.01_0.001": {
               "coordinates": 0.01,
@@ -2839,21 +3098,21 @@
                 },
                 "floor_per_row": {
                   "ci95": [
-                    0.372009,
-                    0.415304
+                    0.308913,
+                    0.350588
                   ],
-                  "count": 787,
+                  "count": 659,
                   "draws": 2000,
-                  "rate": 0.3935
+                  "rate": 0.3295
                 },
                 "floor_within": {
                   "ci95": [
-                    0.350274,
-                    0.393103
+                    0.28438,
+                    0.325195
                   ],
-                  "count": 743,
+                  "count": 609,
                   "draws": 2000,
-                  "rate": 0.3715
+                  "rate": 0.3045
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -2876,7 +3135,7 @@
               },
               "family": "sparse",
               "scale": 0.001,
-              "size_median_1_minus_cos": 4.107676809805838e-09
+              "size_median_1_minus_cos": 4.124664221283325e-09
             },
             "sparse_0.1_0.0001": {
               "coordinates": 0.1,
@@ -2901,30 +3160,30 @@
                 },
                 "cosine_calibrated": {
                   "ci95": [
-                    0.995623,
-                    0.999691
+                    0.998157,
+                    1.0
                   ],
-                  "count": 1997,
+                  "count": 2000,
                   "draws": 2000,
-                  "rate": 0.9985
+                  "rate": 1.0
                 },
                 "floor_per_row": {
                   "ci95": [
-                    0.120793,
-                    0.151285
+                    0.059667,
+                    0.082611
                   ],
-                  "count": 271,
+                  "count": 141,
                   "draws": 2000,
-                  "rate": 0.1355
+                  "rate": 0.0705
                 },
                 "floor_within": {
                   "ci95": [
-                    0.098977,
-                    0.12717
+                    0.038598,
+                    0.057757
                   ],
-                  "count": 225,
+                  "count": 95,
                   "draws": 2000,
-                  "rate": 0.1125
+                  "rate": 0.0475
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -2937,17 +3196,17 @@
                 },
                 "max_abs_calibrated": {
                   "ci95": [
-                    0.952114,
-                    0.969499
+                    0.938974,
+                    0.958682
                   ],
-                  "count": 1923,
+                  "count": 1899,
                   "draws": 2000,
-                  "rate": 0.9615
+                  "rate": 0.9495
                 }
               },
               "family": "sparse",
               "scale": 0.0001,
-              "size_median_1_minus_cos": 4.346077941974613e-10
+              "size_median_1_minus_cos": 4.411518372826606e-10
             },
             "substitute_1": {
               "detectors": {
@@ -2980,21 +3239,21 @@
                 },
                 "floor_per_row": {
                   "ci95": [
-                    0.939518,
-                    0.959136
+                    0.941152,
+                    0.960497
                   ],
-                  "count": 1900,
+                  "count": 1903,
                   "draws": 2000,
-                  "rate": 0.95
+                  "rate": 0.9515
                 },
                 "floor_within": {
                   "ci95": [
-                    0.025171,
-                    0.041238
+                    0.019044,
+                    0.033393
                   ],
-                  "count": 65,
+                  "count": 51,
                   "draws": 2000,
-                  "rate": 0.0325
+                  "rate": 0.0255
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -3017,7 +3276,7 @@
               },
               "documents": 1,
               "family": "substitute",
-              "size_median_1_minus_cos": 0.0007574872440758162,
+              "size_median_1_minus_cos": 0.0007574920584835221,
               "words": 1
             },
             "substitute_3": {
@@ -3060,12 +3319,12 @@
                 },
                 "floor_within": {
                   "ci95": [
-                    0.025171,
-                    0.041238
+                    0.019044,
+                    0.033393
                   ],
-                  "count": 65,
+                  "count": 51,
                   "draws": 2000,
-                  "rate": 0.0325
+                  "rate": 0.0255
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -3088,7 +3347,7 @@
               },
               "documents": 1,
               "family": "substitute",
-              "size_median_1_minus_cos": 0.0032911137657446465,
+              "size_median_1_minus_cos": 0.0032911303990222907,
               "words": 3
             },
             "truncate_0.02": {
@@ -3123,21 +3382,21 @@
                 },
                 "floor_per_row": {
                   "ci95": [
-                    0.871778,
-                    0.900078
+                    0.87283,
+                    0.901023
                   ],
-                  "count": 1773,
+                  "count": 1775,
                   "draws": 2000,
-                  "rate": 0.8865
+                  "rate": 0.8875
                 },
                 "floor_within": {
                   "ci95": [
-                    0.025171,
-                    0.041238
+                    0.019044,
+                    0.033393
                   ],
-                  "count": 65,
+                  "count": 51,
                   "draws": 2000,
-                  "rate": 0.0325
+                  "rate": 0.0255
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -3160,7 +3419,7 @@
               },
               "documents": 1,
               "family": "truncate",
-              "size_median_1_minus_cos": 0.001495826213585183
+              "size_median_1_minus_cos": 0.0014958330474787451
             },
             "truncate_0.1": {
               "cut": 0.1,
@@ -3203,12 +3462,12 @@
                 },
                 "floor_within": {
                   "ci95": [
-                    0.025171,
-                    0.041238
+                    0.019044,
+                    0.033393
                   ],
-                  "count": 65,
+                  "count": 51,
                   "draws": 2000,
-                  "rate": 0.0325
+                  "rate": 0.0255
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -3231,7 +3490,7 @@
               },
               "documents": 1,
               "family": "truncate",
-              "size_median_1_minus_cos": 0.0028803785813203975
+              "size_median_1_minus_cos": 0.002880403270372145
             },
             "truncate_0.5": {
               "cut": 0.5,
@@ -3274,12 +3533,12 @@
                 },
                 "floor_within": {
                   "ci95": [
-                    0.025171,
-                    0.041238
+                    0.019044,
+                    0.033393
                   ],
-                  "count": 65,
+                  "count": 51,
                   "draws": 2000,
-                  "rate": 0.0325
+                  "rate": 0.0255
                 },
                 "fp32_hash": {
                   "ci95": [
@@ -3302,9 +3561,31 @@
               },
               "documents": 1,
               "family": "truncate",
-              "size_median_1_minus_cos": 0.0155373748623846
+              "size_median_1_minus_cos": 0.015537399658880846
             }
           }
+        },
+        "example": {
+          "candidate_p99": 2,
+          "changed_rows": 243,
+          "faulted_hamming": [
+            260,
+            267
+          ],
+          "floor_changed_rows": 280,
+          "floor_hamming": 2,
+          "floor_max_hamming": 3,
+          "floor_total_rows": 5183,
+          "hamming_counts": {
+            "1": 235,
+            "2": 6,
+            "260": 1,
+            "267": 1
+          },
+          "nulls_in_floor": 20,
+          "per_row": false,
+          "rows_ignored_by_p99": 2,
+          "within": true
         },
         "false_alarm_bounds": {
           "10": {
@@ -3350,30 +3631,30 @@
             },
             "cosine_calibrated": {
               "ci95": [
-                0.07922,
-                0.104992
+                0.083439,
+                0.10976
               ],
-              "count": 183,
+              "count": 192,
               "draws": 2000,
-              "rate": 0.0915
+              "rate": 0.096
             },
             "floor_per_row": {
               "ci95": [
-                0.115086,
-                0.145009
+                0.112237,
+                0.141867
               ],
-              "count": 259,
+              "count": 253,
               "draws": 2000,
-              "rate": 0.1295
+              "rate": 0.1265
             },
             "floor_within": {
               "ci95": [
-                0.090489,
-                0.117686
+                0.087666,
+                0.114518
               ],
-              "count": 207,
+              "count": 201,
               "draws": 2000,
-              "rate": 0.1035
+              "rate": 0.1005
             },
             "fp32_hash": {
               "ci95": [
@@ -3386,12 +3667,12 @@
             },
             "max_abs_calibrated": {
               "ci95": [
-                0.080157,
-                0.106052
+                0.075478,
+                0.100747
               ],
-              "count": 185,
+              "count": 175,
               "draws": 2000,
-              "rate": 0.0925
+              "rate": 0.0875
             }
           },
           "20": {
@@ -3415,30 +3696,30 @@
             },
             "cosine_calibrated": {
               "ci95": [
-                0.042228,
-                0.062113
+                0.041773,
+                0.06157
               ],
-              "count": 103,
+              "count": 102,
               "draws": 2000,
-              "rate": 0.0515
+              "rate": 0.051
             },
             "floor_per_row": {
               "ci95": [
-                0.07361,
-                0.098621
+                0.068948,
+                0.093299
               ],
-              "count": 171,
+              "count": 161,
               "draws": 2000,
-              "rate": 0.0855
+              "rate": 0.0805
             },
             "floor_within": {
               "ci95": [
-                0.049535,
-                0.07078
+                0.044961,
+                0.06537
               ],
-              "count": 119,
+              "count": 109,
               "draws": 2000,
-              "rate": 0.0595
+              "rate": 0.0545
             },
             "fp32_hash": {
               "ci95": [
@@ -3451,12 +3732,12 @@
             },
             "max_abs_calibrated": {
               "ci95": [
-                0.044961,
-                0.06537
+                0.03905,
+                0.058302
               ],
-              "count": 109,
+              "count": 96,
               "draws": 2000,
-              "rate": 0.0545
+              "rate": 0.048
             }
           },
           "3": {
@@ -3480,30 +3761,30 @@
             },
             "cosine_calibrated": {
               "ci95": [
-                0.245276,
-                0.284416
+                0.248202,
+                0.287481
               ],
-              "count": 529,
+              "count": 535,
               "draws": 2000,
-              "rate": 0.2645
+              "rate": 0.2675
             },
             "floor_per_row": {
               "ci95": [
-                0.278992,
-                0.319599
+                0.275565,
+                0.316036
               ],
-              "count": 598,
+              "count": 591,
               "draws": 2000,
-              "rate": 0.299
+              "rate": 0.2955
             },
             "floor_within": {
               "ci95": [
-                0.256011,
-                0.29565
+                0.251618,
+                0.291056
               ],
-              "count": 551,
+              "count": 542,
               "draws": 2000,
-              "rate": 0.2755
+              "rate": 0.271
             },
             "fp32_hash": {
               "ci95": [
@@ -3516,12 +3797,12 @@
             },
             "max_abs_calibrated": {
               "ci95": [
-                0.230177,
-                0.268561
+                0.228231,
+                0.266513
               ],
-              "count": 498,
+              "count": 494,
               "draws": 2000,
-              "rate": 0.249
+              "rate": 0.247
             }
           },
           "39": {
@@ -3554,21 +3835,21 @@
             },
             "floor_per_row": {
               "ci95": [
-                0.048618,
-                0.069699
+                0.042228,
+                0.062113
               ],
-              "count": 117,
+              "count": 103,
               "draws": 2000,
-              "rate": 0.0585
+              "rate": 0.0515
             },
             "floor_within": {
               "ci95": [
-                0.025171,
-                0.041238
+                0.019044,
+                0.033393
               ],
-              "count": 65,
+              "count": 51,
               "draws": 2000,
-              "rate": 0.0325
+              "rate": 0.0255
             },
             "fp32_hash": {
               "ci95": [
@@ -3610,30 +3891,30 @@
             },
             "cosine_calibrated": {
               "ci95": [
-                0.158583,
-                0.192375
+                0.155701,
+                0.189267
               ],
-              "count": 350,
+              "count": 344,
               "draws": 2000,
-              "rate": 0.175
+              "rate": 0.172
             },
             "floor_per_row": {
               "ci95": [
-                0.195237,
-                0.231608
+                0.191851,
+                0.228005
               ],
-              "count": 426,
+              "count": 419,
               "draws": 2000,
-              "rate": 0.213
+              "rate": 0.2095
             },
             "floor_within": {
               "ci95": [
-                0.171094,
-                0.205826
+                0.166759,
+                0.201174
               ],
-              "count": 376,
+              "count": 367,
               "draws": 2000,
-              "rate": 0.188
+              "rate": 0.1835
             },
             "fp32_hash": {
               "ci95": [
@@ -3646,12 +3927,12 @@
             },
             "max_abs_calibrated": {
               "ci95": [
-                0.151381,
-                0.1846
+                0.149942,
+                0.183044
               ],
-              "count": 335,
+              "count": 332,
               "draws": 2000,
-              "rate": 0.1675
+              "rate": 0.166
             }
           }
         },
@@ -3702,7 +3983,7 @@
           "distinct_states": 40,
           "distinct_states_including_reference": 41,
           "float_arrays_equal_to_reference": 0,
-          "null_scale": 6.355682444336708e-06,
+          "null_scale": 6.355769301080727e-06,
           "nulls": 40,
           "states": [
             {
@@ -3730,7 +4011,7 @@
               "equals_reference": false,
               "max_hamming": 2,
               "nulls": 1,
-              "rows_changed": 227
+              "rows_changed": 228
             },
             {
               "devices": [
@@ -3748,15 +4029,6 @@
               "equals_reference": false,
               "max_hamming": 2,
               "nulls": 1,
-              "rows_changed": 230
-            },
-            {
-              "devices": [
-                "synthetic"
-              ],
-              "equals_reference": false,
-              "max_hamming": 2,
-              "nulls": 1,
               "rows_changed": 231
             },
             {
@@ -3766,34 +4038,34 @@
               "equals_reference": false,
               "max_hamming": 2,
               "nulls": 1,
+              "rows_changed": 232
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 232
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 234
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
               "rows_changed": 237
-            },
-            {
-              "devices": [
-                "synthetic"
-              ],
-              "equals_reference": false,
-              "max_hamming": 2,
-              "nulls": 1,
-              "rows_changed": 238
-            },
-            {
-              "devices": [
-                "synthetic"
-              ],
-              "equals_reference": false,
-              "max_hamming": 2,
-              "nulls": 1,
-              "rows_changed": 238
-            },
-            {
-              "devices": [
-                "synthetic"
-              ],
-              "equals_reference": false,
-              "max_hamming": 2,
-              "nulls": 1,
-              "rows_changed": 238
             },
             {
               "devices": [
@@ -3829,7 +4101,7 @@
               "equals_reference": false,
               "max_hamming": 2,
               "nulls": 1,
-              "rows_changed": 241
+              "rows_changed": 242
             },
             {
               "devices": [
@@ -3847,7 +4119,7 @@
               "equals_reference": false,
               "max_hamming": 2,
               "nulls": 1,
-              "rows_changed": 244
+              "rows_changed": 245
             },
             {
               "devices": [
@@ -3856,7 +4128,16 @@
               "equals_reference": false,
               "max_hamming": 2,
               "nulls": 1,
-              "rows_changed": 246
+              "rows_changed": 247
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 247
             },
             {
               "devices": [
@@ -3883,16 +4164,7 @@
               "equals_reference": false,
               "max_hamming": 2,
               "nulls": 1,
-              "rows_changed": 249
-            },
-            {
-              "devices": [
-                "synthetic"
-              ],
-              "equals_reference": false,
-              "max_hamming": 2,
-              "nulls": 1,
-              "rows_changed": 249
+              "rows_changed": 250
             },
             {
               "devices": [
@@ -3910,7 +4182,7 @@
               "equals_reference": false,
               "max_hamming": 2,
               "nulls": 1,
-              "rows_changed": 251
+              "rows_changed": 252
             },
             {
               "devices": [
@@ -3919,16 +4191,7 @@
               "equals_reference": false,
               "max_hamming": 2,
               "nulls": 1,
-              "rows_changed": 253
-            },
-            {
-              "devices": [
-                "synthetic"
-              ],
-              "equals_reference": false,
-              "max_hamming": 2,
-              "nulls": 1,
-              "rows_changed": 253
+              "rows_changed": 254
             },
             {
               "devices": [
@@ -3946,6 +4209,24 @@
               "equals_reference": false,
               "max_hamming": 2,
               "nulls": 1,
+              "rows_changed": 255
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 256
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
               "rows_changed": 259
             },
             {
@@ -3955,25 +4236,7 @@
               "equals_reference": false,
               "max_hamming": 2,
               "nulls": 1,
-              "rows_changed": 260
-            },
-            {
-              "devices": [
-                "synthetic"
-              ],
-              "equals_reference": false,
-              "max_hamming": 2,
-              "nulls": 1,
-              "rows_changed": 261
-            },
-            {
-              "devices": [
-                "synthetic"
-              ],
-              "equals_reference": false,
-              "max_hamming": 2,
-              "nulls": 1,
-              "rows_changed": 261
+              "rows_changed": 262
             },
             {
               "devices": [
@@ -4009,7 +4272,25 @@
               "equals_reference": false,
               "max_hamming": 2,
               "nulls": 1,
-              "rows_changed": 267
+              "rows_changed": 265
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 266
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 268
             },
             {
               "devices": [
@@ -4027,15 +4308,6 @@
               "equals_reference": false,
               "max_hamming": 2,
               "nulls": 1,
-              "rows_changed": 271
-            },
-            {
-              "devices": [
-                "synthetic"
-              ],
-              "equals_reference": false,
-              "max_hamming": 2,
-              "nulls": 1,
               "rows_changed": 275
             },
             {
@@ -4045,7 +4317,16 @@
               "equals_reference": false,
               "max_hamming": 2,
               "nulls": 1,
-              "rows_changed": 276
+              "rows_changed": 277
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 278
             },
             {
               "devices": [
@@ -4063,36 +4344,36 @@
               "equals_reference": false,
               "max_hamming": 2,
               "nulls": 1,
-              "rows_changed": 281
+              "rows_changed": 286
             }
           ]
         },
         "synthetic": {
           "bases": [
-            "null_mps_b128_o0",
-            "null_mps_b128_o1",
-            "null_mps_b128_o2",
-            "null_mps_b16_o0",
-            "null_mps_b16_o1",
-            "null_mps_b16_o2",
-            "null_mps_b192_o0",
-            "null_mps_b192_o1",
-            "null_mps_b192_o2",
-            "null_mps_b24_o0",
-            "null_mps_b24_o1",
-            "null_mps_b24_o2",
-            "null_mps_b32_o0",
-            "null_mps_b32_o1",
-            "null_mps_b32_o2",
-            "null_mps_b48_o0",
-            "null_mps_b48_o1",
-            "null_mps_b48_o2",
-            "null_mps_b64_o0",
-            "null_mps_b64_o1",
-            "null_mps_b64_o2",
-            "null_mps_b96_o0",
-            "null_mps_b96_o1",
-            "null_mps_b96_o2"
+            "null_cuda_b128_o0",
+            "null_cuda_b128_o1",
+            "null_cuda_b128_o2",
+            "null_cuda_b16_o0",
+            "null_cuda_b16_o1",
+            "null_cuda_b16_o2",
+            "null_cuda_b192_o0",
+            "null_cuda_b192_o1",
+            "null_cuda_b192_o2",
+            "null_cuda_b24_o0",
+            "null_cuda_b24_o1",
+            "null_cuda_b24_o2",
+            "null_cuda_b32_o0",
+            "null_cuda_b32_o1",
+            "null_cuda_b32_o2",
+            "null_cuda_b48_o0",
+            "null_cuda_b48_o1",
+            "null_cuda_b48_o2",
+            "null_cuda_b64_o0",
+            "null_cuda_b64_o1",
+            "null_cuda_b64_o2",
+            "null_cuda_b96_o0",
+            "null_cuda_b96_o1",
+            "null_cuda_b96_o2"
           ],
           "description": "each null is an accelerator null of the real pool, taken in turn, plus independent Gaussian noise on every coordinate of its rows and fault vectors, renormalized; it models a rebuild whose noise varies from run to run",
           "seeds": "np.random.default_rng(10000 + i) for null i",
@@ -4105,6 +4386,6 @@
     "reference": "ref_cpu_b32_o0"
   },
   "schema": "semq-bench/floor-power/1",
-  "sdk_commit": "4880584d4a21e86342130856341ab40c20580e53",
+  "sdk_commit": "156ef507944882f26ed8a9ecceea0edf7fca5cdc",
   "working_tree_dirty": false
 }

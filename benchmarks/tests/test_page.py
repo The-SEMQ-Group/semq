@@ -30,6 +30,9 @@ def test_a_missing_result_names_the_benchmark_that_writes_it(tmp_path, monkeypat
     )
 
 
+FIXED_TOLERANCE = ("fp32_hash", "allclose_default", "bf16_fixed")
+
+
 def small_report():
     def r(rate):
         return {"count": 0, "draws": 10, "rate": rate, "ci95": [0.0, 0.3]}
@@ -55,7 +58,11 @@ def small_report():
                 "states": [state],
             },
             "false_alarms": {
-                str(n): dict.fromkeys(floor_power.DETECTORS, r(0.0)) for n in counts
+                str(n): {
+                    d: r(1.0 if d in FIXED_TOLERANCE else 0.0)
+                    for d in floor_power.DETECTORS
+                }
+                for n in counts
             },
             "false_alarm_bounds": {
                 str(n): {"floor_within": 2 / (n + 1), "floor_per_row": 3 / (n + 1)}
@@ -78,22 +85,32 @@ def small_report():
         }
 
     return {
+        "hardware": {"machine": "Test CPU", "arch": "x86_64", "gpu": "Test GPU"},
         "results": {
             "draws": 10,
             "detection_n": 20,
             "pools": {"real": pool([20]), "varying": pool([3, 20])},
-        }
+        },
     }
 
 
 def test_power_panel_renders_from_a_small_report():
     text = "\n".join(page.power_panel(small_report()))
     assert "## False alarms and detection power" in text
-    assert "2 CPU rebuilds gave the reference state" in text
+    assert "states: all 2 matched the reference" in text
+    assert "Hardware: CPU: Test CPU (x86_64) · GPU: Test GPU." in text
     assert "| Replace 2 documents |" in text
     assert "| 3 | 0% | 50.0% | 0% | 75.0% |" in text
     # The row-by-row example: what the p99 drops and what per-row compares.
     assert "⌊241/100⌋ = 2 most-changed rows, so it reads 2" in text
     assert "the p99 ignores these 2 rows" in text
     assert "floor max_hamming = 3: per-row flags any row above it" in text
-    assert '??? note "What the experiment does and does not show"' in text
+
+
+def test_power_panel_refuses_false_alarms_its_text_does_not_describe():
+    report = small_report()
+    report["results"]["pools"]["real"]["false_alarms"]["20"]["floor_within"][
+        "rate"
+    ] = 0.05
+    with pytest.raises(ValueError, match="no longer split"):
+        page.power_panel(report)
