@@ -337,6 +337,7 @@ impl Diff {
             })
             .collect();
         Ok(Verdict {
+            passed: flags == 0,
             reasons: Reason::from_flags(flags),
             rows,
         })

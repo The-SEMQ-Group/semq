@@ -291,7 +291,7 @@ export class Diff {
     });
     const changed: Array<bigint | string> = rows.length > 0 ? this.list(LIST_CHANGED) : [];
     const names = REASONS.filter((_, bit) => (reasons & (1 << bit)) !== 0);
-    return { passed: names.length === 0, reasons: names, rows: rows.map((i) => changed[i]!) };
+    return { passed: reasons === 0, reasons: names, rows: rows.map((i) => changed[i]!) };
   }
 
   /** The report schema: digests as lowercase hex, `u64` ids as decimal

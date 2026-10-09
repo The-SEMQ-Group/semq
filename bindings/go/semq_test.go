@@ -1130,6 +1130,18 @@ func TestFloorReportAndInverse(t *testing.T) {
 	if n, ok := back.DistinctNulls(); !ok || n != 1 {
 		t.Fatalf("LoadFloor DistinctNulls: %d %v", n, ok)
 	}
+	// encoding/json round trip of a Floor field reads through the core too.
+	var holder struct{ Floor *Floor }
+	if err := json.Unmarshal([]byte(`{"Floor":`+string(full)+`}`), &holder); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(holder.Floor.Close)
+	if n, ok := holder.Floor.DistinctNulls(); !ok || n != 1 || holder.Floor.Report() != f.Report() {
+		t.Fatalf("Unmarshal: %+v", holder.Floor.Report())
+	}
+	if err := json.Unmarshal([]byte(`{"Floor":{}}`), &holder); err == nil {
+		t.Fatal("unmarshaled an empty floor")
+	}
 	withNote, err := LoadFloor([]byte(`{"note":[1,{}],` + string(full[1:])))
 	if err != nil {
 		t.Fatal(err)

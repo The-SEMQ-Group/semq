@@ -13,7 +13,9 @@ never encodes: states come from the binding APIs.
 Human output escapes control characters in ids and manifest values and
 truncates long lists (`--limit`); `--json` is complete. `semq diff --json`
 prints the [report schema](contracts.md#report-schema) and adds `within`
-and `verdict` (`passed`, `reasons`, `rows`) when `--floor` is given.
+(the result of `Diff.within`) and `verdict` (`passed`, `reasons`, `rows`)
+when `--floor` is given; with `--per-row`, `verdict.passed` includes the
+per-row check and decides the exit code.
 `floor.json` follows the [floor schema](contracts.md#floor-schema): the
 config, the id kind, the reference's `state_id`, how many nulls produced it
 and the three counts; with `--per-row`, also `max_hamming` and
@@ -28,8 +30,8 @@ every failed check and, with `--per-row`, the rows above `max_hamming`.
 `--per-row` needs a floor with per-row data: a floor from `semq floor`
 without `--per-row`, or saved by SEMQ 1.0, has none, and the error says to
 measure it again with `semq floor --per-row`. When the floor's nulls were
-not all the same state (`distinct_nulls > 1`) and there are fewer than 20,
-`semq diff --per-row` prints a warning: with `N` such nulls, each check can
+not all the same state (`distinct_nulls > 1`), or the floor does not record
+it, and there are fewer than 20, `semq diff --per-row` prints a warning: with `N` such nulls, each check can
 reject an unchanged rebuild with probability up to `1/(N+1)`. The warning
 does not change the exit code; see
 [Gate a rebuild](../guides/gate-a-rebuild.md#4-check-every-row). `--min-nulls`

@@ -298,8 +298,10 @@ SEMQ_API semq_status_t semq_floor_measure_for(const semq_diff_t* const* diffs, u
         const semq_status_t s = p99(d->hamming, d->n_changed, &p, err);
         if (s != SEMQ_OK) return s;
         if (p > max_p) max_p = p;
-        for (uint64_t r = 0u; r < d->n_changed; r++) {
-            if (d->hamming[r] > max_row) max_row = d->hamming[r];
+        if (per_row) {
+            for (uint64_t r = 0u; r < d->n_changed; r++) {
+                if (d->hamming[r] > max_row) max_row = d->hamming[r];
+            }
         }
     }
     uint64_t distinct = SEMQ_NONE;

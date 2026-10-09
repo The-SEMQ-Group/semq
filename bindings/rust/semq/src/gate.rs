@@ -99,6 +99,7 @@ impl Reason {
 /// check flagged.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Verdict {
+    pub(crate) passed: bool,
     pub(crate) reasons: Vec<Reason>,
     pub(crate) rows: Vec<Id>,
 }
@@ -106,7 +107,7 @@ pub struct Verdict {
 impl Verdict {
     /// `true` iff no check failed.
     pub fn passed(&self) -> bool {
-        self.reasons.is_empty()
+        self.passed
     }
 
     /// The failed checks, in the order of [`Reason`]; empty when passed.

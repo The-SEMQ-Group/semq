@@ -139,6 +139,12 @@ def test_diff_per_row(files, capsys, tmp_path) -> None:
     assert "warning:" in err and "1/3" in err and "at least 20 nulls" in err
     assert main(["diff", files["ref"], files["null"], "--floor", str(varied)]) == 0
     assert "warning" not in capsys.readouterr().err
+    # A floor that records max_hamming but not whether its nulls vary: warned as well.
+    unknown = tmp_path / "unknown.json"
+    unknown.write_text(varied.read_text().replace(',"distinct_nulls":2', ""))
+    assert Floor.load(unknown).distinct_nulls is None
+    assert main(["diff", files["ref"], files["null"], "--floor", str(unknown), "--per-row"]) == 0
+    assert "does not record whether its nulls vary" in capsys.readouterr().err
     assert main(["diff", files["ref"], files["null"], "--per-row"]) == 2
     assert "--per-row needs --floor" in capsys.readouterr().err
 

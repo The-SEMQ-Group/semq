@@ -52,10 +52,20 @@ surface.
   still reads. Known keys stay strict, and `18446744073709551615` is
   reserved in `max_hamming` and `distinct_nulls`. `version` remains
   `semq-floor/1`; it changes only when the meaning of a key changes.
-  `measure` writes the same bytes as SEMQ 1.0, so its floors read in every
-  version. SEMQ 1.0 rejects a floor that carries `max_hamming` or
+  A floor from `measure` carries only the keys SEMQ 1.0 knows, so every
+  version reads it. SEMQ 1.0 rejects a floor that carries `max_hamming` or
   `distinct_nulls`: upgrade the readers before writing floors with
   `per_row`.
+- Every binding writes the floor JSON in the core's compact form, with no
+  whitespace. Python 1.0 wrote spaces after `:` and `,`, so a floor saved
+  again from Python differs in bytes, not in content.
+- `semq diff --floor --json` keeps `within` as the result of `Diff.within`;
+  with `--per-row`, the full verdict is in `verdict.passed`, and the text
+  output adds a `passed:` line.
+- Go `*Floor` implements `UnmarshalJSON` through the core, so a `Floor`
+  field survives an `encoding/json` round trip.
+- In Rust and TypeScript, `Verdict.passed` reads the core's reason flags, so
+  a reason this version does not name still fails the verdict.
 - Go `FloorReport.UnmarshalJSON` and `FloorFromReport` read through the
   core, and so check every value, not only the shape. `FloorReport` keeps
   its 1.0 fields and drops the per-row data; read a floor with per-row data

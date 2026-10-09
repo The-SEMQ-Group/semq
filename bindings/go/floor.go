@@ -220,6 +220,18 @@ func (f *Floor) MarshalJSON() ([]byte, error) {
 	return out, nil
 }
 
+// UnmarshalJSON reads the floor's JSON form by the core's rules, as
+// LoadFloor does, so a Floor survives a round trip through encoding/json.
+// Any violation is InvalidInputError.
+func (f *Floor) UnmarshalJSON(b []byte) error {
+	g, err := LoadFloor(b)
+	if err != nil {
+		return err
+	}
+	*f = *g
+	return nil
+}
+
 // Close releases the native handle. Idempotent.
 func (f *Floor) Close() {
 	if f != nil {

@@ -21,7 +21,7 @@ from typing import Any
 from . import build_info
 from .diff import Diff, Verdict
 from .encoding import Encoding
-from .errors import SemqError
+from .errors import Incompatible, SemqError
 from .floor import Floor
 
 DEFAULT_MIN_NULLS = 3
@@ -113,21 +113,22 @@ def _print_diff(d: Diff, limit: int) -> None:
         print(f"  {_escape(k)}: {'<absent>' if b is None else _escape(b)} -> {'<absent>' if a is None else _escape(a)}")
 
 
-def _check_per_row_floor(path: str, floor: Floor) -> None:
-    """Refuse a floor without per-row data; warn when its nulls vary and are few."""
-    if floor.max_hamming is None:
-        raise _Exit(
-            2,
-            f"{path}: the floor has no per-row data (max_hamming); measure it with `semq floor --per-row`",
-        )
+def _warn_few_nulls(floor: Floor) -> None:
+    """Warn when the per-row check runs on few nulls that vary, or may vary."""
     distinct, nulls = floor.distinct_nulls, floor.nulls
-    if distinct is not None and distinct > 1 and nulls < PER_ROW_MIN_NULLS:
-        print(
-            f"warning: {distinct} of the floor's {nulls} nulls are different states, so each check can reject "
-            f"an unchanged rebuild with probability up to 1/{nulls + 1} ({100 / (nulls + 1):.0f}%); "
-            f"measure the floor from at least {PER_ROW_MIN_NULLS} nulls for --per-row",
-            file=sys.stderr,
-        )
+    if nulls >= PER_ROW_MIN_NULLS or distinct == 1:
+        return
+    states = (
+        "the floor does not record whether its nulls vary"
+        if distinct is None
+        else f"{distinct} of the floor's {nulls} nulls are different states"
+    )
+    print(
+        f"warning: {states}, so each check can reject an unchanged rebuild with probability up to "
+        f"1/{nulls + 1} ({100 / (nulls + 1):.0f}%); measure the floor from at least {PER_ROW_MIN_NULLS} "
+        "nulls for --per-row",
+        file=sys.stderr,
+    )
 
 
 def cmd_diff(args: argparse.Namespace) -> int:
@@ -141,21 +142,26 @@ def cmd_diff(args: argparse.Namespace) -> int:
         raise _Exit(2, "--per-row needs --floor")
     floor: Floor | None = None
     verdict: Verdict | None = None
+    within = False
     if args.floor is not None:
         try:
             floor = Floor.load(args.floor)
         except (OSError, SemqError) as exc:
             raise _Exit(2, f"{args.floor}: invalid floor: {exc}") from exc
-        if args.per_row:
-            _check_per_row_floor(args.floor, floor)
         try:
             verdict = d.evaluate(floor, per_row=args.per_row)
         except SemqError as exc:
-            raise _Exit(2, f"{args.floor}: {exc}") from exc
+            hint = ""
+            if args.per_row and floor.max_hamming is None and isinstance(exc, Incompatible):
+                hint = "; measure it with `semq floor --per-row`"
+            raise _Exit(2, f"{args.floor}: {exc}{hint}") from exc
+        within = d.within(floor)
+        if args.per_row:
+            _warn_few_nulls(floor)
     if args.json:
         report = d.as_dict()
         if verdict is not None:
-            report["within"] = verdict.passed
+            report["within"] = within
             report["verdict"] = verdict.as_dict()
         json.dump(report, sys.stdout, ensure_ascii=False)
         sys.stdout.write("\n")
@@ -172,7 +178,9 @@ def cmd_diff(args: argparse.Namespace) -> int:
         more = f", and {len(verdict.rows) - args.limit} more" if len(verdict.rows) > args.limit else ""
         print(f"rows above max_hamming: {shown}{more}", file=sys.stderr)
     if not args.json:
-        print(f"within:        {verdict.passed}")
+        print(f"within:        {within}")
+        if args.per_row:
+            print(f"passed:        {verdict.passed}")
     return 0 if verdict.passed else 1
 
 
