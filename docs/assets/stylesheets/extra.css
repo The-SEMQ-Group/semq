@@ -371,7 +371,8 @@
 .semq-dotchart__interval.is-cosine { stroke: #354550; }
 .semq-dotchart .semq-chart__mark.is-maxabs { fill: #697782; }
 .semq-dotchart .semq-chart__mark.is-cosine { fill: #354550; }
-.md-typeset .semq-tradeoff table { width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed; font-size: .75rem; }
+.md-typeset .semq-tradeoff figcaption { margin: 0 0 .5rem; }
+.md-typeset .semq-tradeoff table { display: table; width: 100%; min-width: 0; margin: 0; border-collapse: collapse; table-layout: fixed; font-size: .75rem; }
 .md-typeset .semq-tradeoff th,
 .md-typeset .semq-tradeoff td { padding: .6rem .5rem; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
 .semq-tradeoff th:first-child { width: 42%; }
