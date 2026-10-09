@@ -246,3 +246,26 @@
 .semq-chart__dot.is-comparison { fill: #b4bcc4; }
 .semq-chart g:hover .semq-chart__value { fill: var(--semq-ink); }
 .semq-chart g:hover .semq-chart__bar, .semq-chart g:hover .semq-chart__dot { opacity: .82; }
+.semq-chart { --semq-ink: #171717; --semq-muted: #59636d; --semq-line: #e5e7eb; --semq-surface: #fff; }
+/* Floor charts: `within` in the accent, per-row in orange, in every chart. */
+.semq-chart__line, .semq-chart__bound { fill: none; stroke-linejoin: round; }
+.semq-chart__line { stroke-width: 2; }
+.semq-chart__bound { stroke-width: 1.5; stroke-dasharray: 4 4; opacity: .7; }
+.semq-chart__threshold { stroke-width: 1.5; stroke-dasharray: 5 3; }
+.semq-chart__line.is-within, .semq-chart__bound.is-within, .semq-chart__threshold.is-within { stroke: #236f9c; }
+.semq-chart__line.is-per-row, .semq-chart__bound.is-per-row, .semq-chart__threshold.is-per-row { stroke: #eb6834; }
+.semq-chart__line.is-noise { stroke: #8a959e; }
+.semq-chart__point.is-noise { fill: #8a959e; }
+.semq-chart__point { stroke: var(--semq-surface); stroke-width: 2; }
+.semq-chart__point.is-within, .semq-chart__bar.is-within { fill: #236f9c; }
+.semq-chart__point.is-per-row, .semq-chart__bar.is-per-row { fill: #eb6834; }
+.semq-chart__point.is-faulted { fill: #171717; }
+.semq-chart__band { fill: #236f9c; opacity: .08; }
+.semq-chart__note { fill: var(--semq-muted); font-size: 11px; }
+.semq-chart g:hover .semq-chart__point { stroke: var(--semq-ink); }
+.md-typeset .semq-chart-legend { display: flex; flex-wrap: wrap; gap: .3rem 1rem; margin: .6rem 0 0; color: #46535c; font-size: .62rem; }
+.semq-chart-legend span::before { content: ""; display: inline-block; width: .8rem; height: .15rem; margin-right: .35rem; vertical-align: middle; background: #8a959e; }
+.semq-chart-legend .is-within::before { background: #236f9c; }
+.semq-chart-legend .is-per-row::before { background: #eb6834; }
+.semq-chart-legend .is-bound::before { height: 0; background: none; border-top: 2px dashed #737e87; }
+.semq-chart-legend .is-faulted::before { width: .5rem; height: .5rem; border-radius: 50%; background: #171717; }

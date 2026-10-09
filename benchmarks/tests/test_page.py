@@ -63,6 +63,18 @@ def small_report():
             },
             "detection": {"20": faults},
             "synthetic": {"sigma": 4.5e-6},
+            "example": {
+                "nulls_in_floor": 20,
+                "changed_rows": 241,
+                "hamming_counts": {"1": 232, "2": 7, "260": 1, "267": 1},
+                "faulted_hamming": [260, 267],
+                "rows_ignored_by_p99": 2,
+                "candidate_p99": 2,
+                "floor_hamming": 2,
+                "floor_max_hamming": 3,
+                "within": True,
+                "per_row": False,
+            },
         }
 
     return {
@@ -80,4 +92,8 @@ def test_power_panel_renders_from_a_small_report():
     assert "2 CPU rebuilds gave the reference state" in text
     assert "| Replace 2 documents |" in text
     assert "| 3 | 0% | 50.0% | 0% | 75.0% |" in text
+    # The row-by-row example: what the p99 drops and what per-row compares.
+    assert "⌊241/100⌋ = 2 most-changed rows, so it reads 2" in text
+    assert "the p99 ignores these 2 rows" in text
+    assert "floor max_hamming = 3: per-row flags any row above it" in text
     assert '??? note "What the experiment does and does not show"' in text

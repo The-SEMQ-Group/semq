@@ -56,6 +56,8 @@ EMBED_SUBSTITUTE = (1, 3, 10)
 DRAWS = 2000
 NULL_COUNTS = (3, 5, 10, 20)
 DETECTION_N = 20
+# The fault the page draws row by row: the case a p99 can hide.
+EXAMPLE_FAULT = "replace_2"
 VARYING_EXTRA_N = 39
 
 # The synthetic pool: null i is accelerator null i mod 24 plus N(0, SIGMA)
@@ -362,6 +364,27 @@ def float_flags(cand: dict[str, Any], nulls: list[dict[str, Any]]) -> dict[str, 
     }
 
 
+def gate_example(diff: Any, floor: Any, chosen: np.ndarray) -> dict[str, Any]:
+    """One candidate of the first draw, row by row: what the p99 keeps and drops."""
+    changed = dict(diff.changed)
+    values = list(changed.values())
+    counts: dict[int, int] = {}
+    for h in values:
+        counts[h] = counts.get(h, 0) + 1
+    return {
+        "nulls_in_floor": floor.nulls,
+        "changed_rows": len(values),
+        "hamming_counts": {str(h): counts[h] for h in sorted(counts)},
+        "faulted_hamming": sorted(changed.get(int(i), 0) for i in chosen),
+        "rows_ignored_by_p99": len(values) // 100,
+        "candidate_p99": rebuild.p99(values),
+        "floor_hamming": floor.hamming,
+        "floor_max_hamming": floor.max_hamming,
+        "within": diff.within(floor),
+        "per_row": diff.evaluate(floor, per_row=True).passed,
+    }
+
+
 def semq_flags(diff: Any, floor: Any) -> dict[str, bool]:
     return {
         "floor_within": not diff.within(floor),
@@ -500,6 +523,7 @@ def evaluate_pool(
     false_alarms = {N: dict.fromkeys(detectors, 0) for N in counts}
     detected = {N: {f: dict.fromkeys(detectors, 0) for f in specs} for N in detect_at}
     sizes: dict[str, list[float]] = {f: [] for f in specs}
+    example: dict[str, Any] | None = None
 
     def candidates(held: str, r: np.random.Generator) -> dict[str, tuple]:
         x = nulls[held]["rows"]
@@ -514,7 +538,7 @@ def evaluate_pool(
                 chosen, Rows(vecs, ref[chosen], spacing[chosen])
             )
             size = 1.0 - rebuild.row_cosines(x[chosen], vecs)
-            out[key] = (y, stats.summary(), float(np.median(size)))
+            out[key] = (y, stats.summary(), float(np.median(size)), chosen)
 
         for k in REPLACE_K:
             chosen = np.sort(order[:k])
@@ -529,7 +553,12 @@ def evaluate_pool(
 
         def dense_fault(key: str, y: np.ndarray) -> None:
             size = 1.0 - rebuild.row_cosines(x, y)
-            out[key] = (y, Rows(y, ref, spacing).summary(), float(np.median(size)))
+            out[key] = (
+                y,
+                Rows(y, ref, spacing).summary(),
+                float(np.median(size)),
+                None,
+            )
 
         for c in DIFFUSE_C:
             noise = c * s_null * r.standard_normal(x.shape)
@@ -555,9 +584,11 @@ def evaluate_pool(
             }
             for det, flag in flags.items():
                 false_alarms[N][det] += flag
-        for key, (y, summary, size) in candidates(held, r).items():
+        for key, (y, summary, size, chosen) in candidates(held, r).items():
             sizes[key].append(size)
             diff = ref_state.diff(codec.encode(ids=ids, vectors=y))
+            if example is None and key == EXAMPLE_FAULT and DETECTION_N in floors:
+                example = gate_example(diff, floors[DETECTION_N], chosen)
             for N in detect_at:
                 flags = {
                     **semq_flags(diff, floors[N]),
@@ -569,6 +600,7 @@ def evaluate_pool(
     return {
         "nulls": names,
         "regime": regime,
+        "example": example,
         "false_alarms": {
             str(N): {det: rate(c, draws) for det, c in per.items()}
             for N, per in false_alarms.items()
