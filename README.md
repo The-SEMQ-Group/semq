@@ -58,8 +58,8 @@ Install the binding for your language from its registry:
 
 ```sh
 pip install semq                                    # Python 3.11+
-cargo add semq                                      # Rust 1.77+
-go get github.com/The-SEMQ-Group/semq/bindings/go   # Go 1.21+, with cgo
+cargo add semq                                      # Rust 1.77+, with a C compiler and CMake 3.20+
+go get github.com/The-SEMQ-Group/semq/bindings/go   # Go 1.21+, with cgo and a C compiler
 npm install @semq/sdk                               # Node.js 22+ or a browser bundler
 ```
 
