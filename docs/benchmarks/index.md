@@ -280,5 +280,5 @@ The table also lists plain NumPy casts to FP16, INT8 and binary for scale: they 
 
 ## Other measurements
 
-- [Rebuild detection](rebuild.md): does the gate pass a rebuild that changed nothing, and fail one that did?
+- [Rebuild detection](rebuild.md): does the gate pass a rebuild that changed nothing, and fail one that did? With [false-alarm and detection rates](rebuild.md#false-alarms-and-detection-power) over many rebuilds.
 - [Scale and portability](scale.md): a million rows, and the same bytes on every platform.

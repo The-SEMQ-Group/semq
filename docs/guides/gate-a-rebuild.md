@@ -145,6 +145,10 @@ rebuild gives those rows again, so the per-row check adds no false alarm. When t
 from at least 20 nulls; `semq diff --per-row` prints a warning on stderr
 below that, without changing the exit code.
 
+The benchmarks [measure both checks](../benchmarks/rebuild.md#false-alarms-and-detection-power)
+on SciFact rebuilds: false alarms against the bounds above, and how often
+each check catches a changed document.
+
 ## What the verdict means
 
 `within` is true only if the candidate removed no rows, shares at least one

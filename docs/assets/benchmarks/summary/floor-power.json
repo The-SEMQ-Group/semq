@@ -1,0 +1,4110 @@
+{
+  "generated_utc": "2026-10-09T04:27:34Z",
+  "hardware": {
+    "arch": "arm64",
+    "cpu_threads": 12,
+    "gpu": "Apple M4 Pro (MPS)",
+    "machine": "Apple M4 Pro",
+    "os": "macOS-26.6.2-arm64-arm-64bit-Mach-O"
+  },
+  "inputs": {
+    "floor-power/faults.json": {
+      "sha256": "63ea2c5a1b624a7279af8de10e7aa2734c71f19f8f87f24f4caa46724409ca4f",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_cpu_b16_o1.npz": {
+      "sha256": "6a3e6630b7c1764f30b922291121d44c6d34207306146f1dfeaf3537c83c24fd",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_cpu_b256_o1.npz": {
+      "sha256": "2137af1d3c5911785fcc5c0a5951293745e5275e604ca994c900e9ea5a1bbb7c",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_cpu_b64_o1.npz": {
+      "sha256": "445e5fce948d3a7bbd0be8b31a46a832d2fa4f3d6d5ca77bb9464dee52d6aaa1",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_cpu_b8_o1.npz": {
+      "sha256": "e0fab13aafc5dd658b988774713e02a275c969b6429b9dc4be9c8c69d827c69b",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b128_o0.npz": {
+      "sha256": "fab523156f16cdea14dcd8f6be097063e044a1ff6a838c1d17e166951a88f745",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b128_o1.npz": {
+      "sha256": "8055a75906b047fa2871235c2836c3e7bab2e2e585ba6e306305968c92cc7f3f",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b128_o2.npz": {
+      "sha256": "d52b12f6a3f96024c7d5bc74820f7fdb71631db00f4bf8b5772486831e9b0be0",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b16_o0.npz": {
+      "sha256": "8853826b1392dfcd78f17c210791745c146b60b8e2d9bf7ad9fce2e9abf15bba",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b16_o1.npz": {
+      "sha256": "6a11a2bc34da0ceb599efb3c9a418b6e6ecc286a12d46d958bcfcb26c6e465e5",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b16_o2.npz": {
+      "sha256": "5a978bf7a251f574cd06ba5ee19e29d71be5295db50c107651395379d6b0c876",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b192_o0.npz": {
+      "sha256": "88c227cfc7f5a8fb1066d4e2e1d2f6725ffdea9d2b913c8945c90c76a4cfce6e",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b192_o1.npz": {
+      "sha256": "f775347f63cafdcda24dc6cdc78896cf23ff0a8adc2f7d7450722ce1d60a7951",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b192_o2.npz": {
+      "sha256": "0a6b8597147c64e7467e7a999e93b97959bb5367773bc680331d2b1fbfabab64",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b24_o0.npz": {
+      "sha256": "d499ae83cce456d6d0aa9ae38843193fec9dc5e6acc185fbb40f5d5eb906132e",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b24_o1.npz": {
+      "sha256": "14a110d210146a89ca8ee57c7a5750301bbc476805f6ac2a4f1492bec3fbdf36",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b24_o2.npz": {
+      "sha256": "29fa77b765530a77290eff5d326a9f6d31e6e83fae66e3e76d9d242c6702c6d2",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b32_o0.npz": {
+      "sha256": "6974f029a3ba500867930b383660621ffadeb8f9c9789aa8001c537a2c26e74e",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b32_o1.npz": {
+      "sha256": "972fce3722548ef3161f1af1a91b3472e04a8c12959cf90d89b1f2146de3450f",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b32_o2.npz": {
+      "sha256": "bcb339addf50046a4480e7c36aaf1b245d3f02be291a0057d62d0b035332d9a5",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b48_o0.npz": {
+      "sha256": "9bc74c5b598d2d693b6813c9ca36fc3edc73f4ee56973360e14045c099a81f33",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b48_o1.npz": {
+      "sha256": "af746b8e963d8a1e72e47a782a42240e6cab8f63f25d884b333acd20e081aabb",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b48_o2.npz": {
+      "sha256": "e72939649c6d29cc484e8a81d25f0d9ef1df6d8f945fcff577a431fcd268ec92",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b64_o0.npz": {
+      "sha256": "bb99df64baa874139a623f49a4ab48d1d4110891fff24dacd5f2efb8fe0f4f30",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b64_o1.npz": {
+      "sha256": "cbb0b45b03c2f9b2faa01caf002e4e09453d7f88114534cf8f79a9efdf8c661b",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b64_o2.npz": {
+      "sha256": "2888bc50d5d7990d03cb78bb25296093fdb7017d4c90cc95a2098594aba69152",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b96_o0.npz": {
+      "sha256": "0eb39d68520ea1c91647ed4d92bf6c2c9ff06e89210678e0fe653cc9ad19b04c",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b96_o1.npz": {
+      "sha256": "b9533cd022e0ade580766caf57b12f3e21d89697af2d4c1b39a52cca9db5f22f",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/null_mps_b96_o2.npz": {
+      "sha256": "ec1bb22d2a18b7945f3cb6ad2172693ac6a065ec658afad51a890c181f4f505c",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/pool.json": {
+      "sha256": "2e0a13fc777c73b53071fa34ef15583dc2f9da1bd4b79b9a88e716b8d074803a",
+      "source": "python -m benchmarks.floor_power --embed"
+    },
+    "floor-power/ref_cpu_b32_o0.npz": {
+      "sha256": "a73411568b8a74586d07199b4a1abaefe53b6b58460c6837b3fd4a723da298fa",
+      "source": "python -m benchmarks.floor_power --embed"
+    }
+  },
+  "results": {
+    "accelerator": "mps",
+    "config": "semq_quant4",
+    "corpus": {
+      "dataset": "BeIR/scifact",
+      "ids_sha256": "9948d896b35ae4e7c41b492f221009b39d23b61738c2b7ff63e8591c78b418d6",
+      "rows": 5183,
+      "source_files": {
+        "BeIR/scifact-qrels/test.tsv": {
+          "revision": "2938d17dc3b09882fdb8c12bbbe2e2dc0e75a029",
+          "sha256": "0864bb985e0ca2367ba217977e72004d549054b2b06666ed9d4825ac7c21284c"
+        },
+        "BeIR/scifact/corpus/corpus-00000-of-00001.parquet": {
+          "revision": "b3b5335604bf5ee3c4447671af975ea25143d4f5",
+          "sha256": "243324b35f03d82bd6d98a5f575966876e86cad7ce16e5333a35b1b793dc4f45"
+        },
+        "BeIR/scifact/queries/queries-00000-of-00001.parquet": {
+          "revision": "b3b5335604bf5ee3c4447671af975ea25143d4f5",
+          "sha256": "1c37956c5dc8b810b60302323c24d1a9e79e26411ba8f5ad9d0888642e2a9034"
+        }
+      }
+    },
+    "detection_n": 20,
+    "detectors": {
+      "allclose_default": "np.allclose fails (rtol=1e-05, atol=1e-08)",
+      "bf16_fixed": "any coordinate differs by more than one bfloat16 spacing of the reference value",
+      "cosine_calibrated": "largest per-row 1 - cosine above the largest seen on the floor's nulls",
+      "floor_per_row": "SEMQ: Diff.evaluate(floor, per_row=True).passed",
+      "floor_within": "SEMQ: Diff.within(floor)",
+      "fp32_hash": "SHA-256 of the float32 bytes differs",
+      "max_abs_calibrated": "largest absolute coordinate difference above the largest seen on the floor's nulls"
+    },
+    "draw_seeds": "SHA-256 of the JSON ['floor-power', pool, draw]; first 8 bytes, big-endian, seed np.random.default_rng",
+    "draws": 2000,
+    "embedding": {
+      "model": {
+        "repo": "intfloat/e5-small-v2",
+        "revision": "ffb93f3bd4047442299a41ebb6fa998a38507c52"
+      },
+      "settings": {
+        "dtype": "float32",
+        "max_length": 512,
+        "normalize": true,
+        "prefix": "passage: ",
+        "torch_threads": 4
+      },
+      "versions": {
+        "sentence-transformers": "5.5.1",
+        "torch": "2.12.1",
+        "transformers": "4.45.2"
+      }
+    },
+    "faults": {
+      "diffuse": "Gaussian noise of c times the pool's null scale on every coordinate, renormalized",
+      "replace": "k fault documents take the vector of other documents of the same run",
+      "size": "median over draws of the median 1 - cosine of the modified rows to the held-out null",
+      "sparse": "a share of the coordinates multiplied by (1 + scale) in every row, renormalized",
+      "substitute": "words of one document replaced by random corpus words, embedded in the same session",
+      "truncate": "one document keeps the first (1 - cut) of its words, embedded in the same session"
+    },
+    "limits": [
+      "one corpus (SciFact, 5,183 documents) and one model (e5-small-v2)",
+      "the varying pool is synthetic: real rebuilds here gave one SEMQ state per device",
+      "the draws resample one fixed pool; the intervals describe that pool, not the rebuilds of another pipeline",
+      "the bounds 2/(N+1) for within and 3/(N+1) for per-row assume the nulls and the candidate are exchangeable"
+    ],
+    "pools": {
+      "real": {
+        "detection": {
+          "20": {
+            "diffuse_1": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.519866,
+                    0.56401
+                  ],
+                  "count": 1084,
+                  "draws": 2000,
+                  "rate": 0.542
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.374977,
+                    0.418327
+                  ],
+                  "count": 793,
+                  "draws": 2000,
+                  "rate": 0.3965
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.374977,
+                    0.418327
+                  ],
+                  "count": 793,
+                  "draws": 2000,
+                  "rate": 0.3965
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.409657,
+                    0.453544
+                  ],
+                  "count": 863,
+                  "draws": 2000,
+                  "rate": 0.4315
+                }
+              },
+              "family": "diffuse",
+              "noise_x_null_scale": 1,
+              "size_median_1_minus_cos": 2.3647750424515834e-14
+            },
+            "diffuse_4": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.761706,
+                    0.798468
+                  ],
+                  "count": 1561,
+                  "draws": 2000,
+                  "rate": 0.7805
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.303019,
+                    0.3445
+                  ],
+                  "count": 647,
+                  "draws": 2000,
+                  "rate": 0.3235
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.303019,
+                    0.3445
+                  ],
+                  "count": 647,
+                  "draws": 2000,
+                  "rate": 0.3235
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.44196,
+                    0.486145
+                  ],
+                  "count": 928,
+                  "draws": 2000,
+                  "rate": 0.464
+                }
+              },
+              "family": "diffuse",
+              "noise_x_null_scale": 4,
+              "size_median_1_minus_cos": 3.7470027081099033e-13
+            },
+            "replace_1": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "documents": 1,
+              "family": "replace",
+              "size_median_1_minus_cos": 0.19176026943507712
+            },
+            "replace_10": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "documents": 10,
+              "family": "replace",
+              "size_median_1_minus_cos": 0.19203930590222396
+            },
+            "replace_2": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "documents": 2,
+              "family": "replace",
+              "size_median_1_minus_cos": 0.19268550715321558
+            },
+            "sparse_0.01_0.0001": {
+              "coordinates": 0.01,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.799344,
+                    0.833722
+                  ],
+                  "count": 1634,
+                  "draws": 2000,
+                  "rate": 0.817
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.799344,
+                    0.833722
+                  ],
+                  "count": 1634,
+                  "draws": 2000,
+                  "rate": 0.817
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "family": "sparse",
+              "scale": 0.0001,
+              "size_median_1_minus_cos": 4.0492331709884866e-11
+            },
+            "sparse_0.01_0.001": {
+              "coordinates": 0.01,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "family": "sparse",
+              "scale": 0.001,
+              "size_median_1_minus_cos": 3.991943220427174e-09
+            },
+            "sparse_0.1_0.0001": {
+              "coordinates": 0.1,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "family": "sparse",
+              "scale": 0.0001,
+              "size_median_1_minus_cos": 4.3437892172093484e-10
+            },
+            "substitute_1": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.970578,
+                    0.98397
+                  ],
+                  "count": 1956,
+                  "draws": 2000,
+                  "rate": 0.978
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.968304,
+                    0.982253
+                  ],
+                  "count": 1952,
+                  "draws": 2000,
+                  "rate": 0.976
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.968304,
+                    0.982253
+                  ],
+                  "count": 1952,
+                  "draws": 2000,
+                  "rate": 0.976
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.970578,
+                    0.98397
+                  ],
+                  "count": 1956,
+                  "draws": 2000,
+                  "rate": 0.978
+                }
+              },
+              "documents": 1,
+              "family": "substitute",
+              "size_median_1_minus_cos": 0.0007575791317244729,
+              "words": 1
+            },
+            "substitute_3": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "documents": 1,
+              "family": "substitute",
+              "size_median_1_minus_cos": 0.0032911528468516638,
+              "words": 3
+            },
+            "truncate_0.02": {
+              "cut": 0.02,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.86285,
+                    0.892032
+                  ],
+                  "count": 1756,
+                  "draws": 2000,
+                  "rate": 0.878
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.86285,
+                    0.892032
+                  ],
+                  "count": 1756,
+                  "draws": 2000,
+                  "rate": 0.878
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.86285,
+                    0.892032
+                  ],
+                  "count": 1756,
+                  "draws": 2000,
+                  "rate": 0.878
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.86285,
+                    0.892032
+                  ],
+                  "count": 1756,
+                  "draws": 2000,
+                  "rate": 0.878
+                }
+              },
+              "documents": 1,
+              "family": "truncate",
+              "size_median_1_minus_cos": 0.0014019751365256239
+            },
+            "truncate_0.1": {
+              "cut": 0.1,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.949911,
+                    0.967709
+                  ],
+                  "count": 1919,
+                  "draws": 2000,
+                  "rate": 0.9595
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.949911,
+                    0.967709
+                  ],
+                  "count": 1919,
+                  "draws": 2000,
+                  "rate": 0.9595
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.949911,
+                    0.967709
+                  ],
+                  "count": 1919,
+                  "draws": 2000,
+                  "rate": 0.9595
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.949911,
+                    0.967709
+                  ],
+                  "count": 1919,
+                  "draws": 2000,
+                  "rate": 0.9595
+                }
+              },
+              "documents": 1,
+              "family": "truncate",
+              "size_median_1_minus_cos": 0.002927799251638219
+            },
+            "truncate_0.5": {
+              "cut": 0.5,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "documents": 1,
+              "family": "truncate",
+              "size_median_1_minus_cos": 0.015269963905887085
+            }
+          }
+        },
+        "false_alarm_bounds": {
+          "10": {
+            "floor_per_row": 0.2727272727272727,
+            "floor_within": 0.18181818181818182
+          },
+          "20": {
+            "floor_per_row": 0.14285714285714285,
+            "floor_within": 0.09523809523809523
+          },
+          "3": {
+            "floor_per_row": 0.75,
+            "floor_within": 0.5
+          },
+          "5": {
+            "floor_per_row": 0.5,
+            "floor_within": 0.3333333333333333
+          }
+        },
+        "false_alarms": {
+          "10": {
+            "allclose_default": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "bf16_fixed": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "cosine_calibrated": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
+            },
+            "floor_per_row": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
+            },
+            "floor_within": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
+            },
+            "fp32_hash": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "max_abs_calibrated": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
+            }
+          },
+          "20": {
+            "allclose_default": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "bf16_fixed": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "cosine_calibrated": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
+            },
+            "floor_per_row": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
+            },
+            "floor_within": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
+            },
+            "fp32_hash": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "max_abs_calibrated": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
+            }
+          },
+          "3": {
+            "allclose_default": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "bf16_fixed": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "cosine_calibrated": {
+              "ci95": [
+                0.000309,
+                0.004377
+              ],
+              "count": 3,
+              "draws": 2000,
+              "rate": 0.0015
+            },
+            "floor_per_row": {
+              "ci95": [
+                0.000309,
+                0.004377
+              ],
+              "count": 3,
+              "draws": 2000,
+              "rate": 0.0015
+            },
+            "floor_within": {
+              "ci95": [
+                0.000309,
+                0.004377
+              ],
+              "count": 3,
+              "draws": 2000,
+              "rate": 0.0015
+            },
+            "fp32_hash": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "max_abs_calibrated": {
+              "ci95": [
+                0.000309,
+                0.004377
+              ],
+              "count": 3,
+              "draws": 2000,
+              "rate": 0.0015
+            }
+          },
+          "5": {
+            "allclose_default": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "bf16_fixed": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "cosine_calibrated": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
+            },
+            "floor_per_row": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
+            },
+            "floor_within": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
+            },
+            "fp32_hash": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "max_abs_calibrated": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
+            }
+          }
+        },
+        "nulls": [
+          "null_cpu_b16_o1",
+          "null_cpu_b256_o1",
+          "null_cpu_b64_o1",
+          "null_cpu_b8_o1",
+          "null_mps_b128_o0",
+          "null_mps_b128_o1",
+          "null_mps_b128_o2",
+          "null_mps_b16_o0",
+          "null_mps_b16_o1",
+          "null_mps_b16_o2",
+          "null_mps_b192_o0",
+          "null_mps_b192_o1",
+          "null_mps_b192_o2",
+          "null_mps_b24_o0",
+          "null_mps_b24_o1",
+          "null_mps_b24_o2",
+          "null_mps_b32_o0",
+          "null_mps_b32_o1",
+          "null_mps_b32_o2",
+          "null_mps_b48_o0",
+          "null_mps_b48_o1",
+          "null_mps_b48_o2",
+          "null_mps_b64_o0",
+          "null_mps_b64_o1",
+          "null_mps_b64_o2",
+          "null_mps_b96_o0",
+          "null_mps_b96_o1",
+          "null_mps_b96_o2"
+        ],
+        "regime": {
+          "distinct_float_arrays": 28,
+          "distinct_states": 2,
+          "distinct_states_including_reference": 2,
+          "float_arrays_equal_to_reference": 0,
+          "null_scale": 1.1064222871226548e-08,
+          "nulls": 28,
+          "states": [
+            {
+              "devices": [
+                "mps"
+              ],
+              "equals_reference": false,
+              "max_hamming": 1,
+              "nulls": 24,
+              "rows_changed": 5
+            },
+            {
+              "devices": [
+                "cpu"
+              ],
+              "equals_reference": true,
+              "max_hamming": 0,
+              "nulls": 4,
+              "rows_changed": 0
+            }
+          ]
+        },
+        "synthetic": false
+      },
+      "varying": {
+        "detection": {
+          "20": {
+            "diffuse_1": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "family": "diffuse",
+              "noise_x_null_scale": 1,
+              "size_median_1_minus_cos": 7.721903616531023e-09
+            },
+            "diffuse_4": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "family": "diffuse",
+              "noise_x_null_scale": 4,
+              "size_median_1_minus_cos": 1.2355179301870578e-07
+            },
+            "replace_1": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.049535,
+                    0.07078
+                  ],
+                  "count": 119,
+                  "draws": 2000,
+                  "rate": 0.0595
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "documents": 1,
+              "family": "replace",
+              "size_median_1_minus_cos": 0.1925461641178896
+            },
+            "replace_10": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "documents": 10,
+              "family": "replace",
+              "size_median_1_minus_cos": 0.19223840445114734
+            },
+            "replace_2": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.085786,
+                    0.112404
+                  ],
+                  "count": 197,
+                  "draws": 2000,
+                  "rate": 0.0985
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "documents": 2,
+              "family": "replace",
+              "size_median_1_minus_cos": 0.1923264106459361
+            },
+            "sparse_0.01_0.0001": {
+              "coordinates": 0.01,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.109391,
+                    0.138723
+                  ],
+                  "count": 247,
+                  "draws": 2000,
+                  "rate": 0.1235
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.077348,
+                    0.10287
+                  ],
+                  "count": 179,
+                  "draws": 2000,
+                  "rate": 0.0895
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.054129,
+                    0.076169
+                  ],
+                  "count": 129,
+                  "draws": 2000,
+                  "rate": 0.0645
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.458894,
+                    0.503162
+                  ],
+                  "count": 962,
+                  "draws": 2000,
+                  "rate": 0.481
+                }
+              },
+              "family": "sparse",
+              "scale": 0.0001,
+              "size_median_1_minus_cos": 4.1286307705945546e-11
+            },
+            "sparse_0.01_0.001": {
+              "coordinates": 0.01,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.412635,
+                    0.456557
+                  ],
+                  "count": 869,
+                  "draws": 2000,
+                  "rate": 0.4345
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.382399,
+                    0.425883
+                  ],
+                  "count": 808,
+                  "draws": 2000,
+                  "rate": 0.404
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "family": "sparse",
+              "scale": 0.001,
+              "size_median_1_minus_cos": 4.107676809805838e-09
+            },
+            "sparse_0.1_0.0001": {
+              "coordinates": 0.1,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.996392,
+                    0.999879
+                  ],
+                  "count": 1998,
+                  "draws": 2000,
+                  "rate": 0.999
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.146586,
+                    0.17941
+                  ],
+                  "count": 325,
+                  "draws": 2000,
+                  "rate": 0.1625
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.124126,
+                    0.154941
+                  ],
+                  "count": 278,
+                  "draws": 2000,
+                  "rate": 0.139
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.968871,
+                    0.982683
+                  ],
+                  "count": 1953,
+                  "draws": 2000,
+                  "rate": 0.9765
+                }
+              },
+              "family": "sparse",
+              "scale": 0.0001,
+              "size_median_1_minus_cos": 4.346077941974613e-10
+            },
+            "substitute_1": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.972291,
+                    0.98525
+                  ],
+                  "count": 1959,
+                  "draws": 2000,
+                  "rate": 0.9795
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.941152,
+                    0.960497
+                  ],
+                  "count": 1903,
+                  "draws": 2000,
+                  "rate": 0.9515
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.049535,
+                    0.07078
+                  ],
+                  "count": 119,
+                  "draws": 2000,
+                  "rate": 0.0595
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.972291,
+                    0.98525
+                  ],
+                  "count": 1959,
+                  "draws": 2000,
+                  "rate": 0.9795
+                }
+              },
+              "documents": 1,
+              "family": "substitute",
+              "size_median_1_minus_cos": 0.0007574872440758162,
+              "words": 1
+            },
+            "substitute_3": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.049535,
+                    0.07078
+                  ],
+                  "count": 119,
+                  "draws": 2000,
+                  "rate": 0.0595
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "documents": 1,
+              "family": "substitute",
+              "size_median_1_minus_cos": 0.0032911137657446465,
+              "words": 3
+            },
+            "truncate_0.02": {
+              "cut": 0.02,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.870727,
+                    0.899132
+                  ],
+                  "count": 1771,
+                  "draws": 2000,
+                  "rate": 0.8855
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.875462,
+                    0.903384
+                  ],
+                  "count": 1780,
+                  "draws": 2000,
+                  "rate": 0.89
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.049535,
+                    0.07078
+                  ],
+                  "count": 119,
+                  "draws": 2000,
+                  "rate": 0.0595
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.870201,
+                    0.898659
+                  ],
+                  "count": 1770,
+                  "draws": 2000,
+                  "rate": 0.885
+                }
+              },
+              "documents": 1,
+              "family": "truncate",
+              "size_median_1_minus_cos": 0.001495826213585183
+            },
+            "truncate_0.1": {
+              "cut": 0.1,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.948263,
+                    0.966363
+                  ],
+                  "count": 1916,
+                  "draws": 2000,
+                  "rate": 0.958
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.949362,
+                    0.967261
+                  ],
+                  "count": 1918,
+                  "draws": 2000,
+                  "rate": 0.959
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.049535,
+                    0.07078
+                  ],
+                  "count": 119,
+                  "draws": 2000,
+                  "rate": 0.0595
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.947166,
+                    0.965464
+                  ],
+                  "count": 1914,
+                  "draws": 2000,
+                  "rate": 0.957
+                }
+              },
+              "documents": 1,
+              "family": "truncate",
+              "size_median_1_minus_cos": 0.0028803785813203975
+            },
+            "truncate_0.5": {
+              "cut": 0.5,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.049535,
+                    0.07078
+                  ],
+                  "count": 119,
+                  "draws": 2000,
+                  "rate": 0.0595
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "documents": 1,
+              "family": "truncate",
+              "size_median_1_minus_cos": 0.0155373748623846
+            }
+          },
+          "39": {
+            "diffuse_1": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "family": "diffuse",
+              "noise_x_null_scale": 1,
+              "size_median_1_minus_cos": 7.721903616531023e-09
+            },
+            "diffuse_4": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "family": "diffuse",
+              "noise_x_null_scale": 4,
+              "size_median_1_minus_cos": 1.2355179301870578e-07
+            },
+            "replace_1": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.025171,
+                    0.041238
+                  ],
+                  "count": 65,
+                  "draws": 2000,
+                  "rate": 0.0325
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "documents": 1,
+              "family": "replace",
+              "size_median_1_minus_cos": 0.1925461641178896
+            },
+            "replace_10": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "documents": 10,
+              "family": "replace",
+              "size_median_1_minus_cos": 0.19223840445114734
+            },
+            "replace_2": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.07221,
+                    0.097026
+                  ],
+                  "count": 168,
+                  "draws": 2000,
+                  "rate": 0.084
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "documents": 2,
+              "family": "replace",
+              "size_median_1_minus_cos": 0.1923264106459361
+            },
+            "sparse_0.01_0.0001": {
+              "coordinates": 0.01,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.066622,
+                    0.090632
+                  ],
+                  "count": 156,
+                  "draws": 2000,
+                  "rate": 0.078
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.055051,
+                    0.077244
+                  ],
+                  "count": 131,
+                  "draws": 2000,
+                  "rate": 0.0655
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.032291,
+                    0.050089
+                  ],
+                  "count": 81,
+                  "draws": 2000,
+                  "rate": 0.0405
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.371515,
+                    0.4148
+                  ],
+                  "count": 786,
+                  "draws": 2000,
+                  "rate": 0.393
+                }
+              },
+              "family": "sparse",
+              "scale": 0.0001,
+              "size_median_1_minus_cos": 4.1286307705945546e-11
+            },
+            "sparse_0.01_0.001": {
+              "coordinates": 0.01,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.372009,
+                    0.415304
+                  ],
+                  "count": 787,
+                  "draws": 2000,
+                  "rate": 0.3935
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.350274,
+                    0.393103
+                  ],
+                  "count": 743,
+                  "draws": 2000,
+                  "rate": 0.3715
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "family": "sparse",
+              "scale": 0.001,
+              "size_median_1_minus_cos": 4.107676809805838e-09
+            },
+            "sparse_0.1_0.0001": {
+              "coordinates": 0.1,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.995623,
+                    0.999691
+                  ],
+                  "count": 1997,
+                  "draws": 2000,
+                  "rate": 0.9985
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.120793,
+                    0.151285
+                  ],
+                  "count": 271,
+                  "draws": 2000,
+                  "rate": 0.1355
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.098977,
+                    0.12717
+                  ],
+                  "count": 225,
+                  "draws": 2000,
+                  "rate": 0.1125
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.952114,
+                    0.969499
+                  ],
+                  "count": 1923,
+                  "draws": 2000,
+                  "rate": 0.9615
+                }
+              },
+              "family": "sparse",
+              "scale": 0.0001,
+              "size_median_1_minus_cos": 4.346077941974613e-10
+            },
+            "substitute_1": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.971719,
+                    0.984824
+                  ],
+                  "count": 1958,
+                  "draws": 2000,
+                  "rate": 0.979
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.939518,
+                    0.959136
+                  ],
+                  "count": 1900,
+                  "draws": 2000,
+                  "rate": 0.95
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.025171,
+                    0.041238
+                  ],
+                  "count": 65,
+                  "draws": 2000,
+                  "rate": 0.0325
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.971148,
+                    0.984398
+                  ],
+                  "count": 1957,
+                  "draws": 2000,
+                  "rate": 0.9785
+                }
+              },
+              "documents": 1,
+              "family": "substitute",
+              "size_median_1_minus_cos": 0.0007574872440758162,
+              "words": 1
+            },
+            "substitute_3": {
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.025171,
+                    0.041238
+                  ],
+                  "count": 65,
+                  "draws": 2000,
+                  "rate": 0.0325
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "documents": 1,
+              "family": "substitute",
+              "size_median_1_minus_cos": 0.0032911137657446465,
+              "words": 3
+            },
+            "truncate_0.02": {
+              "cut": 0.02,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.867049,
+                    0.895821
+                  ],
+                  "count": 1764,
+                  "draws": 2000,
+                  "rate": 0.882
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.871778,
+                    0.900078
+                  ],
+                  "count": 1773,
+                  "draws": 2000,
+                  "rate": 0.8865
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.025171,
+                    0.041238
+                  ],
+                  "count": 65,
+                  "draws": 2000,
+                  "rate": 0.0325
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.868099,
+                    0.896767
+                  ],
+                  "count": 1766,
+                  "draws": 2000,
+                  "rate": 0.883
+                }
+              },
+              "documents": 1,
+              "family": "truncate",
+              "size_median_1_minus_cos": 0.001495826213585183
+            },
+            "truncate_0.1": {
+              "cut": 0.1,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.947166,
+                    0.965464
+                  ],
+                  "count": 1914,
+                  "draws": 2000,
+                  "rate": 0.957
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.948812,
+                    0.966812
+                  ],
+                  "count": 1917,
+                  "draws": 2000,
+                  "rate": 0.9585
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.025171,
+                    0.041238
+                  ],
+                  "count": 65,
+                  "draws": 2000,
+                  "rate": 0.0325
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.94607,
+                    0.964564
+                  ],
+                  "count": 1912,
+                  "draws": 2000,
+                  "rate": 0.956
+                }
+              },
+              "documents": 1,
+              "family": "truncate",
+              "size_median_1_minus_cos": 0.0028803785813203975
+            },
+            "truncate_0.5": {
+              "cut": 0.5,
+              "detectors": {
+                "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_fixed": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "cosine_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_per_row": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "floor_within": {
+                  "ci95": [
+                    0.025171,
+                    0.041238
+                  ],
+                  "count": 65,
+                  "draws": 2000,
+                  "rate": 0.0325
+                },
+                "fp32_hash": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                }
+              },
+              "documents": 1,
+              "family": "truncate",
+              "size_median_1_minus_cos": 0.0155373748623846
+            }
+          }
+        },
+        "false_alarm_bounds": {
+          "10": {
+            "floor_per_row": 0.2727272727272727,
+            "floor_within": 0.18181818181818182
+          },
+          "20": {
+            "floor_per_row": 0.14285714285714285,
+            "floor_within": 0.09523809523809523
+          },
+          "3": {
+            "floor_per_row": 0.75,
+            "floor_within": 0.5
+          },
+          "39": {
+            "floor_per_row": 0.075,
+            "floor_within": 0.05
+          },
+          "5": {
+            "floor_per_row": 0.5,
+            "floor_within": 0.3333333333333333
+          }
+        },
+        "false_alarms": {
+          "10": {
+            "allclose_default": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "bf16_fixed": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "cosine_calibrated": {
+              "ci95": [
+                0.07922,
+                0.104992
+              ],
+              "count": 183,
+              "draws": 2000,
+              "rate": 0.0915
+            },
+            "floor_per_row": {
+              "ci95": [
+                0.115086,
+                0.145009
+              ],
+              "count": 259,
+              "draws": 2000,
+              "rate": 0.1295
+            },
+            "floor_within": {
+              "ci95": [
+                0.090489,
+                0.117686
+              ],
+              "count": 207,
+              "draws": 2000,
+              "rate": 0.1035
+            },
+            "fp32_hash": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "max_abs_calibrated": {
+              "ci95": [
+                0.080157,
+                0.106052
+              ],
+              "count": 185,
+              "draws": 2000,
+              "rate": 0.0925
+            }
+          },
+          "20": {
+            "allclose_default": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "bf16_fixed": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "cosine_calibrated": {
+              "ci95": [
+                0.042228,
+                0.062113
+              ],
+              "count": 103,
+              "draws": 2000,
+              "rate": 0.0515
+            },
+            "floor_per_row": {
+              "ci95": [
+                0.07361,
+                0.098621
+              ],
+              "count": 171,
+              "draws": 2000,
+              "rate": 0.0855
+            },
+            "floor_within": {
+              "ci95": [
+                0.049535,
+                0.07078
+              ],
+              "count": 119,
+              "draws": 2000,
+              "rate": 0.0595
+            },
+            "fp32_hash": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "max_abs_calibrated": {
+              "ci95": [
+                0.044961,
+                0.06537
+              ],
+              "count": 109,
+              "draws": 2000,
+              "rate": 0.0545
+            }
+          },
+          "3": {
+            "allclose_default": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "bf16_fixed": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "cosine_calibrated": {
+              "ci95": [
+                0.245276,
+                0.284416
+              ],
+              "count": 529,
+              "draws": 2000,
+              "rate": 0.2645
+            },
+            "floor_per_row": {
+              "ci95": [
+                0.278992,
+                0.319599
+              ],
+              "count": 598,
+              "draws": 2000,
+              "rate": 0.299
+            },
+            "floor_within": {
+              "ci95": [
+                0.256011,
+                0.29565
+              ],
+              "count": 551,
+              "draws": 2000,
+              "rate": 0.2755
+            },
+            "fp32_hash": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "max_abs_calibrated": {
+              "ci95": [
+                0.230177,
+                0.268561
+              ],
+              "count": 498,
+              "draws": 2000,
+              "rate": 0.249
+            }
+          },
+          "39": {
+            "allclose_default": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "bf16_fixed": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "cosine_calibrated": {
+              "ci95": [
+                0.022093,
+                0.037329
+              ],
+              "count": 58,
+              "draws": 2000,
+              "rate": 0.029
+            },
+            "floor_per_row": {
+              "ci95": [
+                0.048618,
+                0.069699
+              ],
+              "count": 117,
+              "draws": 2000,
+              "rate": 0.0585
+            },
+            "floor_within": {
+              "ci95": [
+                0.025171,
+                0.041238
+              ],
+              "count": 65,
+              "draws": 2000,
+              "rate": 0.0325
+            },
+            "fp32_hash": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "max_abs_calibrated": {
+              "ci95": [
+                0.020782,
+                0.035646
+              ],
+              "count": 55,
+              "draws": 2000,
+              "rate": 0.0275
+            }
+          },
+          "5": {
+            "allclose_default": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "bf16_fixed": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "cosine_calibrated": {
+              "ci95": [
+                0.158583,
+                0.192375
+              ],
+              "count": 350,
+              "draws": 2000,
+              "rate": 0.175
+            },
+            "floor_per_row": {
+              "ci95": [
+                0.195237,
+                0.231608
+              ],
+              "count": 426,
+              "draws": 2000,
+              "rate": 0.213
+            },
+            "floor_within": {
+              "ci95": [
+                0.171094,
+                0.205826
+              ],
+              "count": 376,
+              "draws": 2000,
+              "rate": 0.188
+            },
+            "fp32_hash": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "max_abs_calibrated": {
+              "ci95": [
+                0.151381,
+                0.1846
+              ],
+              "count": 335,
+              "draws": 2000,
+              "rate": 0.1675
+            }
+          }
+        },
+        "nulls": [
+          "varying_00",
+          "varying_01",
+          "varying_02",
+          "varying_03",
+          "varying_04",
+          "varying_05",
+          "varying_06",
+          "varying_07",
+          "varying_08",
+          "varying_09",
+          "varying_10",
+          "varying_11",
+          "varying_12",
+          "varying_13",
+          "varying_14",
+          "varying_15",
+          "varying_16",
+          "varying_17",
+          "varying_18",
+          "varying_19",
+          "varying_20",
+          "varying_21",
+          "varying_22",
+          "varying_23",
+          "varying_24",
+          "varying_25",
+          "varying_26",
+          "varying_27",
+          "varying_28",
+          "varying_29",
+          "varying_30",
+          "varying_31",
+          "varying_32",
+          "varying_33",
+          "varying_34",
+          "varying_35",
+          "varying_36",
+          "varying_37",
+          "varying_38",
+          "varying_39"
+        ],
+        "regime": {
+          "distinct_float_arrays": 40,
+          "distinct_states": 40,
+          "distinct_states_including_reference": 41,
+          "float_arrays_equal_to_reference": 0,
+          "null_scale": 6.355682444336708e-06,
+          "nulls": 40,
+          "states": [
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 223
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 224
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 227
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 229
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 230
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 231
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 237
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 238
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 238
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 238
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 239
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 241
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 241
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 241
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 242
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 244
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 246
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 3,
+              "nulls": 1,
+              "rows_changed": 247
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 248
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 249
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 249
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 250
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 251
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 253
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 253
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 255
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 259
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 260
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 261
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 261
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 262
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 263
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 264
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 267
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 269
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 271
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 275
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 276
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 280
+            },
+            {
+              "devices": [
+                "synthetic"
+              ],
+              "equals_reference": false,
+              "max_hamming": 2,
+              "nulls": 1,
+              "rows_changed": 281
+            }
+          ]
+        },
+        "synthetic": {
+          "bases": [
+            "null_mps_b128_o0",
+            "null_mps_b128_o1",
+            "null_mps_b128_o2",
+            "null_mps_b16_o0",
+            "null_mps_b16_o1",
+            "null_mps_b16_o2",
+            "null_mps_b192_o0",
+            "null_mps_b192_o1",
+            "null_mps_b192_o2",
+            "null_mps_b24_o0",
+            "null_mps_b24_o1",
+            "null_mps_b24_o2",
+            "null_mps_b32_o0",
+            "null_mps_b32_o1",
+            "null_mps_b32_o2",
+            "null_mps_b48_o0",
+            "null_mps_b48_o1",
+            "null_mps_b48_o2",
+            "null_mps_b64_o0",
+            "null_mps_b64_o1",
+            "null_mps_b64_o2",
+            "null_mps_b96_o0",
+            "null_mps_b96_o1",
+            "null_mps_b96_o2"
+          ],
+          "description": "each null is an accelerator null of the real pool, taken in turn, plus independent Gaussian noise on every coordinate of its rows and fault vectors, renormalized; it models a rebuild whose noise varies from run to run",
+          "seeds": "np.random.default_rng(10000 + i) for null i",
+          "sigma": 4.5e-06
+        }
+      }
+    },
+    "procedure": "each draw permutes the pool, holds out the first null, and measures Floor.measure(per_row=True) from the next N; the held-out null is judged for false alarms; each fault is applied to the held-out null and judged at the detection N. Calibrated float checks use the same N nulls",
+    "question": "How often does the floor reject an unchanged rebuild, and how often does it catch a real fault, next to float checks on the same vectors?",
+    "reference": "ref_cpu_b32_o0"
+  },
+  "schema": "semq-bench/floor-power/1",
+  "sdk_commit": "4880584d4a21e86342130856341ab40c20580e53",
+  "working_tree_dirty": false
+}

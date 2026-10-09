@@ -3,13 +3,14 @@
 
 import pytest
 
-from benchmarks import page
+from benchmarks import floor_power, page
 
 
 def test_every_result_the_page_reads_names_its_producer():
     assert set(page.PRODUCERS) == {
         "rebuild",
         "granularity",
+        "floor-power",
         "quality",
         "size",
         "speed",
@@ -27,3 +28,56 @@ def test_a_missing_result_names_the_benchmark_that_writes_it(tmp_path, monkeypat
         "benchmark page: docs/assets/benchmarks/summary/scale.json is missing. "
         "Run python -m benchmarks.scale to create it, then python -m benchmarks.page."
     )
+
+
+def small_report():
+    def r(rate):
+        return {"count": 0, "draws": 10, "rate": rate, "ci95": [0.0, 0.3]}
+
+    detectors = dict.fromkeys(floor_power.DETECTORS, r(1.0))
+    faults = {
+        key: {**spec, "size_median_1_minus_cos": 0.2, "detectors": detectors}
+        for key, spec in floor_power.fault_specs().items()
+    }
+    state = {
+        "nulls": 2,
+        "devices": ["cpu"],
+        "equals_reference": True,
+        "rows_changed": 0,
+        "max_hamming": 0,
+    }
+
+    def pool(counts):
+        return {
+            "regime": {
+                "nulls": 2,
+                "distinct_states_including_reference": 1,
+                "states": [state],
+            },
+            "false_alarms": {
+                str(n): dict.fromkeys(floor_power.DETECTORS, r(0.0)) for n in counts
+            },
+            "false_alarm_bounds": {
+                str(n): {"floor_within": 2 / (n + 1), "floor_per_row": 3 / (n + 1)}
+                for n in counts
+            },
+            "detection": {"20": faults},
+            "synthetic": {"sigma": 4.5e-6},
+        }
+
+    return {
+        "results": {
+            "draws": 10,
+            "detection_n": 20,
+            "pools": {"real": pool([20]), "varying": pool([3, 20])},
+        }
+    }
+
+
+def test_power_panel_renders_from_a_small_report():
+    text = "\n".join(page.power_panel(small_report()))
+    assert "## False alarms and detection power" in text
+    assert "2 CPU rebuilds gave the reference state" in text
+    assert "| Replace 2 documents |" in text
+    assert "| 3 | 0% | 50.0% | 0% | 75.0% |" in text
+    assert '??? note "What the experiment does and does not show"' in text

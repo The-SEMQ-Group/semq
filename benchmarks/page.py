@@ -49,6 +49,7 @@ REAL_CHANGES = {
 PRODUCERS = {
     "rebuild": "python -m benchmarks.rebuild",
     "granularity": "python -m benchmarks.granularity",
+    "floor-power": "python -m benchmarks.floor_power",
     "quality": "python -m benchmarks.run, then python -m benchmarks.quality RUN_DIR [RUN_DIR ...]",
     "speed": "python -m benchmarks.speed measure",
     "scale": "python -m benchmarks.scale",
@@ -180,6 +181,204 @@ def simpler_panel(data: dict[str, Any]) -> list[str]:
         "",
         "Source: [`rebuild.json`](../assets/benchmarks/summary/rebuild.json), produced by "
         "`python -m benchmarks.rebuild`.",
+        "",
+    ]
+
+
+POWER_CHECKS = {
+    "floor_within": "SEMQ floor, `within`",
+    "floor_per_row": "SEMQ floor, per-row",
+    "max_abs_calibrated": "Largest absolute difference, calibrated",
+    "cosine_calibrated": "Lowest row cosine, calibrated",
+    "fp32_hash": "Hash of the FP32 bytes",
+    "allclose_default": "`np.allclose`, default tolerances",
+    "bf16_fixed": "Fixed tolerance of one bfloat16 spacing",
+}
+POWER_DETECTORS = (
+    "floor_within",
+    "floor_per_row",
+    "max_abs_calibrated",
+    "cosine_calibrated",
+)
+DEVICES = {"cpu": "CPU", "mps": "Apple GPU (MPS)", "cuda": "CUDA GPU"}
+FAULT_FAMILIES = ("replace", "truncate", "substitute", "diffuse", "sparse")
+
+
+def sci(value: float) -> str:
+    """Scientific notation without padding: 4.5e-6, 1e-4."""
+    mantissa, exponent = f"{value:.1e}".split("e")
+    return f"{mantissa.rstrip('0').rstrip('.')}e{int(exponent)}"
+
+
+def fault_order(fault: dict[str, Any]) -> tuple:
+    family = fault["family"]
+    params = [
+        v
+        for k, v in sorted(fault.items())
+        if k != "size_median_1_minus_cos" and isinstance(v, (int, float))
+    ]
+    return (FAULT_FAMILIES.index(family), *params)
+
+
+def fault_label(fault: dict[str, Any]) -> str:
+    family = fault["family"]
+    if family == "replace":
+        k = fault["documents"]
+        return f"Replace {k} document{'' if k == 1 else 's'}"
+    if family == "truncate":
+        return f"Cut the last {fault['cut']:.0%} of one document"
+    if family == "substitute":
+        m = fault["words"]
+        return f"Swap {m} word{'' if m == 1 else 's'} in one document"
+    if family == "diffuse":
+        return (
+            f"Noise on every coordinate, {fault['noise_x_null_scale']}× rebuild noise"
+        )
+    return (
+        f"Scale {fault['coordinates']:.0%} of coordinates by 1 + {sci(fault['scale'])}"
+    )
+
+
+def rate_cells(r: dict[str, Any]) -> list[str]:
+    lo, hi = r["ci95"]
+    return [percent(100 * r["rate"]), f"{percent(100 * lo)}–{percent(100 * hi)}"]
+
+
+def state_phrase(state: dict[str, Any]) -> str:
+    devices = " and ".join(DEVICES.get(d, d) for d in state["devices"])
+    n = state["nulls"]
+    who = f"{n} {devices} rebuild{'' if n == 1 else 's'}"
+    if state["equals_reference"]:
+        return f"{who} gave the reference state"
+    return (
+        f"{who} gave one state, with {state['rows_changed']} rows changed "
+        f"(hamming at most {state['max_hamming']})"
+    )
+
+
+def power_panel(data: dict[str, Any]) -> list[str]:
+    """False alarms and detection rates of the floor and of float checks, from
+    ``results.pools`` of ``floor-power.json``."""
+    results = data["results"]
+    real, varying = results["pools"]["real"], results["pools"]["varying"]
+    n = str(results["detection_n"])
+    regime = real["regime"]
+    states = "; ".join(state_phrase(s) for s in regime["states"])
+    far = real["false_alarms"][n]
+    det = real["detection"][n]
+    vfar, vbound = varying["false_alarms"], varying["false_alarm_bounds"]
+    vdet = varying["detection"][n]
+    varying_rows = sorted(s["rows_changed"] for s in varying["regime"]["states"])
+    sigma = varying["synthetic"]["sigma"]
+    return [
+        "## False alarms and detection power",
+        "",
+        f"A larger pool: {regime['nulls']} rebuilds of the same corpus that change only "
+        "the device, the batch size and the input order. Every rebuild gave different "
+        f"floats from the reference, but there were only "
+        f"{regime['distinct_states_including_reference']} SEMQ states: {states}.",
+        "",
+        f"Each of {results['draws']:,} draws holds out one rebuild, measures a floor from "
+        f"N of the others, and judges the held-out rebuild, then the same rebuild with "
+        "one fault. Calibrated float checks take their threshold from the same N "
+        "rebuilds. Intervals are 95% Clopper–Pearson.",
+        "",
+        f"### False alarms, {n} rebuilds in the floor",
+        "",
+        *table(
+            ["Check", "False alarms", "95% interval"],
+            [[label, *rate_cells(far[key])] for key, label in POWER_CHECKS.items()],
+            "-rr",
+        ),
+        f"### Detection, {n} rebuilds in the floor",
+        "",
+        "Size is the median 1 − cosine between a changed row and the same row before "
+        "the fault.",
+        "",
+        *table(
+            [
+                "Fault",
+                "Size",
+                "Floor, `within`",
+                "Floor, per-row",
+                "Largest difference, calibrated",
+                "Cosine, calibrated",
+            ],
+            [
+                [
+                    fault_label(f),
+                    f"{f['size_median_1_minus_cos']:.1e}",
+                    *(
+                        percent(100 * f["detectors"][d]["rate"])
+                        for d in POWER_DETECTORS
+                    ),
+                ]
+                for f in sorted(det.values(), key=fault_order)
+            ],
+            "-rrrrr",
+        ),
+        "On content faults the floor and the calibrated float checks agree. In documents "
+        "longer than the model's 512-token limit, a cut removes only text the model "
+        "never reads, so that fault is not always a change. The numeric faults move rows by less than a quantization bin: the "
+        "floor sees them only when a coordinate crosses a bin edge, while a calibrated "
+        "float check sees any change above the rebuild noise.",
+        "",
+        "### When the rebuild noise varies (synthetic)",
+        "",
+        "The real rebuilds above gave one state per device, so the floor had nothing "
+        "to vary. To see what happens when every rebuild differs, this pool is "
+        f"synthetic: each of its {varying['regime']['nulls']} nulls is an Apple GPU "
+        f"(MPS) rebuild plus Gaussian noise (σ = {sci(sigma)} per coordinate), "
+        f"renormalized. Each changes {varying_rows[0]} to {varying_rows[-1]} rows. "
+        "The bound is the worst case for nulls produced the same way as the candidate.",
+        "",
+        *table(
+            ["Nulls in the floor", "`within`", "Bound", "Per-row", "Bound"],
+            [
+                [
+                    key,
+                    percent(100 * vfar[key]["floor_within"]["rate"]),
+                    percent(100 * vbound[key]["floor_within"]),
+                    percent(100 * vfar[key]["floor_per_row"]["rate"]),
+                    percent(100 * vbound[key]["floor_per_row"]),
+                ]
+                for key in sorted(vfar, key=int)
+            ],
+            "rrrrr",
+        ),
+        "A few replaced documents hide in that noise for `within`, which looks at the "
+        "changed share and the p99 hamming. The per-row check catches them:",
+        "",
+        *table(
+            ["Fault", *(POWER_CHECKS[d] for d in POWER_DETECTORS)],
+            [
+                [
+                    fault_label(vdet[key]),
+                    *(
+                        percent(100 * vdet[key]["detectors"][d]["rate"])
+                        for d in POWER_DETECTORS
+                    ),
+                ]
+                for key in ("replace_1", "replace_2")
+            ],
+            "-rrrr",
+        ),
+        '??? note "What the experiment does and does not show"',
+        "",
+        "    - One corpus and one model. The pool varies the device, the batch size "
+        "and the input order, nothing else.",
+        "    - The varying pool is synthetic. Real rebuilds here gave one state per "
+        "device.",
+        "    - A float check calibrated on the same rebuilds as the floor matches it on "
+        "content faults and wins on numeric faults below the bin width.",
+        "    - What SEMQ adds is the names of the rows that changed and a compact "
+        "reference that any platform reads the same way.",
+        "    - Checks with a fixed tolerance reject every rebuild.",
+        "    - The draws resample one fixed pool. The intervals describe that pool, "
+        "not the rebuilds of another pipeline.",
+        "",
+        "Source: [`floor-power.json`](../assets/benchmarks/summary/floor-power.json), "
+        "produced by `python -m benchmarks.floor_power`.",
         "",
     ]
 
@@ -682,14 +881,17 @@ def codecs_page(
         "## Other measurements",
         "",
         "- [Rebuild detection](rebuild.md): does the gate pass a rebuild that changed nothing, "
-        "and fail one that did?",
+        "and fail one that did? With [false-alarm and detection rates]"
+        "(rebuild.md#false-alarms-and-detection-power) over many rebuilds.",
         "- [Scale and portability](scale.md): a million rows, and the same bytes on every platform.",
         "",
     ]
     return "\n".join(lines)
 
 
-def rebuild_page(rebuild: dict[str, Any], granularity: dict[str, Any]) -> str:
+def rebuild_page(
+    rebuild: dict[str, Any], power: dict[str, Any], granularity: dict[str, Any]
+) -> str:
     lines = [
         "---",
         "title: Rebuild detection",
@@ -703,6 +905,7 @@ def rebuild_page(rebuild: dict[str, Any], granularity: dict[str, Any]) -> str:
         "",
         *rebuild_panel(rebuild),
         *simpler_panel(rebuild),
+        *power_panel(power),
         *rows_panel(granularity),
     ]
     return "\n".join(lines)
@@ -776,7 +979,7 @@ def pages() -> dict[Path, str]:
         / "docs/benchmarks/index.md": codecs_page(load("quality"), load("size"), speed),
         ROOT
         / "docs/benchmarks/rebuild.md": rebuild_page(
-            load("rebuild"), load("granularity")
+            load("rebuild"), load("floor-power"), load("granularity")
         ),
         ROOT
         / "docs/benchmarks/scale.md": scale_page(
