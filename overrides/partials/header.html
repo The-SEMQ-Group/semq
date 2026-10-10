@@ -1,0 +1,27 @@
+{# Copyright (c) 2026 The SEMQ Group Inc.
+   Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms. #}
+<header class="md-header semq-site-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="{{ lang.t('header') }}">
+    <a href="{{ config.extra.homepage }}" class="semq-brand" aria-label="The SEMQ Group home" data-md-component="logo">
+      <img src="{{ config.theme.logo | url }}" alt="The SEMQ Group" width="120" height="50">
+    </a>
+    <div class="md-header__title" data-md-component="header-title" aria-hidden="true">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic"><span class="md-ellipsis">{{ config.site_name }}</span></div>
+        <div class="md-header__topic" data-md-component="header-topic"><span class="md-ellipsis">{{ page.title }}</span></div>
+      </div>
+    </div>
+    <div class="semq-header-actions">
+      {% if 'material/search' in config.plugins and config.plugins['material/search'].config.enabled %}
+        <label class="md-header__button md-icon semq-search-toggle" for="__search" aria-label="{{ lang.t('search') }}">
+          {% include '.icons/material/magnify.svg' %}
+        </label>
+        {% include 'partials/search.html' %}
+      {% endif %}
+      {% include 'partials/brand-social.html' %}
+      <label class="md-header__button md-icon semq-docs-toggle" for="__drawer" aria-label="Open documentation navigation">
+        {% include '.icons/material/menu.svg' %}
+      </label>
+    </div>
+  </nav>
+</header>

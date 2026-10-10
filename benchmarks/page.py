@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -49,6 +50,7 @@ REAL_CHANGES = {
 PRODUCERS = {
     "rebuild": "python -m benchmarks.rebuild",
     "granularity": "python -m benchmarks.granularity",
+    "floor-power": "python -m benchmarks.floor_power",
     "quality": "python -m benchmarks.run, then python -m benchmarks.quality RUN_DIR [RUN_DIR ...]",
     "speed": "python -m benchmarks.speed measure",
     "scale": "python -m benchmarks.scale",
@@ -93,13 +95,15 @@ def rebuild_panel(data: dict[str, Any]) -> list[str]:
     experiment = results["semq"][config]
     floor = experiment["floor"]
     lines = [
-        "## Rebuild gate",
+        "## Real pipeline changes",
         "",
-        "A second encoding of 5,183 SciFact documents with `e5-small-v2`. "
-        "The floor comes from three unchanged rebuilds; each candidate is "
-        "compared with the same reference state. Bar length shows the share "
-        "of rows with different symbols. The verdict also considers the floor "
-        "and manifest.",
+        f"A floor measured from {floor['nulls']} unchanged rebuilds, then seven "
+        "candidates: two more unchanged rebuilds and five changes to the pipeline. "
+        "Each bar is the share of rows whose symbols changed, not how serious the "
+        "change is. Moving the normalization after the model shifts no coordinate by "
+        "more than 3e-8, so it counts as no change: four real changes remain.",
+        "",
+        f"Hardware: {hardware_line(data)}.",
         "",
         '<div class="semq-scenarios">',
     ]
@@ -119,13 +123,8 @@ def rebuild_panel(data: dict[str, Any]) -> list[str]:
     lines += [
         "</div>",
         "",
-        f"The observed floor for quant with four bins was {floor['changed_rows']} of "
-        f"{floor['total_rows']:,} rows and a hamming bound of {floor['hamming']}, "
-        f"measured from {floor['nulls']} unchanged rebuilds. One corpus and model "
-        "family cannot establish a general noise floor.",
-        "",
-        "[Full rebuild measurements](../assets/benchmarks/summary/rebuild.json) · "
-        "[Run the gate yourself](../guides/gate-a-rebuild.md)",
+        f"The floor allowed {floor['changed_rows']} of {floor['total_rows']:,} rows to "
+        f"change, by at most {floor['hamming']} symbol each.",
         "",
     ]
     return lines
@@ -135,7 +134,12 @@ def simpler_panel(data: dict[str, Any]) -> list[str]:
     """The same runs judged with a float hash, allclose, a cosine threshold and
     a calibrated max-difference threshold, from ``results.errors``."""
     results = data["results"]
-    nulls = [key for key in results["runs"] if key.startswith("null_")]
+    calibration = set(results["floor_nulls"])
+    nulls = {
+        key
+        for key in results["runs"]
+        if key.startswith("null_") and key not in calibration
+    }
     rows = []
     for key, label in SIMPLE_CHECKS.items():
         errors = results["errors"][key]
@@ -144,42 +148,614 @@ def simpler_panel(data: dict[str, Any]) -> list[str]:
         rows.append(
             [
                 label,
-                f"{len(errors['false_alarms_on_nulls'])} of {len(nulls)}",
+                f"{len(nulls.intersection(errors['false_alarms_on_nulls']))} of {len(nulls)}",
                 f"{len(missed)} of {len(REAL_CHANGES)}{detail}",
             ]
         )
     return [
-        "## Why not something simpler?",
-        "",
-        "The same runs checked with the tools a pipeline already has. A false alarm "
-        "is a rebuild that changed nothing flagged as changed; a miss is a real change "
-        "that passes.",
+        "**The same runs, judged by other checks.** A false alarm flags a rebuild "
+        "with unchanged text and encoder; a miss lets a tested pipeline change pass. "
+        f"False alarms count only the {len(nulls)} rebuilds held out from the "
+        f"{len(calibration)} used to measure the floor.",
         "",
         *table(
-            ["Check", "False alarms on rebuilds", "Real changes missed"], rows, "-rr"
+            ["Check", "False alarms on held-out rebuilds", "Tested changes missed"],
+            rows,
+            "-rr",
         ),
-        "Hashing the floats fails on every rebuild because GPUs and batch sizes change "
-        "the last bits. A cosine threshold that ignores that noise also ignores a switch "
-        "to half precision. A threshold on the largest difference can work, but it has "
-        "to be calibrated on your own rebuilds, which is what the floor does, and it "
-        "cannot say which rows moved.",
-        "",
-        '??? note "What the experiment does and does not show"',
-        "",
-        "    - What moves rows is the device, not the batch size: the three GPU runs flip "
-        "the same few rows, and CPU runs with different batch sizes flip none. The "
-        "held-out rebuild therefore resembles two of the floor's nulls.",
-        "    - Normalizing after the model instead of inside it moves no coordinate by "
-        "more than 3e-8; every check except the float hash treats it as unchanged, "
-        "and it is not counted as a real change above.",
-        "    - The previous model revision also changes the manifest, which alone fails "
-        "the gate. It is caught by its rows too: scored with an unchanged manifest, as "
-        "a pipeline that forgot to update it would, it still changes 100% of rows.",
-        "    - One corpus and one model family; the floor is an envelope of what was "
-        "observed here, not a prediction for other pipelines.",
+        "In these runs, every held-out rebuild changed the FP32 bytes. The fixed "
+        "cosine threshold also lets the switch to half precision pass. A threshold "
+        "on the largest difference works "
+        "when it is calibrated on your own rebuilds, which is what the floor does.",
         "",
         "Source: [`rebuild.json`](../assets/benchmarks/summary/rebuild.json), produced by "
         "`python -m benchmarks.rebuild`.",
+        "",
+    ]
+
+
+POWER_CHECKS = {
+    "floor_within": "SEMQ floor, `within`",
+    "floor_per_row": "SEMQ floor, per-row",
+    "max_abs_calibrated": "Largest absolute difference, calibrated",
+    "cosine_calibrated": "Lowest row cosine, calibrated",
+    "fp32_hash": "Hash of the FP32 bytes",
+    "allclose_default": "`np.allclose`, default tolerances",
+    "bf16_fixed": "Fixed tolerance of one bfloat16 spacing",
+}
+CALIBRATED = ("max_abs_calibrated", "cosine_calibrated")
+POWER_DETECTORS = (
+    "floor_within",
+    "floor_per_row",
+    "max_abs_calibrated",
+    "cosine_calibrated",
+)
+DEVICES = {"cpu": "CPU", "mps": "GPU", "cuda": "GPU"}
+FAULT_FAMILIES = ("replace", "truncate", "substitute", "diffuse", "sparse")
+
+
+def sci(value: float) -> str:
+    """Scientific notation without padding: 4.5e-6, 1e-4."""
+    mantissa, exponent = f"{value:.1e}".split("e")
+    return f"{mantissa.rstrip('0').rstrip('.')}e{int(exponent)}"
+
+
+def fault_order(fault: dict[str, Any]) -> tuple:
+    family = fault["family"]
+    params = [
+        v
+        for k, v in sorted(fault.items())
+        if k != "size_median_1_minus_cos" and isinstance(v, (int, float))
+    ]
+    return (FAULT_FAMILIES.index(family), *params)
+
+
+def fault_label(fault: dict[str, Any]) -> str:
+    family = fault["family"]
+    if family == "replace":
+        k = fault["documents"]
+        return f"Replace {k} document{'' if k == 1 else 's'}"
+    if family == "truncate":
+        return f"Cut the last {fault['cut']:.0%} of words in one document"
+    if family == "substitute":
+        m = fault["words"]
+        return f"Swap {m} word{'' if m == 1 else 's'} in one document"
+    if family == "diffuse":
+        return (
+            f"Noise on every coordinate, {fault['noise_x_null_scale']}× rebuild noise"
+        )
+    return (
+        f"Scale {fault['coordinates']:.0%} of coordinates by 1 + {sci(fault['scale'])}"
+    )
+
+
+def rate_cells(r: dict[str, Any]) -> list[str]:
+    lo, hi = r["ci95"]
+    return [percent(100 * r["rate"]), f"{percent(100 * lo)}–{percent(100 * hi)}"]
+
+
+def states_summary(regime: dict[str, Any]) -> str:
+    """How many rebuilds matched the reference state, and how much the rest changed."""
+    states = regime["states"]
+    same = sum(st["nulls"] for st in states if st["equals_reference"])
+    other = [st for st in states if not st["equals_reference"]]
+    if not other:
+        return f"all {same} matched the reference"
+    n_other = sum(st["nulls"] for st in other)
+    lo = min(st["rows_changed"] for st in other)
+    hi = max(st["rows_changed"] for st in other)
+    rows = (
+        f"{lo} row"
+        if lo == hi == 1
+        else f"{lo} rows" if lo == hi else f"{lo} to {hi} rows"
+    )
+    ham = max(st["max_hamming"] for st in other)
+    return (
+        f"{same} matched the reference and the other {n_other} changed {rows} "
+        f"(hamming at most {ham})"
+    )
+
+
+# -- floor charts: `within` in the accent, per-row in orange, in every chart --
+
+GATE_CSS = {"floor_within": "is-within", "floor_per_row": "is-per-row"}
+GATE_NAMES = {"floor_within": "within", "floor_per_row": "per-row"}
+
+
+def hardware_line(data: dict[str, Any]) -> str:
+    """The CPU and GPU a result was produced on, from its envelope."""
+    hw = data["hardware"]
+    cpu = f"{hw['machine']} ({hw['arch']})"
+    return f"CPU: {cpu} · GPU: {hw['gpu']}" if hw.get("gpu") else f"CPU: {cpu}"
+
+
+def chart_legend(items: list[tuple[str, str]]) -> str:
+    spans = "".join(f'<span class="{css}">{esc(name)}</span>' for css, name in items)
+    return f'<p class="semq-chart-legend">{spans}</p>'
+
+
+def false_alarm_chart(vfar: dict[str, Any]) -> list[str]:
+    """False-alarm rate against nulls in the floor (log scale), measured and bounded."""
+    ns = sorted(int(k) for k in vfar)
+    left, right, top, bottom = 62, SVG_WIDTH - 154, 36, 250
+    lo_n, hi_n = math.log(ns[0]), math.log(ns[-1])
+
+    def xs(n: float) -> float:
+        return left + (math.log(n) - lo_n) / (hi_n - lo_n) * (right - left)
+
+    def ys(v: float) -> float:
+        return bottom - v / 80 * (bottom - top)
+
+    out = svg_open(bottom + 44, "False alarms against the number of nulls in the floor")
+    out[0] = out[0].replace(
+        'class="semq-chart"', 'class="semq-chart is-rebuild" tabindex="0"'
+    )
+    out.append(
+        f'<text class="semq-chart__axis" x="{left - 8}" y="{top - 18}">'
+        "false-alarm rate (%)</text>"
+    )
+    for v in (0, 20, 40, 60, 80):
+        out.append(
+            f'<line class="semq-chart__grid" x1="{left}" x2="{right}" '
+            f'y1="{ys(v):.1f}" y2="{ys(v):.1f}"/>'
+        )
+        out.append(
+            f'<text class="semq-chart__tick" x="{left - 8}" y="{ys(v) + 4:.1f}" '
+            f'text-anchor="end">{v}%</text>'
+        )
+    for n in ns:
+        out.append(
+            f'<text class="semq-chart__tick" x="{xs(n):.1f}" y="{bottom + 18}" '
+            f'text-anchor="middle">{n}</text>'
+        )
+    out.append(
+        f'<text class="semq-chart__axis" x="{(left + right) / 2:.0f}" y="{bottom + 38}" '
+        'text-anchor="middle">calibration rebuilds (N, log scale)</text>'
+    )
+    ends = []
+    for det, stats in (("floor_within", 2), ("floor_per_row", 3)):
+        css = GATE_CSS[det]
+        steps = [ns[0] * (ns[-1] / ns[0]) ** (i / 60) for i in range(61)]
+        pts = " ".join(f"{xs(n):.1f},{ys(100 * stats / (n + 1)):.1f}" for n in steps)
+        out.append(f'<polyline class="semq-chart__bound {css}" points="{pts}"/>')
+        out.append(
+            f'<text class="semq-chart__note" x="{xs(ns[0]) + 10:.1f}" '
+            f'y="{ys(100 * stats / (ns[0] + 1)) - 6:.1f}">bound {stats}/(N+1)</text>'
+        )
+        pts = " ".join(
+            f"{xs(n):.1f},{ys(100 * vfar[str(n)][det]['rate']):.1f}" for n in ns
+        )
+        out.append(f'<polyline class="semq-chart__line {css}" points="{pts}"/>')
+        for n in ns:
+            r = vfar[str(n)][det]
+            lo, up = (100 * c for c in r["ci95"])
+            x = xs(n)
+            out.append(
+                f'<path class="semq-chart__interval {css}" '
+                f'd="M{x:.1f},{ys(lo):.1f}V{ys(up):.1f}'
+                f'M{x - 4:.1f},{ys(lo):.1f}h8M{x - 4:.1f},{ys(up):.1f}h8"/>'
+            )
+            out.append(
+                f"<g><title>{GATE_NAMES[det]}, {n} nulls: {percent(100 * r['rate'])} "
+                f"(95% interval {percent(lo)}–{percent(up)}; "
+                f"bound {percent(100 * stats / (n + 1))})</title>"
+                f'<circle class="semq-chart__point {css}" cx="{xs(n):.1f}" '
+                f'cy="{ys(100 * r["rate"]):.1f}" r="4.5"/></g>'
+            )
+        ends.append((ys(100 * vfar[str(ns[-1])][det]["rate"]), det))
+    # Direct labels at the right end, pushed apart when the two rates are close.
+    (ya, da), (yb, db) = sorted(ends)
+    if yb - ya < 20:
+        mid = (ya + yb) / 2
+        ya, yb = mid - 10, mid + 10
+    for y, det in ((ya, da), (yb, db)):
+        last = percent(100 * vfar[str(ns[-1])][det]["rate"])
+        out.append(
+            f'<text class="semq-chart__label" x="{right + 12}" y="{y + 4:.1f}">'
+            f"{GATE_NAMES[det]} {last}</text>"
+        )
+    return out + [
+        "</svg>",
+        '<figcaption class="semq-scroll-hint">Scroll horizontally to view the full chart.</figcaption>',
+        "</figure>",
+        "",
+    ]
+
+
+def rank_chart(example: dict[str, Any]) -> list[str]:
+    """The measured noise and replaced rows, without a broken or logarithmic axis."""
+    faulted = sorted(example["faulted_hamming"])
+    counts = {int(h): c for h, c in example["hamming_counts"].items()}
+    for h in faulted:
+        counts[h] -= 1
+    noise = {h: c for h, c in counts.items() if c > 0}
+    total = example["changed_rows"]
+    n_noise = sum(noise.values())
+    noise_range = (
+        str(min(noise)) if min(noise) == max(noise) else f"{min(noise)}–{max(noise)}"
+    )
+    ignored = example["rows_ignored_by_p99"]
+    return [
+        '<figure class="semq-row-example" aria-label="Changed rows in the synthetic example">',
+        '<div class="semq-row-example__bar" aria-hidden="true">',
+        f'<span class="is-noise" style="width:{100 * n_noise / total:.4f}%"></span>',
+        f'<span class="is-faulted" style="width:{100 * len(faulted) / total:.4f}%"></span>',
+        "</div>",
+        '<div class="semq-row-example__groups">',
+        '<div class="is-noise"><span>Rebuild noise</span>',
+        f"<strong>{n_noise:,} rows</strong><p>{noise_range} symbols changed per row</p></div>",
+        '<div class="is-faulted"><span>Replaced documents</span>',
+        f'<strong>{len(faulted)} rows</strong><p>{" and ".join(str(h) for h in faulted)} '
+        "symbols changed</p></div>",
+        "</div>",
+        f"<figcaption>Of {total:,} changed rows, the p99 ignores these {ignored} rows "
+        f'with the largest changes. The candidate’s p99 stays at {example["candidate_p99"]}; '
+        f'the per-row limit is {example["floor_max_hamming"]} symbols.</figcaption>',
+        "</figure>",
+        "",
+    ]
+
+
+SIZE_MARKS = (
+    ("floor_within", "is-floor", "SEMQ floor"),
+    ("max_abs_calibrated", "is-maxabs", "largest difference, calibrated"),
+    ("cosine_calibrated", "is-cosine", "lowest cosine, calibrated"),
+)
+
+
+def mark(css: str, x: float, y: float) -> str:
+    if css == "is-floor":
+        return (
+            f'<circle class="semq-chart__mark {css}" cx="{x:.1f}" cy="{y:.1f}" r="7"/>'
+        )
+    if css == "is-maxabs":
+        return (
+            f'<rect class="semq-chart__mark {css}" x="{x - 3.5:.1f}" y="{y - 3.5:.1f}" '
+            'width="7" height="7"/>'
+        )
+    return (
+        f'<path class="semq-chart__mark {css}" '
+        f'd="M{x:.1f},{y - 4.5:.1f}l4.5,4.5l-4.5,4.5l-4.5,-4.5z"/>'
+    )
+
+
+def detection_size_chart(det: dict[str, Any]) -> list[str]:
+    """Named numeric scenarios with rates and intervals; labels stay HTML text."""
+    faults = sorted(
+        (f for f in det.values() if f["family"] in ("diffuse", "sparse")),
+        key=fault_order,
+    )
+    out = [
+        '<figure class="semq-dotchart" aria-label="Detection of injected numeric changes">',
+        "<figcaption>Detection rate · higher is better. Whiskers show 95% "
+        "resampling intervals.</figcaption>",
+        '<div class="semq-dotchart__axis"><span>Injected change</span>',
+        '<div class="semq-dotchart__ticks">'
+        + "".join(f"<span>{v}%</span>" for v in (0, 25, 50, 75, 100))
+        + "</div></div>",
+    ]
+    short_names = ("SEMQ", "Max diff", "Cosine")
+    for f in faults:
+        label = (
+            f"Gaussian noise · {f['noise_x_null_scale']}× rebuild noise"
+            if f["family"] == "diffuse"
+            else f"Scale {f['coordinates']:.0%} of dimensions by 1 + {sci(f['scale'])}"
+        )
+        rates = [f["detectors"][key] for key, _, _ in SIZE_MARKS]
+        out.extend(
+            [
+                '<div class="semq-dotchart__row">',
+                f'<div class="semq-dotchart__label"><strong>{esc(label)}</strong>'
+                f'<small>Angular change: {sci(f["size_median_1_minus_cos"])}</small></div>',
+                '<svg viewBox="0 0 360 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">',
+            ]
+        )
+        for v in (0, 25, 50, 75, 100):
+            x = 20 + 3.2 * v
+            out.append(
+                f'<line class="semq-chart__grid" x1="{x}" x2="{x}" y1="0" y2="60"/>'
+            )
+        for i, ((_, css, _), r) in enumerate(zip(SIZE_MARKS, rates, strict=True)):
+            y = 12 + 18 * i
+            lo, hi = (20 + 320 * c for c in r["ci95"])
+            out.append(
+                f'<path class="semq-dotchart__interval {css}" '
+                f'd="M{lo:.1f},{y}H{hi:.1f}M{lo:.1f},{y - 3}v6M{hi:.1f},{y - 3}v6"/>'
+            )
+            out.append(mark(css, 20 + 320 * r["rate"], y))
+        out.extend(["</svg>", '<div class="semq-dotchart__rates">'])
+        for name, (_, css, _), r in zip(short_names, SIZE_MARKS, rates, strict=True):
+            out.append(
+                f'<span class="{css}">{name}: <strong>{percent(100 * r["rate"])}</strong></span>'
+            )
+        out.extend(["</div>", "</div>"])
+    return out + ["</figure>", ""]
+
+
+def gate_diagram(example: dict[str, Any]) -> list[str]:
+    """Calibration and candidate checks as responsive, accessible HTML."""
+    rows = (
+        ("Changed rows", example["changed_rows"], example["floor_changed_rows"]),
+        ("p99 symbols changed", example["candidate_p99"], example["floor_hamming"]),
+        (
+            "Most symbols changed in one row",
+            max(int(h) for h in example["hamming_counts"]),
+            example["floor_max_hamming"],
+        ),
+    )
+    out = [
+        '<figure class="semq-gate" aria-label="Calibrate the floor, then evaluate a candidate">',
+        '<div class="semq-gate__steps">',
+        '<div><span class="semq-gate__step">1 · Calibrate</span>',
+        f'<strong>{example["nulls_in_floor"]} unchanged rebuilds</strong>',
+        "<p>Compare each with the same reference. Keep the largest observed "
+        "value of each statistic as the floor.</p></div>",
+        '<div><span class="semq-gate__step">2 · Evaluate</span>',
+        "<strong>One candidate rebuild</strong>",
+        "<p>Compare it with that reference, then check each value against its "
+        "floor limit.</p></div>",
+        "</div>",
+        '<ul class="semq-gate__checks">',
+    ]
+    for label, value, bound in rows:
+        ok = value <= bound
+        out.append(
+            f'<li><span>{esc(label)}</span><code>{value:,} {"≤" if ok else ">"} {bound:,}</code>'
+            f'<strong class="{"is-pass" if ok else "is-fail"}">'
+            f'{"Within" if ok else "Exceeds"}</strong></li>'
+        )
+    out += [
+        "</ul>",
+        "<figcaption>Illustrative candidate from the measured synthetic pool. "
+        "<code>within</code> accepts the first two values; <code>per-row</code> "
+        f'also checks the last and flags {len(example["faulted_hamming"])} rows.</figcaption>',
+        "</figure>",
+        "",
+    ]
+    return out
+
+
+def tradeoff_table(vdet: dict[str, Any], far: dict[str, Any], n: int) -> list[str]:
+    """Detection and false alarms together, with one 0–100% scale and exact rates."""
+    rows = [
+        (
+            f"Replace {vdet[key]['documents']} document{'s' if vdet[key]['documents'] != 1 else ''}",
+            "Detected · higher is better",
+            vdet[key]["detectors"],
+        )
+        for key in ("replace_1", "replace_2")
+    ]
+    rows.append(("Unchanged rebuild", "False alarm · lower is better", far))
+    out = [
+        '<figure class="semq-tradeoff" aria-label="Detection and false alarms with and without per-row">',
+        f"<figcaption>Synthetic pool · {n} calibration rebuilds. Bars show rates "
+        "on a 0–100% scale; ranges are 95% resampling intervals.</figcaption>",
+        '<table><thead><tr><th scope="col">Scenario</th>',
+        '<th scope="col"><code>within</code></th>',
+        '<th scope="col">With <code>per-row</code></th></tr></thead><tbody>',
+    ]
+    for label, direction, rates in rows:
+        out.append(
+            f'<tr><th scope="row">{esc(label)}<small>{esc(direction)}</small></th>'
+        )
+        for key in GATE_NAMES:
+            r = rates[key]
+            out.append(
+                f'<td><strong>{percent(100 * r["rate"])}</strong>'
+                f'<span class="semq-rate-track" aria-hidden="true"><span '
+                f'class="{GATE_CSS[key]}" style="width:{100 * r["rate"]:.4f}%"></span></span>'
+                f"<small>{esc(rate_cells(r)[1])}</small></td>"
+            )
+        out.append("</tr>")
+    return out + ["</tbody></table>", "</figure>", ""]
+
+
+def calibration_details(vfar: dict[str, Any], vbound: dict[str, Any]) -> list[str]:
+    """Keep the bound, calibration chart and its values in one closed disclosure."""
+    body = [
+        "**False-alarm bounds.** The floor keeps, for each statistic, the largest "
+        "value over N calibration rebuilds. When those rebuilds and the candidate "
+        "are produced the same way (exchangeable), an unchanged candidate exceeds "
+        "that largest value with probability at most `1/(N+1)`. A gate checking s "
+        "statistics therefore rejects it at most `s/(N+1)` of the time. `within` "
+        "checks two statistics; per-row adds a third. These are upper bounds, not "
+        "predicted rates. The observed rates below are lower; dependence between "
+        "statistics and tied Hamming values can make the bounds conservative.",
+        "",
+        chart_legend(
+            [
+                ("is-within", "within"),
+                ("is-per-row", "per-row"),
+                ("is-bound", "bound s/(N+1)"),
+            ]
+        ),
+        "",
+        *false_alarm_chart(vfar),
+        "More calibration rebuilds reduced false alarms in this synthetic pool. "
+        "Solid lines show observed rates, whiskers show 95% resampling intervals, "
+        "and dashed lines show the theoretical upper bounds. Lower is better.",
+        "",
+        *table(
+            [
+                "Calibration rebuilds",
+                "`within`",
+                "95% interval",
+                "Upper bound",
+                "Per-row",
+                "95% interval",
+                "Upper bound",
+            ],
+            [
+                [
+                    key,
+                    *rate_cells(vfar[key]["floor_within"]),
+                    percent(100 * vbound[key]["floor_within"]),
+                    *rate_cells(vfar[key]["floor_per_row"]),
+                    percent(100 * vbound[key]["floor_per_row"]),
+                ]
+                for key in sorted(vfar, key=int)
+            ],
+            "rrrrrrr",
+        ),
+    ]
+    return [
+        '??? info "How calibration affects false alarms"',
+        "",
+        *["    " + line if line else "" for line in body],
+        "",
+    ]
+
+
+def power_panel(data: dict[str, Any]) -> list[str]:
+    """False alarms and detection rates of the floor and of float checks, from
+    ``results.pools`` of ``floor-power.json``."""
+    results = data["results"]
+    real, varying = results["pools"]["real"], results["pools"]["varying"]
+    n = str(results["detection_n"])
+    regime = real["regime"]
+    far = real["false_alarms"][n]
+    few = str(min(int(k) for k in real["false_alarms"]))
+    far_few = real["false_alarms"][few]
+    noise_rows = max(st["rows_changed"] for st in regime["states"])
+    # The false-alarm sentence names two groups; fail loudly if the data disagrees.
+    if any(far[k]["rate"] != 0 for k in POWER_DETECTORS) or any(
+        far[k]["rate"] != 1 for k in ("fp32_hash", "allclose_default", "bf16_fixed")
+    ):
+        raise ValueError("floor-power false alarms no longer split into 0% and 100%")
+    det = real["detection"][n]
+    vfar, vbound = varying["false_alarms"], varying["false_alarm_bounds"]
+    vdet = varying["detection"][n]
+    varying_rows = sorted(s["rows_changed"] for s in varying["regime"]["states"])
+    sigma = varying["synthetic"]["sigma"]
+    example = varying["example"]
+    return [
+        "## False alarms and detection power",
+        "",
+        f"Hardware: {hardware_line(data)}.",
+        "",
+        f"{regime['nulls']} rebuilds of the same corpus that change only the device, "
+        "the batch size and the input order. Every rebuild's floats differed from "
+        "the reference, but "
+        f"there were only {regime['distinct_states_including_reference']} SEMQ "
+        f"states: {states_summary(regime)}.",
+        "",
+        f"Each of {results['draws']:,} draws holds out one rebuild, measures a floor from "
+        f"N of the others, and judges the held-out rebuild, then the same rebuild with "
+        "one fault. Calibrated float checks take their threshold from the same N "
+        "rebuilds. Intervals are 95% Clopper–Pearson.",
+        "",
+        f"**False alarms.** With {n} rebuilds in the floor, the floor and both "
+        f"calibrated float checks raised none in {results['draws']:,} draws (95% "
+        f"interval {rate_cells(far['floor_within'])[1]}). A hash of the floats, "
+        "`np.allclose` and a fixed tolerance of one bfloat16 spacing rejected every "
+        f"rebuild. With only {few} rebuilds in the floor, the floor raised "
+        f"{percent(100 * far_few['floor_within']['rate'])} and the calibrated float "
+        f"checks {percent(100 * min(far_few[k]['rate'] for k in CALIBRATED))} to "
+        f"{percent(100 * max(far_few[k]['rate'] for k in CALIBRATED))}: a floor from "
+        "a few rebuilds can underestimate the variation in unchanged candidates. "
+        "The draws resample the same "
+        f"{regime['nulls']} rebuilds, so the intervals describe this pool, not every "
+        "future rebuild.",
+        "",
+        *table_view(
+            ["Check", "False alarms", "95% interval"],
+            [[label, *rate_cells(far[key])] for key, label in POWER_CHECKS.items()],
+            "-rr",
+            "False alarms by check",
+        ),
+        "",
+        "**Detection.** Each fault is injected into a held-out rebuild. On the tested "
+        "content edits, SEMQ and the calibrated float checks had similar detection "
+        f"rates: one replaced document {percent(100 * det['replace_1']['detectors']['floor_within']['rate'])}"
+        f" for every check, one swapped word "
+        f"{percent(100 * det['substitute_1']['detectors']['floor_within']['rate'])} for the floor "
+        f"and {percent(100 * det['substitute_1']['detectors']['cosine_calibrated']['rate'])} for "
+        "the cosine check. Some cuts remove only text beyond the model's 512-token "
+        "window, leaving the model input unchanged.",
+        "",
+        "**Numeric changes.** A perturbation can change floats without crossing a "
+        "quantization boundary. SEMQ's symbols change only when a coordinate crosses "
+        "that boundary; the calibrated float checks detect smaller movements in "
+        "these runs. Each row below names the injected change. Angular change is "
+        "the median 1 − cosine between modified rows and those same rows before "
+        "the injection. The scaled dimensions are the same in every document.",
+        "",
+        chart_legend(
+            [
+                ("is-floor", "SEMQ within"),
+                ("is-maxabs", "largest difference, calibrated"),
+                ("is-cosine", "lowest cosine, calibrated"),
+            ]
+        ),
+        "",
+        *detection_size_chart(det),
+        *table_view(
+            [
+                "Fault",
+                "Angular change (1 − cosine)",
+                "Floor, `within`",
+                "Floor, per-row",
+                "Largest difference, calibrated",
+                "Cosine, calibrated",
+            ],
+            [
+                [
+                    fault_label(f),
+                    f"{f['size_median_1_minus_cos']:.1e}",
+                    *(
+                        percent(100 * f["detectors"][d]["rate"])
+                        for d in POWER_DETECTORS
+                    ),
+                ]
+                for f in sorted(det.values(), key=fault_order)
+            ],
+            "-rrrrr",
+            "Detection rates by fault",
+        ),
+        "",
+        "### When the rebuild noise varies (synthetic)",
+        "",
+        f"The rebuilds above changed at most {noise_rows} rows each. To test rebuilds "
+        "that change hundreds of rows every time, this pool adds "
+        f"noise: each of {varying['regime']['nulls']} nulls is a GPU rebuild plus "
+        f"Gaussian noise (σ = {sci(sigma)} per coordinate), renormalized, and changes "
+        f"{varying_rows[0]} to {varying_rows[-1]} rows. It is a controlled test of "
+        "varying noise, not a model of a specific GPU kernel.",
+        "",
+        "**Why `within` can miss a localized change.** The p99 summarizes changed "
+        "rows and can omit the largest individual changes. In this candidate, the "
+        "changed-row count and p99 both stay within the floor, so `within` passes. "
+        "Per-row also checks each row against `max_hamming` and flags the replaced "
+        "documents.",
+        "",
+        *rank_chart(example),
+        "",
+        "### What per-row adds",
+        "",
+        "Per-row caught localized changes the p99 hid, at the cost of more false "
+        "alarms in this synthetic test. Compare both outcomes before choosing a "
+        "gate; these are observed rates, not guarantees.",
+        "",
+        *tradeoff_table(vdet, vfar[n], int(n)),
+        *table_view(
+            ["Fault", *(POWER_CHECKS[d] for d in POWER_DETECTORS)],
+            [
+                [
+                    fault_label(vdet[key]),
+                    *(
+                        percent(100 * vdet[key]["detectors"][d]["rate"])
+                        for d in POWER_DETECTORS
+                    ),
+                ]
+                for key in ("replace_1", "replace_2")
+            ],
+            "-rrrr",
+            "Detection of replaced documents",
+        ),
+        "",
+        *calibration_details(vfar, vbound),
+        "Source: [`floor-power.json`](../assets/benchmarks/summary/floor-power.json), "
+        "produced by `python -m benchmarks.floor_power`.",
         "",
     ]
 
@@ -199,16 +775,21 @@ def rows_panel(data: dict[str, Any]) -> list[str]:
                 + ("drift" if drift["centroid_cosine_drift"] else "no drift"),
                 f"{drift['classifier_roc_auc']:.2f} · "
                 + ("**drift**" if drift["classifier_drift"] else "no drift"),
-                f"{semq['ids_reported']:,} ids · recall {semq['recall']:.3f}",
+                f"{round(semq['recall'] * k['rows_edited']):,} of "
+                f"{k['rows_edited']:,} identified",
             ]
         )
     return [
         "## Which rows changed?",
         "",
+        f"Hardware: {hardware_line(data)}.",
+        "",
         f"Edit {head['percent']:g}% of the corpus ({head['rows_edited']} documents cut to "
         "their first half and embedded again). Distribution drift, the check embedding "
         "monitors use, sees nothing; `diff` returns the "
-        f"{head['rows_edited']} ids that changed and no others.",
+        f"{head['rows_edited']} ids that changed and no others. The two answer "
+        "different questions: whether the distribution moved, and which documents "
+        "changed.",
         "",
         *table(
             [
@@ -222,10 +803,11 @@ def rows_panel(data: dict[str, Any]) -> list[str]:
         ),
         "Drift checks follow Evidently's defaults (centroid distance with threshold 0.2, "
         "a domain classifier with ROC AUC threshold 0.55), re-implemented in numpy. "
-        "They answer a different question, whether the distribution moved, and they "
-        "only flag once half the corpus changed. From 5% up a few edited documents "
-        "encode to the same quantized row as before, so `diff` misses them (recall "
-        "below 1); it never reports a row that did not change.",
+        "With these thresholds, the domain classifier flagged drift only in the "
+        "tested 50% scenario; the centroid check flagged none. From 5% up a few "
+        "edited documents encode to "
+        "the same quantized row as before, so `diff` misses them; no unedited row was "
+        "reported in these runs.",
         "",
         "Source: [`granularity.json`](../assets/benchmarks/summary/granularity.json), "
         "produced by `python -m benchmarks.granularity`.",
@@ -351,9 +933,11 @@ def bar_chart(
     return out + ["</svg>", "</figure>", ""]
 
 
-def table_view(header: list[str], rows: list[list[str]], align: str) -> list[str]:
+def table_view(
+    header: list[str], rows: list[list[str]], align: str, title: str = "Table view"
+) -> list[str]:
     return [
-        '??? info "Table view"',
+        f'??? info "{title}"',
         "",
         *["    " + line if line else "" for line in table(header, rows, align)],
     ]
@@ -682,14 +1266,23 @@ def codecs_page(
         "## Other measurements",
         "",
         "- [Rebuild detection](rebuild.md): does the gate pass a rebuild that changed nothing, "
-        "and fail one that did?",
+        "and fail one that did? With [false-alarm and detection rates]"
+        "(rebuild.md#false-alarms-and-detection-power) over many rebuilds.",
         "- [Scale and portability](scale.md): a million rows, and the same bytes on every platform.",
         "",
     ]
     return "\n".join(lines)
 
 
-def rebuild_page(rebuild: dict[str, Any], granularity: dict[str, Any]) -> str:
+def rebuild_page(
+    rebuild: dict[str, Any], power: dict[str, Any], granularity: dict[str, Any]
+) -> str:
+    real = power["results"]["pools"]["real"]
+    n = str(power["results"]["detection_n"])
+    det = real["detection"][n]
+    word = det["substitute_1"]["detectors"]["floor_per_row"]["rate"]
+    missed = rebuild["results"]["errors"]["semq_quant4"]["missed_real_changes"]
+    missed = [m for m in missed if m in REAL_CHANGES]
     lines = [
         "---",
         "title: Rebuild detection",
@@ -697,13 +1290,75 @@ def rebuild_page(rebuild: dict[str, Any], granularity: dict[str, Any]) -> str:
         "",
         "# Rebuild detection",
         "",
-        "Re-embed the same corpus and SEMQ should stay quiet; change the model, the "
-        "precision or the input and it should fail the gate, naming the rows that moved. "
-        "These runs test that on 5,183 SciFact documents.",
+        "Rebuilding an embedding corpus can change its floating-point values even "
+        "when its text and encoder are unchanged. SEMQ turns each embedding into "
+        "symbols, reports changed row IDs, and compares the differences with a "
+        "floor: the largest variations observed in unchanged rebuilds. Passing "
+        "the gate means the candidate stayed within that measured envelope; it "
+        "does not establish semantic equivalence.",
+        "",
+        '<figure class="semq-figure" markdown="1">',
+        "",
+        "![The same document rebuilt on another device gives other floats but "
+        "the same symbols; an edited document changes symbols and its row is "
+        "reported](../assets/images/rebuild-noise-vs-change.svg)",
+        "",
+        "<figcaption>Illustrative values. A real rebuild can change some symbols "
+        "within the floor, and a small edit can leave every symbol unchanged."
+        '<span class="semq-scroll-hint">Scroll horizontally to view the full illustration.</span></figcaption>',
+        "",
+        "</figure>",
+        "",
+        "**Setup:** 5,183 SciFact documents · `e5-small-v2` · quant with four bins.",
+        "",
+        "Each section is a separate experiment with its own calibration. The "
+        "hardware and frozen results are listed with that experiment.",
+        "",
+        f"- **No false alarms on real rebuilds:** none with {n} rebuilds in the floor, "
+        f"over {power['results']['draws']:,} resamples of {real['regime']['nulls']} "
+        "rebuilds, where a hash of the floats, `np.allclose` and a fixed tolerance "
+        "rejected all of them.",
+        f"- **Real changes caught:** {len(REAL_CHANGES) - len(missed)} of "
+        f"{len(REAL_CHANGES)} pipeline changes, and one swapped word in one document "
+        f"{percent(100 * word)} of the time.",
+        "- **A compact, portable state.** A float check calibrated on the same "
+        "rebuilds catches content changes as well, catches small numeric faults "
+        "better and can list rows too; SEMQ compares a compact state that every "
+        "platform reads the same way and reports a structured diff.",
+        "",
+        "## How the gate decides",
+        "",
+        "Here a row is one document's embedding. The reference is the state you "
+        "trust; a candidate is a new rebuild. A row's hamming is how many of its "
+        "symbols differ from the reference, and the p99 is taken over the changed "
+        "rows only, not over the whole corpus.",
+        "",
+        *gate_diagram(power["results"]["pools"]["varying"]["example"]),
+        "Measure a floor for a specific reference and expected rebuild settings. "
+        "Recalibrate when the reference or noise regime changes. Each candidate "
+        "is compared with that reference: `within` checks the changed-row ratio "
+        "and p99 Hamming; `--per-row` also checks the largest row change. The "
+        "example shows the numeric checks; a changed encoder manifest also fails "
+        "the gate.",
         "",
         *rebuild_panel(rebuild),
         *simpler_panel(rebuild),
+        *power_panel(power),
         *rows_panel(granularity),
+        '??? note "What these runs do and do not show"',
+        "",
+        "    - One corpus and one model. The floor describes these rebuilds, not "
+        "another pipeline's.",
+        "    - The rebuilds vary the device, the batch size and the input order, and "
+        f"changed at most {max(st['rows_changed'] for st in real['regime']['states'])} "
+        "rows each.",
+        "    - The varying-noise pool is synthetic.",
+        "    - The previous model revision also changes the manifest, which alone fails "
+        "the gate. With the manifest unchanged, it still changes 100% of rows.",
+        "    - The draws resample one fixed pool. The intervals describe that pool.",
+        "",
+        "[Run the gate yourself](../guides/gate-a-rebuild.md)",
+        "",
     ]
     return "\n".join(lines)
 
@@ -776,7 +1431,7 @@ def pages() -> dict[Path, str]:
         / "docs/benchmarks/index.md": codecs_page(load("quality"), load("size"), speed),
         ROOT
         / "docs/benchmarks/rebuild.md": rebuild_page(
-            load("rebuild"), load("granularity")
+            load("rebuild"), load("floor-power"), load("granularity")
         ),
         ROOT
         / "docs/benchmarks/scale.md": scale_page(

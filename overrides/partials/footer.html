@@ -1,0 +1,17 @@
+{# Copyright (c) 2026 The SEMQ Group Inc.
+   Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms. #}
+<footer class="md-footer semq-site-footer" aria-label="The SEMQ Group footer">
+  <div class="semq-site-footer__inner">
+    <div class="semq-site-footer__row">
+      <a href="{{ config.extra.homepage }}" class="semq-brand" aria-label="The SEMQ Group home">
+        <img src="{{ config.theme.logo | url }}" alt="The SEMQ Group" width="100" height="42" loading="lazy">
+      </a>
+      <span class="semq-site-footer__line" aria-hidden="true"></span>
+      {% include 'partials/brand-social.html' %}
+    </div>
+    <div class="semq-site-footer__legal">
+      <p>{{ config.copyright }}</p>
+      <a href="https://www.thesemqgroup.ai/licensing">Licensing FAQ</a>
+    </div>
+  </div>
+</footer>
