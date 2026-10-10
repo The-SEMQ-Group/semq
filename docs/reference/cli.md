@@ -34,7 +34,7 @@ not all the same state (`distinct_nulls > 1`), or the floor does not record
 it, and there are fewer than 20, `semq diff --per-row` prints a warning: with `N` such nulls, each check can
 reject an unchanged rebuild with probability up to `1/(N+1)`. The warning
 does not change the exit code; see
-[Gate a rebuild](../guides/gate-a-rebuild.md#4-check-every-row). `--min-nulls`
+[how many nulls](../guides/gate-a-rebuild.md#how-many-nulls). `--min-nulls`
 exists because one null rebuild only shows what that rebuild happened to
 do; lowering it, even to `1`, is an explicit choice.
 
