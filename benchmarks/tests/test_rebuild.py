@@ -37,7 +37,7 @@ def test_run_spec_only_overrides_listed_fields():
     assert {k: v for k, v in v1.items() if k != "model"} == {
         k: v for k, v in ref.items() if k != "model"
     }
-    assert rebuild.FLOOR_NULLS == ["null_cpu_b128", "null_mps_b32", "null_mps_b128"]
+    assert rebuild.FLOOR_NULLS == ["null_cpu_b128", "null_gpu_b32", "null_gpu_b128"]
     assert rebuild.HELD_OUT in rebuild.CANDIDATES
     assert "null_cpu_b1" in rebuild.CANDIDATES
 

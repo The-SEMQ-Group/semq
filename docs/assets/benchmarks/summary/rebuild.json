@@ -1,55 +1,55 @@
 {
-  "generated_utc": "2026-09-29T06:36:32Z",
+  "generated_utc": "2026-10-10T00:03:01Z",
   "hardware": {
-    "arch": "arm64",
-    "cpu_threads": 12,
-    "gpu": "Apple M4 Pro (MPS)",
-    "machine": "Apple M4 Pro",
-    "os": "macOS-26.6.2-arm64-arm-64bit"
+    "arch": "x86_64",
+    "cpu_threads": 4,
+    "gpu": "NVIDIA A10G",
+    "machine": "AMD EPYC 7R32",
+    "os": "Linux-6.8.0-1066-aws-x86_64-with-glibc2.35"
   },
   "inputs": {
     "rebuild/change_cls_pooling.npy": {
-      "sha256": "529ca1d413b6c1d4f1cd608a478313ea04d3b420d9cb478121b396bf38c2e89b",
+      "sha256": "5865d7fe1b123cef05712993725a316d7248e580ae6a0c8264bf64c3eb8755ca",
       "source": "python -m benchmarks.rebuild --embed (pooling change: CLS token instead of mean pooling)"
     },
-    "rebuild/change_fp16_mps.npy": {
-      "sha256": "cf188a7cbc8867af701ac52dd70e2f9c314147846d1a038df1f8d038ff7fa3cf",
-      "source": "python -m benchmarks.rebuild --embed (precision change: float16 on MPS GPU)"
+    "rebuild/change_fp16_gpu.npy": {
+      "sha256": "5efc2ace79c2d44cb4291fa45815132e0e349521b5cbcab9720aa386adeb9dca",
+      "source": "python -m benchmarks.rebuild --embed (precision change: float16 on the GPU)"
     },
     "rebuild/change_max_length_128.npy": {
-      "sha256": "f786eb52c7a13b11c9c6ae50828124fc31c5746d8e2fdeed6d58914f1e73e0a7",
+      "sha256": "b32b9b49d40fa9c29f06b7aed4835363259adf0bd446cfbdf939b514d466367b",
       "source": "python -m benchmarks.rebuild --embed (truncation change: max_length 128 instead of 512)"
     },
     "rebuild/change_model_v1.npy": {
-      "sha256": "bf3b1fb5361b64745873e3ba28f1854caf505d99ff08f6216b652ecefc802555",
+      "sha256": "d7e20b3b6c10a27ef1c211cc181e4a3fc8603ccb78035746bb6f91257c5ba2cc",
       "source": "python -m benchmarks.rebuild --embed (model revision change: intfloat/e5-small (v1) instead of e5-small-v2)"
     },
     "rebuild/change_unnormalized_renorm64.npy": {
-      "sha256": "cb86a2b2f2058cde70b017a38d6a5933cf40f0e2ff80a3a283a2542c31fd707c",
+      "sha256": "f455f3547ee39854dc3cd8f93ea62437ebc1df54069f1bf56e136d0950948066",
       "source": "python -m benchmarks.rebuild --embed (normalization change: normalize_embeddings=False, then renormalized in float64)"
     },
     "rebuild/null_cpu_b1.npy": {
-      "sha256": "64d3e4c14088595635801c9e4df3a2d74d4178a4d93a26d3e0cd599e3a3fb25d",
+      "sha256": "040f75d6584e8cc766574ad8280846583d4f4132c8aced7f845a39e533a3a4eb",
       "source": "python -m benchmarks.rebuild --embed (null rebuild: CPU, batch 1 (not used for the floor))"
     },
     "rebuild/null_cpu_b128.npy": {
-      "sha256": "d4a9f99ebe27e815f2ddc6c2addc165924f7fe409654c164d10e6bd367a01a1d",
+      "sha256": "4778f1a093008e5219e9f5f405e80a182ab16bfb0aafd0200e3dde229022b062",
       "source": "python -m benchmarks.rebuild --embed (null rebuild: CPU, batch 128)"
     },
-    "rebuild/null_mps_b128.npy": {
-      "sha256": "590957136d37bad277dd4012e183b2efb1cc7f27a6fc6f48f012d96fc045db59",
-      "source": "python -m benchmarks.rebuild --embed (null rebuild: MPS GPU, batch 128)"
+    "rebuild/null_gpu_b128.npy": {
+      "sha256": "e5de44e528f49a3e232dd648a23d433b5992ba03de965d3306b34eea6e7e1050",
+      "source": "python -m benchmarks.rebuild --embed (null rebuild: GPU, batch 128)"
     },
-    "rebuild/null_mps_b32.npy": {
-      "sha256": "6f2ab30e5e069e3b3998e829dc445eb674558c060b9a0ae6115faa347b879df5",
-      "source": "python -m benchmarks.rebuild --embed (null rebuild: MPS GPU, batch 32)"
+    "rebuild/null_gpu_b32.npy": {
+      "sha256": "27b5e02b179534e5433ff0f46d2fe1808f0a162967a8195b04adeac2e8a13292",
+      "source": "python -m benchmarks.rebuild --embed (null rebuild: GPU, batch 32)"
     },
-    "rebuild/null_mps_b64.npy": {
-      "sha256": "419a284d97d01f8a3158d220585ea4108bb60e60354d22a5845bd7162b12edc4",
-      "source": "python -m benchmarks.rebuild --embed (null rebuild held out as the candidate that should pass: MPS GPU, batch 64)"
+    "rebuild/null_gpu_b64.npy": {
+      "sha256": "041953cfcecc2b33994723dce59c919deea202d72c435f5165f6e86a8baae747",
+      "source": "python -m benchmarks.rebuild --embed (null rebuild held out as the candidate that should pass: GPU, batch 64)"
     },
     "rebuild/reference_cpu_b32.npy": {
-      "sha256": "d5bb577936aae07d39a0993e2a0cb613abce5a19a7d3ed1ca3b6ed2a0dffa49f",
+      "sha256": "f64a0704942d758eeeeb983d92e04132a63e0da3aa738fa4f8acabba67092a35",
       "source": "python -m benchmarks.rebuild --embed (reference: CPU, float32, batch 32)"
     }
   },
@@ -59,17 +59,17 @@
       "diff_command": "semq diff reference_cpu_b32.semq CANDIDATE.semq --floor floor.json",
       "diff_exit_codes": {
         "change_cls_pooling": 1,
-        "change_fp16_mps": 1,
+        "change_fp16_gpu": 1,
         "change_max_length_128": 1,
         "change_model_v1": 1,
         "change_unnormalized_renorm64": 0,
         "null_cpu_b1": 0,
-        "null_mps_b64": 0
+        "null_gpu_b64": 0
       },
-      "floor_command": "semq floor reference_cpu_b32.semq null_cpu_b128.semq null_mps_b32.semq null_mps_b128.semq",
+      "floor_command": "semq floor reference_cpu_b32.semq null_cpu_b128.semq null_gpu_b32.semq null_gpu_b128.semq",
       "floor_exit_code": 0,
       "floor_json": {
-        "changed_rows": 5,
+        "changed_rows": 2,
         "config": {
           "bins": 4,
           "dim": 384,
@@ -79,7 +79,7 @@
         "hamming": 1,
         "id_kind": "u64",
         "nulls": 3,
-        "reference_id": "7f610d069d83eb6eaf4291771111703922667a6bce52af0a90f59e7420b06c21",
+        "reference_id": "a4ba025005e1d95c88ae846c9ff9db5be7fb81d6eda16fb638bc73cec028f065",
         "total_rows": 5183,
         "version": "semq-floor/1"
       },
@@ -109,9 +109,9 @@
         "false_alarms_on_nulls": [
           "null_cpu_b1",
           "null_cpu_b128",
-          "null_mps_b128",
-          "null_mps_b32",
-          "null_mps_b64"
+          "null_gpu_b128",
+          "null_gpu_b32",
+          "null_gpu_b64"
         ],
         "missed_real_changes": [
           "change_unnormalized_renorm64"
@@ -120,14 +120,14 @@
       "cosine_any_below": {
         "false_alarms_on_nulls": [],
         "missed_real_changes": [
-          "change_fp16_mps",
+          "change_fp16_gpu",
           "change_unnormalized_renorm64"
         ]
       },
       "cosine_share_vs_null_envelope": {
         "false_alarms_on_nulls": [],
         "missed_real_changes": [
-          "change_fp16_mps",
+          "change_fp16_gpu",
           "change_unnormalized_renorm64"
         ]
       },
@@ -171,9 +171,9 @@
         "false_alarms_on_nulls": [
           "null_cpu_b1",
           "null_cpu_b128",
-          "null_mps_b128",
-          "null_mps_b32",
-          "null_mps_b64"
+          "null_gpu_b128",
+          "null_gpu_b32",
+          "null_gpu_b64"
         ],
         "missed_real_changes": []
       }
@@ -191,7 +191,7 @@
         "semq_quant8": true,
         "sha256": true
       },
-      "change_fp16_mps": {
+      "change_fp16_gpu": {
         "allclose": true,
         "cosine_any_below": false,
         "cosine_share_vs_null_envelope": false,
@@ -263,7 +263,7 @@
         "semq_quant8": false,
         "sha256": true
       },
-      "null_mps_b128": {
+      "null_gpu_b128": {
         "allclose": true,
         "cosine_any_below": false,
         "cosine_share_vs_null_envelope": false,
@@ -275,7 +275,7 @@
         "semq_quant8": false,
         "sha256": true
       },
-      "null_mps_b32": {
+      "null_gpu_b32": {
         "allclose": true,
         "cosine_any_below": false,
         "cosine_share_vs_null_envelope": false,
@@ -287,7 +287,7 @@
         "semq_quant8": false,
         "sha256": true
       },
-      "null_mps_b64": {
+      "null_gpu_b64": {
         "allclose": true,
         "cosine_any_below": false,
         "cosine_share_vs_null_envelope": false,
@@ -302,14 +302,14 @@
     },
     "floor_nulls": [
       "null_cpu_b128",
-      "null_mps_b32",
-      "null_mps_b128"
+      "null_gpu_b32",
+      "null_gpu_b128"
     ],
     "headline": {
       "config": "semq_quant4",
       "held_out_null": {
-        "rows_changed_pct": 0.09646922631680493,
-        "run": "null_mps_b64",
+        "rows_changed_pct": 0.019293845263360986,
+        "run": "null_gpu_b64",
         "within": true
       },
       "model_revision_change": {
@@ -375,7 +375,7 @@
           "batch_size": 32,
           "device": "cpu",
           "dtype": "float32",
-          "embed_seconds": 272.8,
+          "embed_seconds": 921.1,
           "max_length": 512,
           "model": {
             "repo": "intfloat/e5-small-v2",
@@ -397,13 +397,13 @@
         },
         "role": "real_change"
       },
-      "change_fp16_mps": {
-        "description": "precision change: float16 on MPS GPU",
+      "change_fp16_gpu": {
+        "description": "precision change: float16 on the GPU",
         "embedding": {
           "batch_size": 32,
-          "device": "mps:0",
+          "device": "cuda:0",
           "dtype": "float16",
-          "embed_seconds": 404.2,
+          "embed_seconds": 6.1,
           "max_length": 512,
           "model": {
             "repo": "intfloat/e5-small-v2",
@@ -431,7 +431,7 @@
           "batch_size": 32,
           "device": "cpu",
           "dtype": "float32",
-          "embed_seconds": 44.4,
+          "embed_seconds": 255.5,
           "max_length": 128,
           "model": {
             "repo": "intfloat/e5-small-v2",
@@ -459,7 +459,7 @@
           "batch_size": 32,
           "device": "cpu",
           "dtype": "float32",
-          "embed_seconds": 307.7,
+          "embed_seconds": 933.0,
           "max_length": 512,
           "model": {
             "repo": "intfloat/e5-small",
@@ -487,7 +487,7 @@
           "batch_size": 32,
           "device": "cpu",
           "dtype": "float32",
-          "embed_seconds": 269.5,
+          "embed_seconds": 900.5,
           "max_length": 512,
           "model": {
             "repo": "intfloat/e5-small-v2",
@@ -515,7 +515,7 @@
           "batch_size": 1,
           "device": "cpu",
           "dtype": "float32",
-          "embed_seconds": 254.7,
+          "embed_seconds": 746.9,
           "max_length": 512,
           "model": {
             "repo": "intfloat/e5-small-v2",
@@ -543,7 +543,7 @@
           "batch_size": 128,
           "device": "cpu",
           "dtype": "float32",
-          "embed_seconds": 331.1,
+          "embed_seconds": 1005.2,
           "max_length": 512,
           "model": {
             "repo": "intfloat/e5-small-v2",
@@ -565,13 +565,13 @@
         },
         "role": "floor_null"
       },
-      "null_mps_b128": {
-        "description": "null rebuild: MPS GPU, batch 128",
+      "null_gpu_b128": {
+        "description": "null rebuild: GPU, batch 128",
         "embedding": {
           "batch_size": 128,
-          "device": "mps:0",
+          "device": "cuda:0",
           "dtype": "float32",
-          "embed_seconds": 93.8,
+          "embed_seconds": 14.0,
           "max_length": 512,
           "model": {
             "repo": "intfloat/e5-small-v2",
@@ -593,13 +593,13 @@
         },
         "role": "floor_null"
       },
-      "null_mps_b32": {
-        "description": "null rebuild: MPS GPU, batch 32",
+      "null_gpu_b32": {
+        "description": "null rebuild: GPU, batch 32",
         "embedding": {
           "batch_size": 32,
-          "device": "mps:0",
+          "device": "cuda:0",
           "dtype": "float32",
-          "embed_seconds": 125.9,
+          "embed_seconds": 14.1,
           "max_length": 512,
           "model": {
             "repo": "intfloat/e5-small-v2",
@@ -621,13 +621,13 @@
         },
         "role": "floor_null"
       },
-      "null_mps_b64": {
-        "description": "null rebuild held out as the candidate that should pass: MPS GPU, batch 64",
+      "null_gpu_b64": {
+        "description": "null rebuild held out as the candidate that should pass: GPU, batch 64",
         "embedding": {
           "batch_size": 64,
-          "device": "mps:0",
+          "device": "cuda:0",
           "dtype": "float32",
-          "embed_seconds": 450.6,
+          "embed_seconds": 14.0,
           "max_length": 512,
           "model": {
             "repo": "intfloat/e5-small-v2",
@@ -655,7 +655,7 @@
           "batch_size": 32,
           "device": "cpu",
           "dtype": "float32",
-          "embed_seconds": 251.1,
+          "embed_seconds": 917.0,
           "max_length": 512,
           "model": {
             "repo": "intfloat/e5-small-v2",
@@ -690,12 +690,12 @@
             "rows_changed_pct": 100.0,
             "within": false
           },
-          "change_fp16_mps": {
+          "change_fp16_gpu": {
             "manifest_changed": [],
             "max_hamming": 6,
             "p99_hamming": 4,
-            "rows_changed": 3178,
-            "rows_changed_pct": 61.31584024696122,
+            "rows_changed": 3207,
+            "rows_changed_pct": 61.87536175959869,
             "within": false
           },
           "change_max_length_128": {
@@ -718,65 +718,46 @@
             "within": false
           },
           "change_unnormalized_renorm64": {
-            "changed_ids": [
-              2310
-            ],
+            "changed_ids": [],
             "manifest_changed": [],
-            "max_hamming": 1,
-            "p99_hamming": 1,
-            "rows_changed": 1,
-            "rows_changed_pct": 0.019293845263360986,
+            "max_hamming": 0,
+            "p99_hamming": 0,
+            "rows_changed": 0,
+            "rows_changed_pct": 0.0,
             "within": true
           },
           "null_cpu_b1": {
             "changed_ids": [
-              665,
-              764,
               993,
-              1149,
-              1653,
-              1791,
-              2296,
-              2310,
-              3837,
-              4840
+              2356
             ],
             "manifest_changed": [],
             "max_hamming": 1,
             "p99_hamming": 1,
-            "rows_changed": 10,
-            "rows_changed_pct": 0.19293845263360987,
+            "rows_changed": 2,
+            "rows_changed_pct": 0.03858769052672197,
             "within": true
           },
-          "null_mps_b64": {
+          "null_gpu_b64": {
             "changed_ids": [
-              305,
-              665,
-              764,
-              1149,
-              1653,
+              993,
               1791,
               1976,
-              2155,
-              2296,
-              2356,
-              2493,
-              3419,
-              3837,
-              4613,
-              4840
+              2655,
+              3366,
+              3920
             ],
             "manifest_changed": [],
             "max_hamming": 1,
             "p99_hamming": 1,
-            "rows_changed": 15,
-            "rows_changed_pct": 0.2894076789504148,
+            "rows_changed": 6,
+            "rows_changed_pct": 0.11576307158016592,
             "within": true
           }
         },
         "floor": {
-          "changed_pct": 0.2894076789504148,
-          "changed_rows": 15,
+          "changed_pct": 0.13505691684352691,
+          "changed_rows": 7,
           "hamming": 1,
           "nulls": 3,
           "total_rows": 5183
@@ -791,54 +772,38 @@
             "rows_changed_pct": 0.0,
             "within": true
           },
-          "null_mps_b128": {
+          "null_gpu_b128": {
             "changed_ids": [
-              305,
-              665,
-              764,
-              1149,
-              1653,
+              540,
+              993,
               1791,
               1976,
-              2155,
-              2296,
-              2356,
-              2493,
-              3419,
-              3837,
-              4613,
-              4840
+              2655,
+              3366,
+              3920
             ],
             "manifest_changed": [],
             "max_hamming": 1,
             "p99_hamming": 1,
-            "rows_changed": 15,
-            "rows_changed_pct": 0.2894076789504148,
+            "rows_changed": 7,
+            "rows_changed_pct": 0.13505691684352691,
             "within": true
           },
-          "null_mps_b32": {
+          "null_gpu_b32": {
             "changed_ids": [
-              305,
+              540,
               665,
-              764,
-              1149,
-              1653,
+              993,
               1791,
               1976,
-              2155,
-              2296,
-              2356,
-              2493,
-              3419,
-              3837,
-              4613,
-              4840
+              3366,
+              3920
             ],
             "manifest_changed": [],
             "max_hamming": 1,
             "p99_hamming": 1,
-            "rows_changed": 15,
-            "rows_changed_pct": 0.2894076789504148,
+            "rows_changed": 7,
+            "rows_changed_pct": 0.13505691684352691,
             "within": true
           }
         }
@@ -854,12 +819,12 @@
             "rows_changed_pct": 100.0,
             "within": false
           },
-          "change_fp16_mps": {
+          "change_fp16_gpu": {
             "manifest_changed": [],
             "max_hamming": 5,
             "p99_hamming": 3,
-            "rows_changed": 2342,
-            "rows_changed_pct": 45.18618560679143,
+            "rows_changed": 2322,
+            "rows_changed_pct": 44.800308701524216,
             "within": false
           },
           "change_max_length_128": {
@@ -899,21 +864,19 @@
             "rows_changed_pct": 0.0,
             "within": true
           },
-          "null_mps_b64": {
-            "changed_ids": [
-              4289
-            ],
+          "null_gpu_b64": {
+            "changed_ids": [],
             "manifest_changed": [],
-            "max_hamming": 1,
-            "p99_hamming": 1,
-            "rows_changed": 1,
-            "rows_changed_pct": 0.019293845263360986,
+            "max_hamming": 0,
+            "p99_hamming": 0,
+            "rows_changed": 0,
+            "rows_changed_pct": 0.0,
             "within": true
           }
         },
         "floor": {
-          "changed_pct": 0.019293845263360986,
-          "changed_rows": 1,
+          "changed_pct": 0.03858769052672197,
+          "changed_rows": 2,
           "hamming": 1,
           "nulls": 3,
           "total_rows": 5183
@@ -928,26 +891,28 @@
             "rows_changed_pct": 0.0,
             "within": true
           },
-          "null_mps_b128": {
+          "null_gpu_b128": {
             "changed_ids": [
-              4289
+              3621,
+              4661
             ],
             "manifest_changed": [],
             "max_hamming": 1,
             "p99_hamming": 1,
-            "rows_changed": 1,
-            "rows_changed_pct": 0.019293845263360986,
+            "rows_changed": 2,
+            "rows_changed_pct": 0.03858769052672197,
             "within": true
           },
-          "null_mps_b32": {
+          "null_gpu_b32": {
             "changed_ids": [
-              4289
+              3621,
+              4661
             ],
             "manifest_changed": [],
             "max_hamming": 1,
             "p99_hamming": 1,
-            "rows_changed": 1,
-            "rows_changed_pct": 0.019293845263360986,
+            "rows_changed": 2,
+            "rows_changed_pct": 0.03858769052672197,
             "within": true
           }
         }
@@ -963,12 +928,12 @@
             "rows_changed_pct": 100.0,
             "within": false
           },
-          "change_fp16_mps": {
+          "change_fp16_gpu": {
             "manifest_changed": [],
             "max_hamming": 5,
             "p99_hamming": 3,
-            "rows_changed": 1569,
-            "rows_changed_pct": 30.27204321821339,
+            "rows_changed": 1508,
+            "rows_changed_pct": 29.09511865714837,
             "within": false
           },
           "change_max_length_128": {
@@ -1008,9 +973,9 @@
             "rows_changed_pct": 0.0,
             "within": true
           },
-          "null_mps_b64": {
+          "null_gpu_b64": {
             "changed_ids": [
-              5088
+              4906
             ],
             "manifest_changed": [],
             "max_hamming": 1,
@@ -1021,8 +986,8 @@
           }
         },
         "floor": {
-          "changed_pct": 0.019293845263360986,
-          "changed_rows": 1,
+          "changed_pct": 0.03858769052672197,
+          "changed_rows": 2,
           "hamming": 1,
           "nulls": 3,
           "total_rows": 5183
@@ -1037,20 +1002,21 @@
             "rows_changed_pct": 0.0,
             "within": true
           },
-          "null_mps_b128": {
+          "null_gpu_b128": {
             "changed_ids": [
-              5088
+              3621,
+              4906
             ],
             "manifest_changed": [],
             "max_hamming": 1,
             "p99_hamming": 1,
-            "rows_changed": 1,
-            "rows_changed_pct": 0.019293845263360986,
+            "rows_changed": 2,
+            "rows_changed_pct": 0.03858769052672197,
             "within": true
           },
-          "null_mps_b32": {
+          "null_gpu_b32": {
             "changed_ids": [
-              5088
+              3621
             ],
             "manifest_changed": [],
             "max_hamming": 1,
@@ -1072,12 +1038,12 @@
             "rows_changed_pct": 100.0,
             "within": false
           },
-          "change_fp16_mps": {
+          "change_fp16_gpu": {
             "manifest_changed": [],
-            "max_hamming": 5,
+            "max_hamming": 6,
             "p99_hamming": 4,
-            "rows_changed": 2641,
-            "rows_changed_pct": 50.955045340536365,
+            "rows_changed": 2653,
+            "rows_changed_pct": 51.1865714836967,
             "within": false
           },
           "change_max_length_128": {
@@ -1109,8 +1075,17 @@
             "within": true
           },
           "null_cpu_b1": {
+            "changed_ids": [],
+            "manifest_changed": [],
+            "max_hamming": 0,
+            "p99_hamming": 0,
+            "rows_changed": 0,
+            "rows_changed_pct": 0.0,
+            "within": true
+          },
+          "null_gpu_b64": {
             "changed_ids": [
-              5057
+              4906
             ],
             "manifest_changed": [],
             "max_hamming": 1,
@@ -1118,26 +1093,11 @@
             "rows_changed": 1,
             "rows_changed_pct": 0.019293845263360986,
             "within": true
-          },
-          "null_mps_b64": {
-            "changed_ids": [
-              2099,
-              2370,
-              2702,
-              5057,
-              5088
-            ],
-            "manifest_changed": [],
-            "max_hamming": 1,
-            "p99_hamming": 1,
-            "rows_changed": 5,
-            "rows_changed_pct": 0.09646922631680493,
-            "within": true
           }
         },
         "floor": {
-          "changed_pct": 0.09646922631680493,
-          "changed_rows": 5,
+          "changed_pct": 0.03858769052672197,
+          "changed_rows": 2,
           "hamming": 1,
           "nulls": 3,
           "total_rows": 5183
@@ -1152,34 +1112,27 @@
             "rows_changed_pct": 0.0,
             "within": true
           },
-          "null_mps_b128": {
+          "null_gpu_b128": {
             "changed_ids": [
-              2099,
-              2370,
-              2702,
-              5057,
-              5088
+              3621,
+              4906
             ],
             "manifest_changed": [],
             "max_hamming": 1,
             "p99_hamming": 1,
-            "rows_changed": 5,
-            "rows_changed_pct": 0.09646922631680493,
+            "rows_changed": 2,
+            "rows_changed_pct": 0.03858769052672197,
             "within": true
           },
-          "null_mps_b32": {
+          "null_gpu_b32": {
             "changed_ids": [
-              2099,
-              2370,
-              2702,
-              5057,
-              5088
+              3621
             ],
             "manifest_changed": [],
             "max_hamming": 1,
             "p99_hamming": 1,
-            "rows_changed": 5,
-            "rows_changed_pct": 0.09646922631680493,
+            "rows_changed": 1,
+            "rows_changed_pct": 0.019293845263360986,
             "within": true
           }
         }
@@ -1195,12 +1148,12 @@
             "rows_changed_pct": 100.0,
             "within": false
           },
-          "change_fp16_mps": {
+          "change_fp16_gpu": {
             "manifest_changed": [],
             "max_hamming": 8,
             "p99_hamming": 5,
-            "rows_changed": 3986,
-            "rows_changed_pct": 76.9052672197569,
+            "rows_changed": 3961,
+            "rows_changed_pct": 76.42292108817287,
             "within": false
           },
           "change_max_length_128": {
@@ -1233,43 +1186,31 @@
           },
           "null_cpu_b1": {
             "changed_ids": [
-              743,
-              2094,
-              2620,
-              4386,
-              5057
+              4386
             ],
             "manifest_changed": [],
             "max_hamming": 1,
             "p99_hamming": 1,
-            "rows_changed": 5,
-            "rows_changed_pct": 0.09646922631680493,
+            "rows_changed": 1,
+            "rows_changed_pct": 0.019293845263360986,
             "within": true
           },
-          "null_mps_b64": {
+          "null_gpu_b64": {
             "changed_ids": [
-              145,
-              2099,
-              2370,
-              2702,
-              3481,
-              3710,
-              4122,
-              4386,
-              5057,
-              5088
+              4021,
+              4906
             ],
             "manifest_changed": [],
             "max_hamming": 1,
             "p99_hamming": 1,
-            "rows_changed": 10,
-            "rows_changed_pct": 0.19293845263360987,
+            "rows_changed": 2,
+            "rows_changed_pct": 0.03858769052672197,
             "within": true
           }
         },
         "floor": {
-          "changed_pct": 0.19293845263360987,
-          "changed_rows": 10,
+          "changed_pct": 0.05788153579008296,
+          "changed_rows": 3,
           "hamming": 1,
           "nulls": 3,
           "total_rows": 5183
@@ -1284,44 +1225,30 @@
             "rows_changed_pct": 0.0,
             "within": true
           },
-          "null_mps_b128": {
+          "null_gpu_b128": {
             "changed_ids": [
-              145,
-              2099,
-              2370,
-              2702,
-              3481,
-              3710,
-              4122,
-              4386,
-              5057,
-              5088
+              3621,
+              4021,
+              4906
             ],
             "manifest_changed": [],
             "max_hamming": 1,
             "p99_hamming": 1,
-            "rows_changed": 10,
-            "rows_changed_pct": 0.19293845263360987,
+            "rows_changed": 3,
+            "rows_changed_pct": 0.05788153579008296,
             "within": true
           },
-          "null_mps_b32": {
+          "null_gpu_b32": {
             "changed_ids": [
-              145,
-              2099,
-              2370,
-              2702,
-              3481,
+              3621,
               3710,
-              4122,
-              4386,
-              5057,
-              5088
+              4021
             ],
             "manifest_changed": [],
             "max_hamming": 1,
             "p99_hamming": 1,
-            "rows_changed": 10,
-            "rows_changed_pct": 0.19293845263360987,
+            "rows_changed": 3,
+            "rows_changed_pct": 0.05788153579008296,
             "within": true
           }
         }
@@ -1331,36 +1258,36 @@
       "cosine_row_threshold": 0.9999,
       "null_envelope": {
         "cosine_below_share": 0.0,
-        "max_abs_diff": 1.1367956176400185e-06
+        "max_abs_diff": 5.359761416912079e-07
       },
       "rule": "sha256 and allclose (numpy defaults rtol=1e-05, atol=1e-08) flag any difference; max_abs_diff and cosine_below_share flag values above the largest seen on the three floor nulls; cosine_any_below flags one row below the cosine threshold",
       "values": {
         "change_cls_pooling": {
           "allclose_default": false,
           "cosine_below_share": 1.0,
-          "max_abs_diff": 0.26837557554244995,
-          "min_cosine": 0.8116383768189828,
+          "max_abs_diff": 0.2683756947517395,
+          "min_cosine": 0.8116379308586311,
           "sha256_equal": false
         },
-        "change_fp16_mps": {
+        "change_fp16_gpu": {
           "allclose_default": false,
           "cosine_below_share": 0.0,
-          "max_abs_diff": 0.0004943758249282837,
-          "min_cosine": 0.9999951122250793,
+          "max_abs_diff": 0.0005610957741737366,
+          "min_cosine": 0.9999952691587654,
           "sha256_equal": false
         },
         "change_max_length_128": {
           "allclose_default": false,
           "cosine_below_share": 0.9805132162840055,
-          "max_abs_diff": 0.086994469165802,
-          "min_cosine": 0.9184059836126761,
+          "max_abs_diff": 0.08699451386928558,
+          "min_cosine": 0.9184059465571855,
           "sha256_equal": false
         },
         "change_model_v1": {
           "allclose_default": false,
           "cosine_below_share": 1.0,
-          "max_abs_diff": 0.3037763833999634,
-          "min_cosine": -0.10451346737092335,
+          "max_abs_diff": 0.3037765324115753,
+          "min_cosine": -0.10451347254455302,
           "sha256_equal": false
         },
         "change_unnormalized_renorm64": {
@@ -1373,42 +1300,42 @@
         "null_cpu_b1": {
           "allclose_default": false,
           "cosine_below_share": 0.0,
-          "max_abs_diff": 6.598420441150665e-07,
-          "min_cosine": 0.9999999999925833,
+          "max_abs_diff": 2.2724270820617676e-07,
+          "min_cosine": 0.9999999999992544,
           "sha256_equal": false
         },
         "null_cpu_b128": {
           "allclose_default": false,
           "cosine_below_share": 0.0,
-          "max_abs_diff": 5.550682544708252e-07,
-          "min_cosine": 0.999999999992172,
+          "max_abs_diff": 1.7881393432617188e-07,
+          "min_cosine": 0.9999999999994658,
           "sha256_equal": false
         },
-        "null_mps_b128": {
+        "null_gpu_b128": {
           "allclose_default": false,
           "cosine_below_share": 0.0,
-          "max_abs_diff": 1.1367956176400185e-06,
-          "min_cosine": 0.9999999999762034,
+          "max_abs_diff": 5.13449776917696e-07,
+          "min_cosine": 0.99999999999553,
           "sha256_equal": false
         },
-        "null_mps_b32": {
+        "null_gpu_b32": {
           "allclose_default": false,
           "cosine_below_share": 0.0,
-          "max_abs_diff": 1.1367956176400185e-06,
-          "min_cosine": 0.9999999999762034,
+          "max_abs_diff": 5.359761416912079e-07,
+          "min_cosine": 0.9999999999961464,
           "sha256_equal": false
         },
-        "null_mps_b64": {
+        "null_gpu_b64": {
           "allclose_default": false,
           "cosine_below_share": 0.0,
-          "max_abs_diff": 1.1367956176400185e-06,
-          "min_cosine": 0.9999999999762034,
+          "max_abs_diff": 5.13449776917696e-07,
+          "min_cosine": 0.99999999999553,
           "sha256_equal": false
         }
       }
     }
   },
   "schema": "semq-bench/rebuild/1",
-  "sdk_commit": "c606294b99b09894f9642a9f22bfa97bc9863098",
+  "sdk_commit": "f844f4a986dcd0582ecd8f2d0f9b1a76247b9868",
   "working_tree_dirty": false
 }
