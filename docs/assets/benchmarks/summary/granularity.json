@@ -1,15 +1,15 @@
 {
-  "generated_utc": "2026-09-29T06:36:33Z",
+  "generated_utc": "2026-10-10T00:03:02Z",
   "hardware": {
-    "arch": "arm64",
-    "cpu_threads": 12,
-    "gpu": "Apple M4 Pro (MPS)",
-    "machine": "Apple M4 Pro",
-    "os": "macOS-26.6.2-arm64-arm-64bit"
+    "arch": "x86_64",
+    "cpu_threads": 4,
+    "gpu": "NVIDIA A10G",
+    "machine": "AMD EPYC 7R32",
+    "os": "Linux-6.8.0-1066-aws-x86_64-with-glibc2.35"
   },
   "inputs": {
     "granularity/edited.npy": {
-      "sha256": "bc110631041017e9509614a0ad2a92d4f629f527d5aff52f502fdd22ed3eade4",
+      "sha256": "1eef5d39a87ae49d843b47e7fb2214d860f03935a95e1e6f417f49d5697d5d59",
       "source": "python -m benchmarks.granularity --embed"
     },
     "granularity/edited_rows.npy": {
@@ -17,23 +17,23 @@
       "source": "python -m benchmarks.granularity --embed"
     },
     "rebuild/null_cpu_b128.npy": {
-      "sha256": "d4a9f99ebe27e815f2ddc6c2addc165924f7fe409654c164d10e6bd367a01a1d",
+      "sha256": "4778f1a093008e5219e9f5f405e80a182ab16bfb0aafd0200e3dde229022b062",
       "source": "python -m benchmarks.rebuild --embed"
     },
-    "rebuild/null_mps_b128.npy": {
-      "sha256": "590957136d37bad277dd4012e183b2efb1cc7f27a6fc6f48f012d96fc045db59",
+    "rebuild/null_gpu_b128.npy": {
+      "sha256": "e5de44e528f49a3e232dd648a23d433b5992ba03de965d3306b34eea6e7e1050",
       "source": "python -m benchmarks.rebuild --embed"
     },
-    "rebuild/null_mps_b32.npy": {
-      "sha256": "6f2ab30e5e069e3b3998e829dc445eb674558c060b9a0ae6115faa347b879df5",
+    "rebuild/null_gpu_b32.npy": {
+      "sha256": "27b5e02b179534e5433ff0f46d2fe1808f0a162967a8195b04adeac2e8a13292",
       "source": "python -m benchmarks.rebuild --embed"
     },
-    "rebuild/null_mps_b64.npy": {
-      "sha256": "419a284d97d01f8a3158d220585ea4108bb60e60354d22a5845bd7162b12edc4",
+    "rebuild/null_gpu_b64.npy": {
+      "sha256": "041953cfcecc2b33994723dce59c919deea202d72c435f5165f6e86a8baae747",
       "source": "python -m benchmarks.rebuild --embed"
     },
     "rebuild/reference_cpu_b32.npy": {
-      "sha256": "d5bb577936aae07d39a0993e2a0cb613abce5a19a7d3ed1ca3b6ed2a0dffa49f",
+      "sha256": "f64a0704942d758eeeeb983d92e04132a63e0da3aa738fa4f8acabba67092a35",
       "source": "python -m benchmarks.rebuild --embed"
     }
   },
@@ -45,7 +45,7 @@
         "batch_size": 32,
         "device": "cpu",
         "dtype": "float32",
-        "embed_seconds": 152.9,
+        "embed_seconds": 237.5,
         "max_length": 512,
         "model": {
           "repo": "intfloat/e5-small-v2",
@@ -77,8 +77,8 @@
       ]
     },
     "floor": {
-      "changed_pct": 0.09646922631680493,
-      "changed_rows": 5,
+      "changed_pct": 0.03858769052672197,
+      "changed_rows": 2,
       "hamming": 1,
       "nulls": 3,
       "total_rows": 5183
@@ -86,7 +86,7 @@
     "headline": {
       "centroid_cosine_drift": false,
       "classifier_drift": false,
-      "classifier_roc_auc": 0.405547955589192,
+      "classifier_roc_auc": 0.4055491469621033,
       "percent": 1.0,
       "rows_edited": 52,
       "semq_exact_ids": true,
@@ -97,17 +97,17 @@
     "per_k": {
       "0.1": {
         "drift": {
-          "centroid_cosine_distance": 5.057553154053096e-09,
+          "centroid_cosine_distance": 5.057547158848763e-09,
           "centroid_cosine_drift": false,
-          "centroid_euclidean_distance": 9.084433696857177e-05,
+          "centroid_euclidean_distance": 9.08442842851751e-05,
           "centroid_euclidean_drift": false,
           "classifier_drift": false,
-          "classifier_roc_auc": 0.4039549410851203
+          "classifier_roc_auc": 0.40395561123238294
         },
         "edit_cosine_to_original": {
-          "max": 0.9902872095568863,
-          "mean": 0.9853221510431751,
-          "min": 0.980632791339552
+          "max": 0.9902871561771388,
+          "mean": 0.9853221515188011,
+          "min": 0.9806327745451731
         },
         "percent": 0.1,
         "rows_edited": 5,
@@ -125,12 +125,12 @@
         },
         "semq_on_null_rebuild": {
           "exact": false,
-          "false_positives": 5,
+          "false_positives": 1,
           "ids_edited": 5,
-          "ids_reported": 10,
+          "ids_reported": 6,
           "missed": 0,
           "p99_hamming": 113,
-          "precision": 0.5,
+          "precision": 0.8333333333333334,
           "recall": 1.0,
           "true_positives": 5,
           "within_rebuild_floor": false
@@ -138,17 +138,17 @@
       },
       "1": {
         "drift": {
-          "centroid_cosine_distance": 3.990070742698748e-07,
+          "centroid_cosine_distance": 3.990069793458062e-07,
           "centroid_cosine_drift": false,
-          "centroid_euclidean_distance": 0.000811083294352471,
+          "centroid_euclidean_distance": 0.0008110832156516169,
           "centroid_euclidean_drift": false,
           "classifier_drift": false,
-          "classifier_roc_auc": 0.405547955589192
+          "classifier_roc_auc": 0.4055491469621033
         },
         "edit_cosine_to_original": {
-          "max": 0.9910345125026968,
-          "mean": 0.9818622060319413,
-          "min": 0.950598270130353
+          "max": 0.9910344975231159,
+          "mean": 0.9818621943907128,
+          "min": 0.9505982014198228
         },
         "percent": 1.0,
         "rows_edited": 52,
@@ -166,12 +166,12 @@
         },
         "semq_on_null_rebuild": {
           "exact": false,
-          "false_positives": 4,
+          "false_positives": 1,
           "ids_edited": 52,
-          "ids_reported": 56,
+          "ids_reported": 53,
           "missed": 0,
           "p99_hamming": 167,
-          "precision": 0.9285714285714286,
+          "precision": 0.9811320754716981,
           "recall": 1.0,
           "true_positives": 52,
           "within_rebuild_floor": false
@@ -179,17 +179,17 @@
       },
       "10": {
         "drift": {
-          "centroid_cosine_distance": 3.91223746726288e-05,
+          "centroid_cosine_distance": 3.912237122194462e-05,
           "centroid_cosine_drift": false,
-          "centroid_euclidean_distance": 0.008016164161117953,
+          "centroid_euclidean_distance": 0.008016163918344732,
           "centroid_euclidean_drift": false,
           "classifier_drift": false,
-          "classifier_roc_auc": 0.46484273430805506
+          "classifier_roc_auc": 0.46484228754321333
         },
         "edit_cosine_to_original": {
-          "max": 0.9999999999999996,
-          "mean": 0.9826503359810463,
-          "min": 0.9473754228291041
+          "max": 1.0000000000000002,
+          "mean": 0.9826503358364341,
+          "min": 0.9473754746754104
         },
         "percent": 10.0,
         "rows_edited": 518,
@@ -207,12 +207,12 @@
         },
         "semq_on_null_rebuild": {
           "exact": false,
-          "false_positives": 4,
+          "false_positives": 1,
           "ids_edited": 518,
-          "ids_reported": 520,
+          "ids_reported": 517,
           "missed": 2,
           "p99_hamming": 160,
-          "precision": 0.9923076923076923,
+          "precision": 0.9980657640232108,
           "recall": 0.9961389961389961,
           "true_positives": 516,
           "within_rebuild_floor": false
@@ -220,17 +220,17 @@
       },
       "5": {
         "drift": {
-          "centroid_cosine_distance": 9.816011028340732e-06,
+          "centroid_cosine_distance": 9.816006745655415e-06,
           "centroid_cosine_drift": false,
-          "centroid_euclidean_distance": 0.004018876449517786,
+          "centroid_euclidean_distance": 0.004018875666862283,
           "centroid_euclidean_drift": false,
           "classifier_drift": false,
-          "classifier_roc_auc": 0.42744516631714763
+          "classifier_roc_auc": 0.42744412386585023
         },
         "edit_cosine_to_original": {
-          "max": 0.9999999999999996,
-          "mean": 0.9824408691146431,
-          "min": 0.9473754228291041
+          "max": 1.0000000000000002,
+          "mean": 0.9824408667949315,
+          "min": 0.9473754746754104
         },
         "percent": 5.0,
         "rows_edited": 259,
@@ -248,12 +248,12 @@
         },
         "semq_on_null_rebuild": {
           "exact": false,
-          "false_positives": 4,
+          "false_positives": 1,
           "ids_edited": 259,
-          "ids_reported": 262,
+          "ids_reported": 259,
           "missed": 1,
           "p99_hamming": 163,
-          "precision": 0.9847328244274809,
+          "precision": 0.9961389961389961,
           "recall": 0.9961389961389961,
           "true_positives": 258,
           "within_rebuild_floor": false
@@ -261,17 +261,17 @@
       },
       "50": {
         "drift": {
-          "centroid_cosine_distance": 0.0009551120962899562,
+          "centroid_cosine_distance": 0.0009551122401711964,
           "centroid_cosine_drift": false,
-          "centroid_euclidean_distance": 0.039436342442173984,
+          "centroid_euclidean_distance": 0.0394363455391019,
           "centroid_euclidean_drift": false,
           "classifier_drift": true,
           "classifier_roc_auc": 0.7098003973824346
         },
         "edit_cosine_to_original": {
-          "max": 0.9999999999999998,
-          "mean": 0.9827234451752068,
-          "min": 0.936377907147055
+          "max": 1.0000000000000002,
+          "mean": 0.9827234441779326,
+          "min": 0.9363777740676744
         },
         "percent": 50.0,
         "rows_edited": 2592,
@@ -289,12 +289,12 @@
         },
         "semq_on_null_rebuild": {
           "exact": false,
-          "false_positives": 2,
+          "false_positives": 1,
           "ids_edited": 2592,
-          "ids_reported": 2588,
+          "ids_reported": 2587,
           "missed": 6,
           "p99_hamming": 157,
-          "precision": 0.999227202472952,
+          "precision": 0.9996134518747584,
           "recall": 0.9976851851851852,
           "true_positives": 2586,
           "within_rebuild_floor": false
@@ -305,10 +305,10 @@
     "reference": "reference_cpu_b32",
     "variants": {
       "semq": "edited rows replace rows of the reference bytes; all other rows identical",
-      "semq_on_null_rebuild": "edited rows replace rows of the held-out null rebuild (null_mps_b64), so rebuild noise is also present"
+      "semq_on_null_rebuild": "edited rows replace rows of the held-out null rebuild (null_gpu_b64), so rebuild noise is also present"
     }
   },
   "schema": "semq-bench/granularity/1",
-  "sdk_commit": "c606294b99b09894f9642a9f22bfa97bc9863098",
+  "sdk_commit": "f844f4a986dcd0582ecd8f2d0f9b1a76247b9868",
   "working_tree_dirty": false
 }

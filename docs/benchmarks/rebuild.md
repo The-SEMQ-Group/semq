@@ -49,24 +49,24 @@ Measure a floor for a specific reference and expected rebuild settings. Recalibr
 
 A floor measured from 3 unchanged rebuilds, then seven candidates: two more unchanged rebuilds and five changes to the pipeline. Each bar is the share of rows whose symbols changed, not how serious the change is. Moving the normalization after the model shifts no coordinate by more than 3e-8, so it counts as no change: four real changes remain.
 
-Hardware: CPU: Apple M4 Pro (arm64) · GPU: Apple M4 Pro (MPS).
+Hardware: CPU: AMD EPYC 7R32 (x86_64) · GPU: NVIDIA A10G.
 
 <div class="semq-scenarios">
 <div class="semq-scenario is-pass">
-<div class="semq-scenario__head"><strong>GPU rebuild, different batch size</strong><span>0.10% · within floor</span></div>
-<div class="semq-scenario__track"><span style="width:0.10%;min-width:2px"></span></div>
+<div class="semq-scenario__head"><strong>GPU rebuild, different batch size</strong><span>0.02% · within floor</span></div>
+<div class="semq-scenario__track"><span style="width:0.02%;min-width:2px"></span></div>
 </div>
 <div class="semq-scenario is-pass">
-<div class="semq-scenario__head"><strong>CPU rebuild, one document per batch</strong><span>0.02% · within floor</span></div>
-<div class="semq-scenario__track"><span style="width:0.02%;min-width:2px"></span></div>
+<div class="semq-scenario__head"><strong>CPU rebuild, one document per batch</strong><span>0% · within floor</span></div>
+<div class="semq-scenario__track"><span style="width:0.00%;min-width:0px"></span></div>
 </div>
 <div class="semq-scenario is-fail">
 <div class="semq-scenario__head"><strong>Previous encoder revision</strong><span>100% · outside floor</span></div>
 <div class="semq-scenario__track"><span style="width:100.00%;min-width:2px"></span></div>
 </div>
 <div class="semq-scenario is-fail">
-<div class="semq-scenario__head"><strong>Half precision</strong><span>51.0% · outside floor</span></div>
-<div class="semq-scenario__track"><span style="width:50.96%;min-width:2px"></span></div>
+<div class="semq-scenario__head"><strong>Half precision</strong><span>51.2% · outside floor</span></div>
+<div class="semq-scenario__track"><span style="width:51.19%;min-width:2px"></span></div>
 </div>
 <div class="semq-scenario is-fail">
 <div class="semq-scenario__head"><strong>128-token truncation</strong><span>98.1% · outside floor</span></div>
@@ -82,7 +82,7 @@ Hardware: CPU: Apple M4 Pro (arm64) · GPU: Apple M4 Pro (MPS).
 </div>
 </div>
 
-The floor allowed 5 of 5,183 rows to change, by at most 1 symbol each.
+The floor allowed 2 of 5,183 rows to change, by at most 1 symbol each.
 
 **The same runs, judged by other checks.** A false alarm flags a rebuild with unchanged text and encoder; a miss lets a tested pipeline change pass. False alarms count only the 2 rebuilds held out from the 3 used to measure the floor.
 
@@ -404,7 +404,7 @@ Source: [`floor-power.json`](../assets/benchmarks/summary/floor-power.json), pro
 
 ## Which rows changed?
 
-Hardware: CPU: Apple M4 Pro (arm64) · GPU: Apple M4 Pro (MPS).
+Hardware: CPU: AMD EPYC 7R32 (x86_64) · GPU: NVIDIA A10G.
 
 Edit 1% of the corpus (52 documents cut to their first half and embedded again). Distribution drift, the check embedding monitors use, sees nothing; `diff` returns the 52 ids that changed and no others. The two answer different questions: whether the distribution moved, and which documents changed.
 
