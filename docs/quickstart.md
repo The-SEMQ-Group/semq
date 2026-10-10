@@ -5,7 +5,8 @@ with a rebuild. After [installation](installation.md), this takes a few
 minutes and needs no model, network call, or downloaded dataset.
 
 First the whole lifecycle in a dozen lines: encode, save, load, diff. Then
-the question the floor answers: is a rebuild's change noise, or a real change?
+the question the floor answers: did a rebuild change more than rebuilds with
+no intended change do?
 
 ## 1. Understand the inputs
 

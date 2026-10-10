@@ -37,10 +37,11 @@ config, so the loader needs nothing else.
 
 The variation your own rebuilds show when nothing changed on purpose: the
 worst ratio of changed rows and the largest p99 hamming across the null
-rebuilds you measured. The floor remembers where it was measured (config,
-id kind, reference, number of nulls) and applies only to diffs against that
-reference. It is an envelope of observation, not a probability. See
-[Gate a rebuild](guides/gate-a-rebuild.md).
+rebuilds you measured, and, measured with `--per-row`, the largest hamming
+of any row. The floor remembers where it was measured (config, id kind,
+reference, number of nulls) and applies only to diffs against that
+reference. It is an envelope of observation, not a probability; see
+[how many nulls](guides/gate-a-rebuild.md#4-check-every-row) a floor needs.
 
 ## Why does `within` ignore added rows?
 
