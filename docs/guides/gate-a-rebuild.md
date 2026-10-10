@@ -130,8 +130,10 @@ verdict = reference.diff(Encoding.load("candidate.semq")).evaluate(floor, per_ro
 print(verdict.passed, verdict.reasons, verdict.rows)  # the rows above max_hamming
 ```
 
-**How many nulls.** Each check compares one statistic of the candidate with
-the largest value of that statistic among the nulls. If an unchanged rebuild
+### How many nulls
+
+Each check compares one statistic of the candidate with the largest value
+of that statistic among the nulls. If an unchanged rebuild
 and the `N` nulls are exchangeable (produced the same way, so that any order
 of the `N + 1` is equally likely), the unchanged rebuild is above all `N`
 nulls with probability at most `1/(N+1)`, so each statistic rejects it with

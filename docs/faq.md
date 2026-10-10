@@ -41,7 +41,7 @@ rebuilds you measured, and, measured with `--per-row`, the largest hamming
 of any row. The floor remembers where it was measured (config, id kind,
 reference, number of nulls) and applies only to diffs against that
 reference. It is an envelope of observation, not a probability; see
-[how many nulls](guides/gate-a-rebuild.md#4-check-every-row) a floor needs.
+[how many nulls](guides/gate-a-rebuild.md#how-many-nulls) a floor needs.
 
 ## Why does `within` ignore added rows?
 
