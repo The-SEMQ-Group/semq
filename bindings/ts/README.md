@@ -27,12 +27,16 @@ code. This page covers the surface, building and testing the checkout.
   `dispose()`. Accessors return copies.
 - `Diff`: `referenceId`, `candidateId`, `idKind`, `config`, `added`,
   `removed`, `changed`, `nUnchanged`, `manifestChanges`, `units(id)`,
-  `within(floor)`, `asDict()`, `dispose()`.
+  `within(floor)`, `evaluate(floor, { perRow? })`, `asDict()`, `dispose()`.
+  `evaluate` returns a `Verdict`: `passed`, `reasons` (every failed check)
+  and `rows` (with `perRow`, the changed rows above the floor's `maxHamming`).
 - `Floor`: `new Floor({ config, idKind, referenceId, nulls, changedRows, totalRows, hamming })`,
-  `Floor.measure(diffs)`, `Floor.fromDict(d)`, the seven fields as getters,
-  `asDict()`, `equals(other)`, `dispose()`. A floor is bound to the config,
-  the id kind and the reference its nulls were measured against;
-  `diff.within(floor)` throws `Incompatible` for any other diff.
+  `Floor.measure(diffs, { perRow? })`, `Floor.fromJson(json)`,
+  `Floor.fromDict(d)`, the seven fields as getters, `maxHamming` and
+  `distinctNulls` (set by `measure` with `perRow`), `toJson()`, `asDict()`,
+  `equals(other)`, `dispose()`. A floor is bound to the config, the id kind
+  and the reference its nulls were measured against; `diff.within(floor)`
+  and `diff.evaluate(floor)` throw `Incompatible` for any other diff.
 - `buildInfo()` and the `BuildInfo` type.
 - Errors: `InvalidInput`, `Incompatible`, `FormatError`, `IntegrityError`,
   `Unsupported`, `Native`. Out of memory is a `RangeError`.

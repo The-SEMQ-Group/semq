@@ -41,8 +41,8 @@ different bytes.
 | config | `semq.Quant(dim, bins)`, `semq.Phase(dim, sectors)`, `semq.Orbit(dim, scale)` → `(CodecConfig, error)`; `ConfigFromBytes([13]byte)` |
 | codec | `semq.NewCodec(cfg) (*Codec, error)`; `Encode(ids, vectors, manifest)`, `Decode(e)`, `Unpack(e)`, `Backend()`, `Close()` |
 | encoding | `semq.NewEncoding(ids, rows, cfg, manifest)`, `semq.Load(b)`, `semq.Read(r)`; `WriteTo(w)`, `Bytes()`, `Rows()`, `Row(i)`, `IDsU64()`, `IDsUTF8()`, `Get(id)`, `Manifest()`, `ContentDigest()`, `StateID()`, `Concat(others...)`, `Diff(candidate)`, `Close()` |
-| diff | `Added()`, `Removed()`, `Changed()`, `NUnchanged()`, `ManifestChanges()`, `Units(id)`, `Within(floor)`, `Report()`, `Close()` |
-| floor | `semq.NewFloor(cfg, kind, referenceID, nulls, changed, total, hamming)`, `semq.MeasureFloor(nulls)`, `semq.FloorFromReport(r)`; `Config()`, `IDKind()`, `ReferenceID()`, `Nulls()`, `ChangedRows()`, `TotalRows()`, `Hamming()`, `Report()`, `Close()` |
+| diff | `Added()`, `Removed()`, `Changed()`, `NUnchanged()`, `ManifestChanges()`, `Units(id)`, `Within(floor)`, `Evaluate(floor, GateOptions{PerRow})` → `Verdict{Passed, Reasons, Rows}`, `Report()`, `Close()` |
+| floor | `semq.NewFloor(cfg, kind, referenceID, nulls, changed, total, hamming)`, `semq.MeasureFloor(nulls)`, `semq.MeasureFloorFor(nulls, GateOptions{PerRow})`, `semq.LoadFloor(json)`, `semq.FloorFromReport(r)`; `Config()`, `IDKind()`, `ReferenceID()`, `Nulls()`, `ChangedRows()`, `TotalRows()`, `Hamming()`, `MaxHamming()`, `DistinctNulls()`, `MarshalJSON()`, `Report()`, `Close()` |
 | build | `semq.Info() BuildInfo` |
 | ids | `semq.U64IDs(...)`, `semq.UTF8IDs(...)` for sets; `semq.U64ID(v)`, `semq.UTF8ID(s)` for one id |
 | errors | `*InvalidInputError`, `*IncompatibleError`, `*FormatError`, `*IntegrityError`, `*UnsupportedError`, `*NativeError` via `errors.As`; `ErrNoMemory` via `errors.Is` |
@@ -51,7 +51,10 @@ different bytes.
 hold native handles: immutable, safe for concurrent use, released with
 `Close` (idempotent; a finalizer is the fallback). Accessors return copies.
 A `Floor` is bound to the config, id kind and reference state its nulls were
-measured against; `Within` returns `*IncompatibleError` for any other diff.
+measured against; `Within` and `Evaluate` return `*IncompatibleError` for
+any other diff. With `PerRow`, `Evaluate` also fails when any changed row has
+a hamming above the floor's `MaxHamming()`, and `Verdict.Rows` lists those
+rows; it needs a floor from `MeasureFloorFor` with `PerRow`.
 
 ## Example
 
