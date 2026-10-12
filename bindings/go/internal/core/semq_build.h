@@ -6,7 +6,7 @@
 #ifndef SEMQ_BUILD_H
 #define SEMQ_BUILD_H
 
-#define SEMQ_CORE_VERSION "1.1.0-rc.1"
+#define SEMQ_CORE_VERSION "1.1.0"
 
 #define SEMQI_STR_(x) #x
 #define SEMQI_STR(x) SEMQI_STR_(x)
