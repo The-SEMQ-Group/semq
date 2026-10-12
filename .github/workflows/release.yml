@@ -126,7 +126,7 @@ jobs:
             "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" | jq -r .value)"
           echo "::add-mask::$oidc"
           response="$(curl -sS -X POST -H "Authorization: Bearer $oidc" \
-            "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/@semq%2Fsdk")"
+            "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/@semq%2fsdk")"
           token="$(jq -r '.token // empty' <<< "$response")"
           if [ -n "$token" ]; then
             echo "::add-mask::$token"
