@@ -9,7 +9,7 @@ surface.
 
 ## [Unreleased]
 
-## [1.1.0-rc.1] - 2026-10-12
+## [1.1.0] - 2026-10-12
 
 ### Added
 
@@ -73,6 +73,10 @@ surface.
   its 1.0 fields and drops the per-row data; read a floor with per-row data
   with `LoadFloor` (Rust `Floor::from_json`).
 - `semq diff --floor --json` adds a `verdict` object next to `within`.
+
+## [1.1.0-rc.1] - 2026-10-12
+
+Release candidate of 1.1.0; its changes are listed under 1.1.0.
 
 ## [1.0.0] - 2026-10-05
 
@@ -143,5 +147,6 @@ First public release.
   also ships `THIRD_PARTY_LICENSES` for the Emscripten runtime it bundles.
 
 [Unreleased]: https://github.com/The-SEMQ-Group/semq/commits/main
+[1.1.0]: https://github.com/The-SEMQ-Group/semq/releases/tag/v1.1.0
 [1.1.0-rc.1]: https://github.com/The-SEMQ-Group/semq/releases/tag/v1.1.0-rc.1
 [1.0.0]: https://github.com/The-SEMQ-Group/semq/releases/tag/v1.0.0
