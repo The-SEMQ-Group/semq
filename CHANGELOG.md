@@ -9,6 +9,8 @@ surface.
 
 ## [Unreleased]
 
+## [1.1.0-rc.1] - 2026-10-12
+
 ### Added
 
 - **`Diff.evaluate(floor, options)`**, a verdict that names every failed
@@ -141,4 +143,5 @@ First public release.
   also ships `THIRD_PARTY_LICENSES` for the Emscripten runtime it bundles.
 
 [Unreleased]: https://github.com/The-SEMQ-Group/semq/commits/main
+[1.1.0-rc.1]: https://github.com/The-SEMQ-Group/semq/releases/tag/v1.1.0-rc.1
 [1.0.0]: https://github.com/The-SEMQ-Group/semq/releases/tag/v1.0.0
