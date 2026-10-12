@@ -2,4 +2,4 @@
 // Licensed under the PolyForm Noncommercial License 1.0.0. See LICENSE.md for terms.
 
 /** The package version, kept in step with package.json. */
-export const SDK_VERSION = "1.0.0";
+export const SDK_VERSION = "1.1.0-rc.1";
