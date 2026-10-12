@@ -115,15 +115,27 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     environment: npm-release
+    permissions:
+      id-token: write
     steps:
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: "24"
-          registry-url: https://registry.npmjs.org
-      - name: Read the account behind the token
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-        run: echo "npm accepts the token for $(npm whoami)"
+      # The token exchange npm publish does before an upload. The publish
+      # token it returns is masked and never used.
+      - name: Exchange an OIDC token through the trusted publisher
+        run: |
+          oidc="$(curl -fsS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=npm:registry.npmjs.org" | jq -r .value)"
+          echo "::add-mask::$oidc"
+          response="$(curl -sS -X POST -H "Authorization: Bearer $oidc" \
+            "https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/@semq%2fsdk")"
+          token="$(jq -r '.token // empty' <<< "$response")"
+          if [ -n "$token" ]; then
+            echo "::add-mask::$token"
+            echo "npm accepted the trusted publisher; a publish token was issued and discarded."
+          else
+            echo "npm refused the trusted publisher:"
+            jq . <<< "$response"
+            exit 1
+          fi
 
   # --- Release or rehearsal ----------------------------------------------
   # Every other job needs preflight, so a credentials check skips them all.
@@ -166,7 +178,6 @@ jobs:
           RELEASE_PUBLISH_ENABLED: ${{ vars.RELEASE_PUBLISH_ENABLED }}
           NPM_TRUSTED_PUBLISHING: ${{ vars.NPM_TRUSTED_PUBLISHING }}
           CRATES_TRUSTED_PUBLISHING: ${{ vars.CRATES_TRUSTED_PUBLISHING }}
-          NPM_BOOTSTRAP_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
           CODEARTIFACT_DOMAIN: ${{ vars.CODEARTIFACT_DOMAIN }}
           CODEARTIFACT_PUBLISH_ENABLED: ${{ vars.CODEARTIFACT_PUBLISH_ENABLED }}
           EVENT: ${{ github.event_name }}
@@ -185,7 +196,7 @@ jobs:
             exit 0
           fi
           test "$RELEASE_PUBLISH_ENABLED" = true || { echo 'Set RELEASE_PUBLISH_ENABLED=true after configuring all registries'; exit 1; }
-          test "$NPM_TRUSTED_PUBLISHING" = true || test -n "$NPM_BOOTSTRAP_TOKEN" || { echo 'Configure npm trusted publishing or NPM_PUBLISH_TOKEN'; exit 1; }
+          test "$NPM_TRUSTED_PUBLISHING" = true || { echo 'Configure npm trusted publishing, then set NPM_TRUSTED_PUBLISHING=true'; exit 1; }
           test "$CRATES_TRUSTED_PUBLISHING" = true || { echo 'Configure crates.io trusted publishing for semq and semq-sys, then set CRATES_TRUSTED_PUBLISHING=true'; exit 1; }
           go_tag="bindings/go/v${VERSION}"
           go_target="$(git ls-remote --tags origin "refs/tags/${go_tag}" | cut -f1)"
@@ -465,7 +476,7 @@ jobs:
 
   external-consumers:
     name: external consumers
-    needs: package-artifacts
+    needs: [preflight, package-artifacts]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     # No checkout: these are the publication payloads, not editable source.
@@ -489,6 +500,12 @@ jobs:
           path: bundle
       - name: Run all four consumers
         run: python bundle/run_artifacts.py "$RUNNER_TEMP/semq-consumers"
+      # The npm publish command with --dry-run, before anything is published.
+      - name: Dry-run the npm publish
+        env:
+          VERSION: ${{ needs.preflight.outputs.version }}
+          NPM_TAG: ${{ needs.preflight.outputs.npm_tag }}
+        run: npm publish "./bundle/semq-sdk-${VERSION}.tgz" --access public --tag "$NPM_TAG" --dry-run
 
   publish-codeartifact:
     # Release candidates from the private repository, and public releases
@@ -660,7 +677,6 @@ jobs:
         env:
           VERSION: ${{ needs.preflight.outputs.version }}
           NPM_TAG: ${{ needs.preflight.outputs.npm_tag }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
         # --provenance signs a Sigstore attestation of this workflow run,
         # which npm shows on the package page; it needs the public repository.
         run: npm publish "./bundle/semq-sdk-${VERSION}.tgz" --access public --tag "$NPM_TAG" --provenance

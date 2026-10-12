@@ -49,8 +49,7 @@ Publishing to the public registries also needs:
   and the environments `pypi-release`, `crates-release` and `npm-release`.
   crates.io needs one for `semq-sys` and one for `semq`. A local check cannot
   validate registry-side settings.
-- `CRATES_TRUSTED_PUBLISHING=true`, and either `NPM_TRUSTED_PUBLISHING=true` or
-  an `NPM_PUBLISH_TOKEN` secret (see below).
+- `CRATES_TRUSTED_PUBLISHING=true` and `NPM_TRUSTED_PUBLISHING=true`.
 - `RELEASE_PUBLISH_ENABLED=true`, set only when the release is approved.
   Set `CODEARTIFACT_PUBLISH_ENABLED=true` too if the version should also go to
   CodeArtifact.
@@ -73,11 +72,10 @@ because pull request CI does not run this workflow.
 ## Check the publishing credentials
 
 A rehearsal does not authenticate to the registries. Before the first release,
-and after changing a trusted publisher or the npm token, run the release
-workflow with `check-credentials`. It does only the release's authentication
-step for PyPI, crates.io and npm, each from its publish environment, and
-uploads nothing. The trusted publishers name `release.yml`, so no other
-workflow can test them.
+and after changing a trusted publisher, run the release workflow with
+`check-credentials`. It does only the release's authentication step for PyPI,
+crates.io and npm, each from its publish environment, and uploads nothing.
+The trusted publishers name `release.yml`, so no other workflow can test them.
 
 The environments accept only `v*` tags. Run the check from a throwaway tag
 that matches `v*` but none of the release tag patterns, so pushing it starts
@@ -95,9 +93,6 @@ Do not open the environments to `main` instead. A branch policy left behind
 lets every workflow run on `main` use the publish environments and their
 trusted publishers.
 
-The npm job proves the token is valid, not that it may publish in the
-`@semq` scope; a release candidate confirms that.
-
 ## Publish
 
 Push the tag to the merged commit:
@@ -110,25 +105,14 @@ git push origin vX.Y.Z-rc.N
 The workflow checks the tag against every declared version and CHANGELOG.md,
 checks that the commit is on `main`, runs the test suite, builds the packages,
 installs them in external consumers without a checkout, and runs the Linux
-wheel on an AVX-512 instance. Only then does it publish. On crates.io it publishes `semq-sys` before `semq`. The Go module tag
+wheel on an AVX-512 instance. Then the publish jobs wait for a required
+reviewer to approve the `pypi-release`, `crates-release` and `npm-release`
+environments in the workflow run; nothing reaches those registries before
+that. On
+crates.io it publishes `semq-sys` before `semq`. The Go module tag
 `bindings/go/vX.Y.Z` is pushed after PyPI, crates.io and npm succeed, and the
 GitHub Release is created last, with the version's CHANGELOG.md section as its
 notes.
-
-## First npm release only
-
-`@semq/sdk` does not have a published npm version yet, so it cannot use npm
-Trusted Publishing for its first publish. Shortly before the first public
-release, create a short-lived granular token with package publish permission
-and **Bypass 2FA** enabled, then replace the GitHub secret `NPM_PUBLISH_TOKEN`.
-Do not rely on a token created earlier without checking its expiry and
-permissions. The workflow publishes the package with public access.
-
-After the first successful npm publish, configure its Trusted Publisher for
-this repository, workflow `release.yml`, and environment `npm-release`,
-allowing `npm publish`. Set `NPM_TRUSTED_PUBLISHING=true`, remove the
-`NPM_PUBLISH_TOKEN` secret, and revoke the token on npm. Later releases use
-OIDC for npm as well as PyPI and crates.io.
 
 ## After the workflow
 
