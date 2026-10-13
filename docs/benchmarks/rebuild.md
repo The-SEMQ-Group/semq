@@ -106,7 +106,7 @@ Hardware: CPU: AMD EPYC 7R32 (x86_64) · GPU: NVIDIA A10G.
 
 Each of 2,000 draws holds out one rebuild, measures a floor from N of the others, and judges the held-out rebuild, then the same rebuild with one fault. Calibrated float checks take their threshold from the same N rebuilds. Intervals are 95% Clopper–Pearson.
 
-**False alarms.** With 20 rebuilds in the floor, the floor and both calibrated float checks raised none in 2,000 draws (95% interval 0%–0.18%). A hash of the floats, `np.allclose` and a fixed tolerance of one bfloat16 spacing rejected every rebuild. With only 3 rebuilds in the floor, the floor raised 8.7% and the calibrated float checks 5.6% to 9.8%: a floor from a few rebuilds can underestimate the variation in unchanged candidates. The draws resample the same 28 rebuilds, so the intervals describe this pool, not every future rebuild.
+**False alarms.** With 20 rebuilds in the floor, the floor, both calibrated float checks and one bfloat16 spacing plus 1e-5, PyTorch's default absolute tolerance, raised none in 2,000 draws (95% interval 0%–0.18%). A hash of the floats, `np.allclose` and a fixed tolerance of one bfloat16 spacing rejected every rebuild. With only 3 rebuilds in the floor, the floor raised 8.7% and the calibrated float checks 5.6% to 9.8%: a floor from a few rebuilds can underestimate the variation in unchanged candidates. The draws resample the same 28 rebuilds, so the intervals describe this pool, not every future rebuild.
 
 ??? info "False alarms by check"
 
@@ -119,11 +119,12 @@ Each of 2,000 draws holds out one rebuild, measures a floor from N of the others
     | Hash of the FP32 bytes | 100% | 99.8%–100% |
     | `np.allclose`, default tolerances | 100% | 99.8%–100% |
     | Fixed tolerance of one bfloat16 spacing | 100% | 99.8%–100% |
+    | One bfloat16 spacing plus 1e-5 | 0% | 0%–0.18% |
 
 
 **Detection.** Each fault is injected into a held-out rebuild. On the tested content edits, SEMQ and the calibrated float checks had similar detection rates: one replaced document 100% for every check, one swapped word 96.8% for the floor and 97.8% for the cosine check. Some cuts remove only text beyond the model's 512-token window, leaving the model input unchanged.
 
-**Numeric changes.** A perturbation can change floats without crossing a quantization boundary. SEMQ's symbols change only when a coordinate crosses that boundary; the calibrated float checks detect smaller movements in these runs. Each row below names the injected change. Angular change is the median 1 − cosine between modified rows and those same rows before the injection. The scaled dimensions are the same in every document.
+**Numeric changes.** A perturbation can change floats without crossing a quantization boundary. SEMQ's symbols change only when a coordinate crosses that boundary; the calibrated float checks detect smaller movements in these runs. One bfloat16 spacing plus 1e-5 detected 1 of these 6 changes: its absolute tolerance sits above the rebuild noise, which keeps it free of false alarms, and above the smaller changes too. Each row below names the injected change. Angular change is the median 1 − cosine between modified rows and those same rows before the injection. The scaled dimensions are the same in every document.
 
 <p class="semq-chart-legend"><span class="is-floor">SEMQ within</span><span class="is-maxabs">largest difference, calibrated</span><span class="is-cosine">lowest cosine, calibrated</span></p>
 
@@ -261,22 +262,22 @@ Each of 2,000 draws holds out one rebuild, measures a floor from N of the others
 
 ??? info "Detection rates by fault"
 
-    | Fault | Angular change (1 − cosine) | Floor, `within` | Floor, per-row | Largest difference, calibrated | Cosine, calibrated |
-    | --- | ---: | ---: | ---: | ---: | ---: |
-    | Replace 1 document | 1.9e-01 | 100% | 100% | 100% | 100% |
-    | Replace 2 documents | 1.9e-01 | 100% | 100% | 100% | 100% |
-    | Replace 10 documents | 1.9e-01 | 100% | 100% | 100% | 100% |
-    | Cut the last 2% of words in one document | 1.4e-03 | 87.8% | 87.8% | 87.8% | 87.8% |
-    | Cut the last 10% of words in one document | 2.9e-03 | 96.0% | 96.0% | 96.0% | 96.0% |
-    | Cut the last 50% of words in one document | 1.5e-02 | 100% | 100% | 100% | 100% |
-    | Swap 1 word in one document | 7.6e-04 | 96.8% | 96.8% | 97.8% | 97.8% |
-    | Swap 3 words in one document | 3.3e-03 | 100% | 100% | 100% | 100% |
-    | Noise on every coordinate, 1× rebuild noise | 1.9e-13 | 5.3% | 5.3% | 31.7% | 52.6% |
-    | Noise on every coordinate, 10× rebuild noise | 1.9e-11 | 100% | 100% | 100% | 100% |
-    | Noise on every coordinate, 100× rebuild noise | 1.9e-09 | 100% | 100% | 100% | 100% |
-    | Scale 1% of coordinates by 1 + 1e-4 | 4.1e-11 | 67.5% | 67.5% | 100% | 100% |
-    | Scale 1% of coordinates by 1 + 1e-3 | 4.1e-09 | 100% | 100% | 100% | 100% |
-    | Scale 10% of coordinates by 1 + 1e-4 | 4.4e-10 | 100% | 100% | 100% | 100% |
+    | Fault | Angular change (1 − cosine) | Floor, `within` | Floor, per-row | Largest difference, calibrated | Cosine, calibrated | One bfloat16 spacing plus 1e-5 |
+    | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+    | Replace 1 document | 1.9e-01 | 100% | 100% | 100% | 100% | 100% |
+    | Replace 2 documents | 1.9e-01 | 100% | 100% | 100% | 100% | 100% |
+    | Replace 10 documents | 1.9e-01 | 100% | 100% | 100% | 100% | 100% |
+    | Cut the last 2% of words in one document | 1.4e-03 | 87.8% | 87.8% | 87.8% | 87.8% | 87.8% |
+    | Cut the last 10% of words in one document | 2.9e-03 | 96.0% | 96.0% | 96.0% | 96.0% | 96.0% |
+    | Cut the last 50% of words in one document | 1.5e-02 | 100% | 100% | 100% | 100% | 100% |
+    | Swap 1 word in one document | 7.6e-04 | 96.8% | 96.8% | 97.8% | 97.8% | 97.8% |
+    | Swap 3 words in one document | 3.3e-03 | 100% | 100% | 100% | 100% | 100% |
+    | Noise on every coordinate, 1× rebuild noise | 1.9e-13 | 5.3% | 5.3% | 31.7% | 52.6% | 0% |
+    | Noise on every coordinate, 10× rebuild noise | 1.9e-11 | 100% | 100% | 100% | 100% | 0% |
+    | Noise on every coordinate, 100× rebuild noise | 1.9e-09 | 100% | 100% | 100% | 100% | 100% |
+    | Scale 1% of coordinates by 1 + 1e-4 | 4.1e-11 | 67.5% | 67.5% | 100% | 100% | 0% |
+    | Scale 1% of coordinates by 1 + 1e-3 | 4.1e-09 | 100% | 100% | 100% | 100% | 0% |
+    | Scale 10% of coordinates by 1 + 1e-4 | 4.4e-10 | 100% | 100% | 100% | 100% | 0% |
 
 
 ### When the rebuild noise varies (synthetic)

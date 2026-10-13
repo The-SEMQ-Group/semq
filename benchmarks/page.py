@@ -624,11 +624,8 @@ def power_panel(data: dict[str, Any]) -> list[str]:
     ):
         raise ValueError("floor-power false alarms no longer split into 0% and 100%")
     det = real["detection"][n]
-    atol_numeric = max(
-        f["detectors"]["bf16_atol"]["rate"]
-        for f in det.values()
-        if f["family"] in ("diffuse", "sparse")
-    )
+    numeric = [f for f in det.values() if f["family"] in ("diffuse", "sparse")]
+    atol_caught = sum(f["detectors"]["bf16_atol"]["rate"] > 0 for f in numeric)
     vfar, vbound = varying["false_alarms"], varying["false_alarm_bounds"]
     vdet = varying["detection"][n]
     varying_rows = sorted(s["rows_changed"] for s in varying["regime"]["states"])
@@ -684,11 +681,10 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         "**Numeric changes.** A perturbation can change floats without crossing a "
         "quantization boundary. SEMQ's symbols change only when a coordinate crosses "
         "that boundary; the calibrated float checks detect smaller movements in "
-        f"these runs. One bfloat16 spacing plus 1e-5 detected at most "
-        f"{percent(100 * atol_numeric)} "
-        "of these changes: its absolute tolerance sits above the rebuild noise, "
-        "which keeps it free of false alarms, and above these changes too. "
-        "Each row below names the injected change. Angular change is "
+        f"these runs. One bfloat16 spacing plus 1e-5 detected {atol_caught} of "
+        f"these {len(numeric)} changes: its absolute tolerance sits above the "
+        "rebuild noise, which keeps it free of false alarms, and above the "
+        "smaller changes too. Each row below names the injected change. Angular change is "
         "the median 1 − cosine between modified rows and those same rows before "
         "the injection. The scaled dimensions are the same in every document.",
         "",
