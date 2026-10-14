@@ -93,13 +93,16 @@ def small_report():
             "pools": {"real": pool([20]), "varying": pool([3, 20])},
             "simhash_precision": {
                 "device": "Test GPU",
-                "rows": 100,
-                "precisions": {
-                    p: {
-                        "rows_changed_vs_fp32": {"mean": 7.0, "max": 9},
-                        "false_alarms": r(1.0),
+                "dimensions": 384,
+                "vectors": 1_000_100,
+                "seeded_vectors": 1_000_000,
+                "configs": {
+                    c: {
+                        "rows_whose_bits_differ": 50,
+                        "per_million_rows": 70_000.0 if c == "cuda_tf32" else 50.0,
+                        "false_alarms": r(1.0 if c == "cuda_tf32" else 0.0),
                     }
-                    for p in floor_power.SIMHASH_PRECISIONS
+                    for c in floor_power.SIMHASH_CONFIGS
                 },
             },
         },
@@ -117,9 +120,41 @@ def test_power_panel_renders_from_a_small_report():
     assert "Of 241 changed rows" in text
     assert "the p99 ignores these 2 rows" in text
     assert "the per-row limit is 3 symbols" in text
-    # SimHash bits move with the precision of the projection.
-    assert "changed the bits of 7 of 100 rows on average" in text
-    assert "| TF32 on the GPU | 7.0 | 100% | 0%–30.0% |" in text
+    # SimHash bits move with how the projection is computed.
+    assert "changed the bits of 50 to 50 rows per million" in text
+    assert "| TF32 on the GPU, batches of 4,096 | 70,000 | 100% | 0%–30.0% |" in text
+    assert "It detected every fault as often as the per-row floor." in text
+
+
+def test_power_panel_needs_the_simhash_precision_study():
+    report = small_report()
+    report["results"]["simhash_precision"] = None
+    with pytest.raises(ValueError, match="run on a CUDA GPU"):
+        page.power_panel(report)
+
+
+def test_simhash_comparison_names_faults_in_both_directions():
+    specs = floor_power.fault_specs()
+
+    def fault(key, simhash, floor):
+        return {
+            **specs[key],
+            "detectors": {
+                "simhash_calibrated": {"rate": simhash},
+                "floor_per_row": {"rate": floor},
+            },
+        }
+
+    text = page.simhash_comparison(
+        {
+            "replace_1": fault("replace_1", 1.0, 0.5),
+            "replace_2": fault("replace_2", 0.9, 1.0),
+            "replace_10": fault("replace_10", 1.0, 1.0),
+        }
+    )
+    assert "more often on" in text and "(100% vs 50.0%)" in text
+    assert "less often on" in text and "(90.0% vs 100%)" in text
+    assert text.endswith("the other 1 tied.")
 
 
 def test_calibration_rebuilds_are_excluded_from_false_alarm_counts():

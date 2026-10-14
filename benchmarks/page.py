@@ -186,11 +186,11 @@ POWER_CHECKS = {
     "bf16_atol": "One bfloat16 spacing plus 1e-5",
 }
 CALIBRATED = ("max_abs_calibrated", "cosine_calibrated")
-PRECISION_LABELS = {
-    "fp64": "FP64 on the CPU",
-    "tf32": "TF32 on the GPU",
-    "fp16": "FP16 on the GPU",
-    "bf16": "BF16 on the GPU",
+SIMHASH_CONFIG_LABELS = {
+    "torch_cpu": "FP32 on the CPU, PyTorch",
+    "cuda_b64": "FP32 on the GPU, batches of 64",
+    "cuda_b4096": "FP32 on the GPU, batches of 4,096",
+    "cuda_tf32": "TF32 on the GPU, batches of 4,096",
 }
 POWER_DETECTORS = (
     "floor_within",
@@ -200,6 +200,39 @@ POWER_DETECTORS = (
 )
 DEVICES = {"cpu": "CPU", "mps": "GPU", "cuda": "GPU"}
 FAULT_FAMILIES = ("replace", "truncate", "substitute", "diffuse", "sparse")
+
+
+def simhash_comparison(det: dict[str, Any]) -> str:
+    """Faults SimHash detected more and less often than the per-row floor."""
+
+    def named(faults: list[dict[str, Any]]) -> str:
+        return " and ".join(
+            f"“{fault_label(f)}” "
+            f"({percent(100 * f['detectors']['simhash_calibrated']['rate'])} vs "
+            f"{percent(100 * f['detectors']['floor_per_row']['rate'])})"
+            for f in faults
+        )
+
+    faults = sorted(det.values(), key=fault_order)
+
+    def rates(f: dict[str, Any]) -> tuple[float, float]:
+        d = f["detectors"]
+        return d["simhash_calibrated"]["rate"], d["floor_per_row"]["rate"]
+
+    ahead = [f for f in faults if rates(f)[0] > rates(f)[1]]
+    behind = [f for f in faults if rates(f)[0] < rates(f)[1]]
+    parts = []
+    if ahead:
+        parts.append(f"more often on {named(ahead)}")
+    if behind:
+        parts.append(f"less often on {named(behind)}")
+    if not parts:
+        return "It detected every fault as often as the per-row floor."
+    tied = len(faults) - len(ahead) - len(behind)
+    return (
+        f"Against the per-row floor it detected faults {'; '.join(parts)}; "
+        f"the other {tied} tied."
+    )
 
 
 def sci(value: float) -> str:
@@ -648,21 +681,15 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         if caught
         else f"It detected none of these {len(numeric)} changes in any draw"
     )
-    behind = [
-        f
-        for f in sorted(det.values(), key=fault_order)
-        if f["detectors"]["simhash_calibrated"]["rate"]
-        < f["detectors"]["floor_per_row"]["rate"]
-    ]
-    behind_text = " and ".join(
-        f"“{fault_label(f)}” "
-        f"({percent(100 * f['detectors']['simhash_calibrated']['rate'])} vs "
-        f"{percent(100 * f['detectors']['floor_per_row']['rate'])})"
-        for f in behind
-    )
-    simhash_detection = f", except {behind_text}" if behind else ""
+    simhash_vs_floor = simhash_comparison(det)
     precision = results["simhash_precision"]
-    by_precision = precision["precisions"]
+    if precision is None:
+        raise ValueError(
+            "floor-power results have no SimHash precision study; run on a CUDA GPU"
+        )
+    by_config = precision["configs"]
+    fp32 = [by_config[c] for c in SIMHASH_CONFIG_LABELS if c != "cuda_tf32"]
+    tf32 = by_config["cuda_tf32"]
     vfar, vbound = varying["false_alarms"], varying["false_alarm_bounds"]
     vdet = varying["detection"][n]
     varying_rows = sorted(s["rows_changed"] for s in varying["regime"]["states"])
@@ -724,10 +751,12 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         f"from the rebuilds instead. {atol_numeric}: its absolute tolerance "
         "sits above the rebuild noise, which keeps it free of false alarms, and "
         "above the smaller changes too. SimHash with 2 bits per dimension, the "
-        "budget of this floor, calibrated on the same rebuilds, raised "
-        f"{percent(100 * far['simhash_calibrated']['rate'])} false alarms and "
-        "detected each fault at least as often as the per-row floor"
-        f"{simhash_detection}. Each row below names the injected change. Angular change is "
+        "budget of this floor, is calibrated on the same rebuilds and raises an "
+        "alarm when either its changed-row count or its largest row Hamming "
+        "distance exceeds every null; the float checks use one statistic each. "
+        f"It raised {percent(100 * far['simhash_calibrated']['rate'])} false "
+        f"alarms against the floor's {percent(100 * far['floor_per_row']['rate'])}. "
+        f"{simhash_vs_floor} Each row below names the injected change. Angular change is "
         "the median 1 − cosine between modified rows and those same rows before "
         "the injection. The scaled dimensions are the same in every document.",
         "",
@@ -766,29 +795,44 @@ def power_panel(data: dict[str, Any]) -> list[str]:
             "Detection rates by fault",
         ),
         "",
-        "**Precision of the check.** SEMQ's symbols depend only on the input "
-        "floats: the conformance vectors check the same bytes in every binding "
-        "and on every platform CI tests. SimHash's bits also depend on the arithmetic of its "
-        f"projection. On the {precision['device']}, the same unchanged rebuilds, "
-        "hashed in TF32 instead of FP32, changed the bits of "
-        f"{by_precision['tf32']['rows_changed_vs_fp32']['mean']:,.0f} of "
-        f"{precision['rows']:,} rows on average, with no change to the floats. "
-        f"With a floor from {n} rebuilds hashed in FP32, a rebuild hashed in "
-        f"TF32 was rejected in {percent(100 * by_precision['tf32']['false_alarms']['rate'])} "
-        f"of {results['draws']:,} draws.",
+        "**Precision of the check.** SimHash here is computed in FP32 on the CPU "
+        "with NumPy. Each bit is the sign of a sum of "
+        f"{precision['dimensions']} products, and the order of that sum depends on "
+        "the library, the device and the batch size. Over "
+        f"{precision['vectors']:,} vectors, the "
+        f"{precision['vectors'] - precision['seeded_vectors']:,} of these rebuilds "
+        f"and {precision['seeded_vectors']:,} seeded unit vectors, computing the "
+        "same FP32 projection another way changed the bits of "
+        f"{min(c['per_million_rows'] for c in fp32):,.0f} to "
+        f"{max(c['per_million_rows'] for c in fp32):,.0f} rows per million, with "
+        f"no change to the floats; TF32 on the {precision['device']} changed "
+        f"{tf32['per_million_rows']:,.0f} per million. With a floor from {n} "
+        "rebuilds hashed with NumPy, a rebuild hashed another way in FP32 was "
+        f"rejected in {percent(100 * min(c['false_alarms']['rate'] for c in fp32))} "
+        f"to {percent(100 * max(c['false_alarms']['rate'] for c in fp32))} of "
+        f"{results['draws']:,} draws, and one hashed in TF32 in "
+        f"{percent(100 * tf32['false_alarms']['rate'])}. SEMQ quantizes each "
+        "coordinate on its own, with rules fixed by the specification: the "
+        "conformance vectors check the same bytes in every binding and on every "
+        "platform CI tests.",
         "",
         *table_view(
-            ["Projection", "Rows whose bits differ from FP32", "False alarms", "95% interval"],
+            [
+                "SimHash computed as",
+                "Rows whose bits differ, per million",
+                "False alarms",
+                "95% interval",
+            ],
             [
                 [
-                    PRECISION_LABELS[p],
-                    f"{r['rows_changed_vs_fp32']['mean']:,.1f}",
-                    *rate_cells(r["false_alarms"]),
+                    label,
+                    f"{by_config[c]['per_million_rows']:,.0f}",
+                    *rate_cells(by_config[c]["false_alarms"]),
                 ]
-                for p, r in ((p, by_precision[p]) for p in PRECISION_LABELS)
+                for c, label in SIMHASH_CONFIG_LABELS.items()
             ],
             "-rrr",
-            "SimHash by precision of the projection",
+            "SimHash computed another way than NumPy on the CPU",
         ),
         "",
         "### When the rebuild noise varies (synthetic)",

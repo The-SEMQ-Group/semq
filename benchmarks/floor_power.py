@@ -80,8 +80,14 @@ BF16_ATOL = 1e-5
 # SimHash with the floor's bit budget: quant4 stores 2 bits per dimension.
 SIMHASH_BITS_PER_DIM = 2
 SIMHASH_SEED = 1234
-# Precisions of the SimHash projection compared with FP32 on a CUDA GPU.
-SIMHASH_PRECISIONS = ("fp64", "tf32", "fp16", "bf16")
+# Other ways to compute the same FP32 SimHash projection, compared with NumPy
+# on the CPU: the order of the sum of products depends on the library, the
+# device and the batch size. TF32 also rounds the inputs of the products.
+SIMHASH_CONFIGS = ("torch_cpu", "cuda_b64", "cuda_b4096", "cuda_tf32")
+# Seeded unit vectors added to the rebuilds to measure rare bit changes.
+SIMHASH_VECTORS = 1_000_000
+SIMHASH_VECTOR_SEED = 20261014
+SIMHASH_CHUNK = 100_000
 
 DETECTORS = {
     "floor_within": "SEMQ: Diff.within(floor)",
@@ -100,8 +106,8 @@ DETECTORS = {
         "reference value"
     ),
     "simhash_calibrated": (
-        "SimHash with 2 bits per dimension: more changed rows, or a larger "
-        "row hamming, than seen on the floor's nulls"
+        "SimHash with 2 bits per dimension, FP32 on the CPU: more changed rows, or a larger "
+        "row Hamming distance, than seen on the floor's nulls"
     ),
     "bf16_atol": (
         "any coordinate differs by more than one bfloat16 spacing of the "
@@ -281,11 +287,13 @@ def bf16_spacing(values: np.ndarray) -> np.ndarray:
 def simhash_planes(dim: int) -> np.ndarray:
     """Random hyperplanes of the SimHash projection, fixed by SIMHASH_SEED."""
     rng = np.random.default_rng(SIMHASH_SEED)
-    return rng.standard_normal((dim, SIMHASH_BITS_PER_DIM * dim))
+    planes = rng.standard_normal((dim, SIMHASH_BITS_PER_DIM * dim))
+    return planes.astype(np.float32)
 
 
 def simhash(x: np.ndarray) -> np.ndarray:
-    return x.astype(np.float64) @ simhash_planes(x.shape[1]) > 0
+    """SimHash bits computed in FP32 on the CPU with NumPy."""
+    return x.astype(np.float32) @ simhash_planes(x.shape[1]) > 0
 
 
 def binomial_cdf(k: int, n: int, p: float) -> float:
@@ -674,72 +682,87 @@ def evaluate_pool(
 def simhash_precision(
     nulls: dict[str, np.ndarray], ref: np.ndarray, draws: int
 ) -> dict[str, Any] | None:
-    """SimHash of the same vectors with the projection computed in FP32 and in
-    other precisions on a CUDA GPU: rows whose bits change, and how often a
-    floor from DETECTION_N nulls hashed in FP32 rejects a null hashed in another
-    precision. None without CUDA."""
+    """The same FP32 SimHash computed in SIMHASH_CONFIGS instead of NumPy on the
+    CPU: rows whose bits change over the rebuilds and SIMHASH_VECTORS seeded
+    unit vectors, and how often a floor from DETECTION_N nulls hashed with
+    NumPy rejects a null hashed another way. None without CUDA."""
     try:
         import torch
     except ImportError:
         return None
     if not torch.cuda.is_available():
         return None
-    planes = simhash_planes(ref.shape[1])
+    planes = torch.from_numpy(simhash_planes(ref.shape[1]))
+    on_gpu = planes.cuda()
 
-    def hashed(x: np.ndarray, precision: str) -> np.ndarray:
-        if precision == "fp64":
+    def hashed(x: np.ndarray, config: str) -> np.ndarray:
+        if config == "numpy":
             return simhash(x)
-        torch.backends.cuda.matmul.allow_tf32 = precision == "tf32"
-        dtype = {
-            "fp32": torch.float32,
-            "tf32": torch.float32,
-            "fp16": torch.float16,
-            "bf16": torch.bfloat16,
-        }[precision]
-        a = torch.from_numpy(x).cuda().to(dtype)
-        b = torch.from_numpy(planes.astype(np.float32)).cuda().to(dtype)
-        out = ((a @ b) > 0).cpu().numpy()
-        torch.backends.cuda.matmul.allow_tf32 = False
-        return out
+        if config == "torch_cpu":
+            return (torch.from_numpy(x) @ planes > 0).numpy()
+        batch = 64 if config == "cuda_b64" else 4096
+        previous = torch.backends.cuda.matmul.allow_tf32
+        torch.backends.cuda.matmul.allow_tf32 = config == "cuda_tf32"
+        try:
+            return np.concatenate(
+                [
+                    (torch.from_numpy(x[i : i + batch]).cuda() @ on_gpu > 0)
+                    .cpu()
+                    .numpy()
+                    for i in range(0, len(x), batch)
+                ]
+            )
+        finally:
+            torch.backends.cuda.matmul.allow_tf32 = previous
 
+    rng = np.random.default_rng(SIMHASH_VECTOR_SEED)
+    seeded = rng.standard_normal((SIMHASH_VECTORS, ref.shape[1]))
+    seeded /= np.sqrt((seeded * seeded).sum(axis=1, keepdims=True))
     names = sorted(nulls)
+    vectors = np.concatenate(
+        [ref, *(nulls[k] for k in names), seeded.astype(np.float32)]
+    )
+    del seeded
+    differ = dict.fromkeys(SIMHASH_CONFIGS, 0)
+    for i in range(0, len(vectors), SIMHASH_CHUNK):
+        x = np.ascontiguousarray(vectors[i : i + SIMHASH_CHUNK])
+        base = hashed(x, "numpy")
+        for c in SIMHASH_CONFIGS:
+            differ[c] += int((hashed(x, c) != base).any(axis=1).sum())
+
     codes = {
-        p: {k: hashed(nulls[k], p) for k in names}
-        for p in ("fp32", *SIMHASH_PRECISIONS)
+        c: {k: hashed(nulls[k], c) for k in names} for c in ("numpy", *SIMHASH_CONFIGS)
     }
-    ref_code = hashed(ref, "fp32")
+    ref_code = hashed(ref, "numpy")
 
     def stats(code: np.ndarray) -> tuple[int, int]:
         h = (code != ref_code).sum(axis=1)
         return int((h > 0).sum()), int(h.max())
 
-    base = {k: stats(codes["fp32"][k]) for k in names}
-    alarms = dict.fromkeys(SIMHASH_PRECISIONS, 0)
+    base_stats = {k: stats(codes["numpy"][k]) for k in names}
+    alarms = dict.fromkeys(SIMHASH_CONFIGS, 0)
     for i in range(draws):
         perm = draw_rng("simhash-precision", i).permutation(len(names))
         order = [names[j] for j in perm]
         held, rest = order[0], order[1 : DETECTION_N + 1]
-        max_rows = max(base[k][0] for k in rest)
-        max_ham = max(base[k][1] for k in rest)
-        for p in SIMHASH_PRECISIONS:
-            rows, ham = stats(codes[p][held])
-            alarms[p] += rows > max_rows or ham > max_ham
-    changed = {
-        p: [int((codes[p][k] != codes["fp32"][k]).any(axis=1).sum()) for k in names]
-        for p in SIMHASH_PRECISIONS
-    }
+        max_rows = max(base_stats[k][0] for k in rest)
+        max_ham = max(base_stats[k][1] for k in rest)
+        for c in SIMHASH_CONFIGS:
+            rows, ham = stats(codes[c][held])
+            alarms[c] += rows > max_rows or ham > max_ham
     return {
         "device": torch.cuda.get_device_name(0),
-        "rows": int(ref.shape[0]),
-        "precisions": {
-            p: {
-                "rows_changed_vs_fp32": {
-                    "mean": float(np.mean(changed[p])),
-                    "max": max(changed[p]),
-                },
-                "false_alarms": rate(alarms[p], draws),
+        "baseline": "FP32 on the CPU with NumPy",
+        "dimensions": int(ref.shape[1]),
+        "vectors": len(vectors),
+        "seeded_vectors": SIMHASH_VECTORS,
+        "configs": {
+            c: {
+                "rows_whose_bits_differ": differ[c],
+                "per_million_rows": 1e6 * differ[c] / len(vectors),
+                "false_alarms": rate(alarms[c], draws),
             }
-            for p in SIMHASH_PRECISIONS
+            for c in SIMHASH_CONFIGS
         },
     }
 
