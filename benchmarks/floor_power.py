@@ -74,7 +74,7 @@ SPARSE = ((0.01, 1e-4), (0.1, 1e-4), (0.01, 1e-3))
 
 ALLCLOSE = {"rtol": 1e-5, "atol": 1e-8}
 BF16_MANTISSA_BITS = 7
-# PyTorch's default absolute tolerance for float32 in torch.testing.assert_close.
+# The default absolute tolerance of torch.testing.assert_close for float32 and bfloat16.
 BF16_ATOL = 1e-5
 
 DETECTORS = {

@@ -625,7 +625,22 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         raise ValueError("floor-power false alarms no longer split into 0% and 100%")
     det = real["detection"][n]
     numeric = [f for f in det.values() if f["family"] in ("diffuse", "sparse")]
-    atol_caught = sum(f["detectors"]["bf16_atol"]["rate"] > 0 for f in numeric)
+    caught = [
+        f
+        for f in sorted(numeric, key=fault_order)
+        if f["detectors"]["bf16_atol"]["rate"] > 0
+    ]
+    caught_text = " and ".join(
+        f"“{fault_label(f)}” "
+        f"({percent(100 * f['detectors']['bf16_atol']['rate'])} of draws)"
+        for f in caught
+    )
+    atol_numeric = (
+        f"Of these {len(numeric)} changes it detected only {caught_text}, and "
+        f"the other {len(numeric) - len(caught)} in no draw"
+        if caught
+        else f"It detected none of these {len(numeric)} changes in any draw"
+    )
     vfar, vbound = varying["false_alarms"], varying["false_alarm_bounds"]
     vdet = varying["detection"][n]
     varying_rows = sorted(s["rows_changed"] for s in varying["regime"]["states"])
@@ -648,8 +663,9 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         "rebuilds. Intervals are 95% Clopper–Pearson.",
         "",
         f"**False alarms.** With {n} rebuilds in the floor, the floor, both "
-        "calibrated float checks and one bfloat16 spacing plus 1e-5, PyTorch's "
-        "default absolute tolerance, raised none in "
+        "calibrated float checks and one bfloat16 spacing plus 1e-5 (a fixed "
+        "tolerance built for this comparison; 1e-5 is PyTorch's default `atol`) "
+        "raised none in "
         f"{results['draws']:,} draws (95% "
         f"interval {rate_cells(far['floor_within'])[1]}). A hash of the floats, "
         "`np.allclose` and a fixed tolerance of one bfloat16 spacing rejected every "
@@ -681,10 +697,11 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         "**Numeric changes.** A perturbation can change floats without crossing a "
         "quantization boundary. SEMQ's symbols change only when a coordinate crosses "
         "that boundary; the calibrated float checks detect smaller movements in "
-        f"these runs. One bfloat16 spacing plus 1e-5 detected {atol_caught} of "
-        f"these {len(numeric)} changes: its absolute tolerance sits above the "
-        "rebuild noise, which keeps it free of false alarms, and above the "
-        "smaller changes too. Each row below names the injected change. Angular change is "
+        "these runs. One bfloat16 spacing plus 1e-5 is the uncalibrated "
+        "counterpart of the largest-difference check, which takes its tolerance "
+        f"from the rebuilds instead. {atol_numeric}: its absolute tolerance "
+        "sits above the rebuild noise, which keeps it free of false alarms, and "
+        "above the smaller changes too. Each row below names the injected change. Angular change is "
         "the median 1 − cosine between modified rows and those same rows before "
         "the injection. The scaled dimensions are the same in every document.",
         "",
