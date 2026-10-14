@@ -22,6 +22,7 @@ synthetic pool that adds independent Gaussian noise to every rebuild.
 from __future__ import annotations
 
 import argparse
+import functools
 import hashlib
 import importlib.metadata
 import json
@@ -76,6 +77,11 @@ ALLCLOSE = {"rtol": 1e-5, "atol": 1e-8}
 BF16_MANTISSA_BITS = 7
 # The default absolute tolerance of torch.testing.assert_close for float32 and bfloat16.
 BF16_ATOL = 1e-5
+# SimHash with the floor's bit budget: quant4 stores 2 bits per dimension.
+SIMHASH_BITS_PER_DIM = 2
+SIMHASH_SEED = 1234
+# Precisions of the SimHash projection compared with FP32 on a CUDA GPU.
+SIMHASH_PRECISIONS = ("fp64", "tf32", "fp16", "bf16")
 
 DETECTORS = {
     "floor_within": "SEMQ: Diff.within(floor)",
@@ -92,6 +98,10 @@ DETECTORS = {
     "bf16_fixed": (
         "any coordinate differs by more than one bfloat16 spacing of the "
         "reference value"
+    ),
+    "simhash_calibrated": (
+        "SimHash with 2 bits per dimension: more changed rows, or a larger "
+        "row hamming, than seen on the floor's nulls"
     ),
     "bf16_atol": (
         "any coordinate differs by more than one bfloat16 spacing of the "
@@ -267,6 +277,17 @@ def bf16_spacing(values: np.ndarray) -> np.ndarray:
     return np.asarray(2.0 ** (np.floor(np.log2(a)) - BF16_MANTISSA_BITS))
 
 
+@functools.cache
+def simhash_planes(dim: int) -> np.ndarray:
+    """Random hyperplanes of the SimHash projection, fixed by SIMHASH_SEED."""
+    rng = np.random.default_rng(SIMHASH_SEED)
+    return rng.standard_normal((dim, SIMHASH_BITS_PER_DIM * dim))
+
+
+def simhash(x: np.ndarray) -> np.ndarray:
+    return x.astype(np.float64) @ simhash_planes(x.shape[1]) > 0
+
+
 def binomial_cdf(k: int, n: int, p: float) -> float:
     """P(X <= k) for X ~ Binomial(n, p)."""
     if k < 0:
@@ -324,7 +345,15 @@ def unit_rows(x: np.ndarray) -> np.ndarray:
 class Rows:
     """Per-row float statistics of a candidate against the reference."""
 
-    __slots__ = ("allclose", "bf16", "bf16_atol", "cosdev", "equal", "maxabs")
+    __slots__ = (
+        "allclose",
+        "bf16",
+        "bf16_atol",
+        "cosdev",
+        "equal",
+        "maxabs",
+        "simhash",
+    )
 
     allclose: np.ndarray
     bf16: np.ndarray
@@ -332,6 +361,7 @@ class Rows:
     cosdev: np.ndarray
     equal: np.ndarray
     maxabs: np.ndarray
+    simhash: np.ndarray
 
     def __init__(self, x: np.ndarray, ref: np.ndarray, spacing: np.ndarray) -> None:
         d = np.abs(x.astype(np.float64) - ref.astype(np.float64))
@@ -342,6 +372,7 @@ class Rows:
         self.bf16 = np.asarray((d > spacing).any(axis=1))
         self.bf16_atol = np.asarray((d > spacing + BF16_ATOL).any(axis=1))
         self.equal = np.asarray((x == ref).all(axis=1))
+        self.simhash = (simhash(x) != simhash(ref)).sum(axis=1)
 
     def replaced(self, rows: np.ndarray, new: Rows) -> Rows:
         out = Rows.__new__(Rows)
@@ -359,6 +390,8 @@ class Rows:
             "bf16_exceeded": bool(self.bf16.any()),
             "bf16_atol_exceeded": bool(self.bf16_atol.any()),
             "bytes_equal": bool(self.equal.all()),
+            "simhash_rows": int((self.simhash > 0).sum()),
+            "simhash_max": int(self.simhash.max()),
         }
 
 
@@ -371,6 +404,9 @@ def float_flags(cand: dict[str, Any], nulls: list[dict[str, Any]]) -> dict[str, 
         "allclose_default": not cand["allclose"],
         "bf16_fixed": cand["bf16_exceeded"],
         "bf16_atol": cand["bf16_atol_exceeded"],
+        "simhash_calibrated": any(
+            cand[k] > max(n[k] for n in nulls) for k in ("simhash_rows", "simhash_max")
+        ),
     }
 
 
@@ -635,6 +671,79 @@ def evaluate_pool(
     }
 
 
+def simhash_precision(
+    nulls: dict[str, np.ndarray], ref: np.ndarray, draws: int
+) -> dict[str, Any] | None:
+    """SimHash of the same vectors with the projection computed in FP32 and in
+    other precisions on a CUDA GPU: rows whose bits change, and how often a
+    floor from DETECTION_N nulls hashed in FP32 rejects a null hashed in another
+    precision. None without CUDA."""
+    try:
+        import torch
+    except ImportError:
+        return None
+    if not torch.cuda.is_available():
+        return None
+    planes = simhash_planes(ref.shape[1])
+
+    def hashed(x: np.ndarray, precision: str) -> np.ndarray:
+        if precision == "fp64":
+            return simhash(x)
+        torch.backends.cuda.matmul.allow_tf32 = precision == "tf32"
+        dtype = {
+            "fp32": torch.float32,
+            "tf32": torch.float32,
+            "fp16": torch.float16,
+            "bf16": torch.bfloat16,
+        }[precision]
+        a = torch.from_numpy(x).cuda().to(dtype)
+        b = torch.from_numpy(planes.astype(np.float32)).cuda().to(dtype)
+        out = ((a @ b) > 0).cpu().numpy()
+        torch.backends.cuda.matmul.allow_tf32 = False
+        return out
+
+    names = sorted(nulls)
+    codes = {
+        p: {k: hashed(nulls[k], p) for k in names}
+        for p in ("fp32", *SIMHASH_PRECISIONS)
+    }
+    ref_code = hashed(ref, "fp32")
+
+    def stats(code: np.ndarray) -> tuple[int, int]:
+        h = (code != ref_code).sum(axis=1)
+        return int((h > 0).sum()), int(h.max())
+
+    base = {k: stats(codes["fp32"][k]) for k in names}
+    alarms = dict.fromkeys(SIMHASH_PRECISIONS, 0)
+    for i in range(draws):
+        perm = draw_rng("simhash-precision", i).permutation(len(names))
+        order = [names[j] for j in perm]
+        held, rest = order[0], order[1 : DETECTION_N + 1]
+        max_rows = max(base[k][0] for k in rest)
+        max_ham = max(base[k][1] for k in rest)
+        for p in SIMHASH_PRECISIONS:
+            rows, ham = stats(codes[p][held])
+            alarms[p] += rows > max_rows or ham > max_ham
+    changed = {
+        p: [int((codes[p][k] != codes["fp32"][k]).any(axis=1).sum()) for k in names]
+        for p in SIMHASH_PRECISIONS
+    }
+    return {
+        "device": torch.cuda.get_device_name(0),
+        "rows": int(ref.shape[0]),
+        "precisions": {
+            p: {
+                "rows_changed_vs_fp32": {
+                    "mean": float(np.mean(changed[p])),
+                    "max": max(changed[p]),
+                },
+                "false_alarms": rate(alarms[p], draws),
+            }
+            for p in SIMHASH_PRECISIONS
+        },
+    }
+
+
 def evaluate(cache: Path, draws: int) -> tuple[dict[str, Any], dict[str, Any]]:
     pool = load_pool(cache)
     meta, runs = pool["meta"], pool["runs"]
@@ -700,6 +809,9 @@ def evaluate(cache: Path, draws: int) -> tuple[dict[str, Any], dict[str, Any]]:
         },
         "detection_n": DETECTION_N,
         "pools": pools,
+        "simhash_precision": simhash_precision(
+            {k: v["rows"] for k, v in real.items()}, ref, draws
+        ),
         "limits": [
             "one corpus (SciFact, 5,183 documents) and one model (e5-small-v2)",
             "the varying pool is synthetic: real rebuilds here gave one SEMQ state per device",

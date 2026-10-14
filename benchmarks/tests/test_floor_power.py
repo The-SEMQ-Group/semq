@@ -57,16 +57,28 @@ def test_absolute_tolerance_covers_coordinates_near_zero():
 
 def test_calibrated_checks_flag_only_values_above_every_null():
     nulls = [
-        {"max_abs": 1.0, "cosine_max": 0.1},
-        {"max_abs": 2.0, "cosine_max": 0.3},
+        {"max_abs": 1.0, "cosine_max": 0.1, "simhash_rows": 2, "simhash_max": 1},
+        {"max_abs": 2.0, "cosine_max": 0.3, "simhash_rows": 1, "simhash_max": 3},
     ]
     base = {
         "allclose": True,
         "bf16_exceeded": False,
         "bf16_atol_exceeded": False,
         "bytes_equal": True,
+        "simhash_rows": 0,
+        "simhash_max": 0,
     }
     tie = floor_power.float_flags({**base, "max_abs": 2.0, "cosine_max": 0.3}, nulls)
     above = floor_power.float_flags({**base, "max_abs": 2.5, "cosine_max": 0.2}, nulls)
     assert not tie["max_abs_calibrated"] and not tie["cosine_calibrated"]
     assert above["max_abs_calibrated"] and not above["cosine_calibrated"]
+    at_floor = {
+        **base,
+        "max_abs": 0.0,
+        "cosine_max": 0.0,
+        "simhash_rows": 2,
+        "simhash_max": 3,
+    }
+    more_rows = {**at_floor, "simhash_rows": 3}
+    assert not floor_power.float_flags(at_floor, nulls)["simhash_calibrated"]
+    assert floor_power.float_flags(more_rows, nulls)["simhash_calibrated"]
