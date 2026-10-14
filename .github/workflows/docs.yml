@@ -4,7 +4,7 @@
 # is private, pushes to main only build the site under --strict (validating
 # links and nav) and do NOT deploy, so nothing is exposed. To go live, re-enable
 # GitHub Pages for the repo and set the repository variable PUBLISH_DOCS to
-# "true"; then pushes to main deploy to https://the-semq-group.github.io/semq/.
+# "true"; then pushes to main deploy to https://docs.thesemqgroup.ai/.
 #
 # On pull requests the site always builds under --strict but never deploys — a
 # broken link or a missing nav page fails the build, which blocks the merge.

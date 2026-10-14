@@ -112,7 +112,7 @@ from the command line.
 
 ## Documentation
 
-Read the [SDK documentation site](https://the-semq-group.github.io/semq/) or
+Read the [SDK documentation site](https://docs.thesemqgroup.ai/) or
 browse its [source landing page](https://github.com/The-SEMQ-Group/semq/blob/main/docs/index.md).
 
 | Task | Start here |

@@ -42,7 +42,7 @@ are listed with the compatibility policy.
     mkdir semq-quickstart
     cd semq-quickstart
     go mod init example.com/semq-quickstart
-    go get github.com/The-SEMQ-Group/semq/bindings/go@v1.0.0
+    go get github.com/The-SEMQ-Group/semq/bindings/go@v1.1.0
     ```
 
     The module includes the C core, and cgo compiles and links it statically

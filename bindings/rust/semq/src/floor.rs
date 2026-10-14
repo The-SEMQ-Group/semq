@@ -279,7 +279,7 @@ impl Floor {
     }
 
     /// The floor's JSON form, written by the core: the
-    /// [floor schema](https://the-semq-group.github.io/semq/reference/contracts/#floor-schema)
+    /// [floor schema](https://docs.thesemqgroup.ai/reference/contracts/#floor-schema)
     /// with the per-row data when the floor records it, keys in schema order, no
     /// whitespace. The same bytes in every binding.
     pub fn to_json(&self) -> String {
