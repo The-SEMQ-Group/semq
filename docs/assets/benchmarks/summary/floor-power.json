@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-13T02:48:33Z",
+  "generated_utc": "2026-10-14T07:18:30Z",
   "hardware": {
     "arch": "x86_64",
     "cpu_threads": 4,
@@ -164,7 +164,8 @@
       "floor_per_row": "SEMQ: Diff.evaluate(floor, per_row=True).passed",
       "floor_within": "SEMQ: Diff.within(floor)",
       "fp32_hash": "SHA-256 of the float32 bytes differs",
-      "max_abs_calibrated": "largest absolute coordinate difference above the largest seen on the floor's nulls"
+      "max_abs_calibrated": "largest absolute coordinate difference above the largest seen on the floor's nulls",
+      "simhash_calibrated": "SimHash with 2 bits per dimension: more changed rows, or a larger row hamming, than seen on the floor's nulls"
     },
     "draw_seeds": "SHA-256 of the JSON ['floor-power', pool, draw]; first 8 bytes, big-endian, seed np.random.default_rng",
     "draws": 2000,
@@ -277,6 +278,15 @@
                   "count": 634,
                   "draws": 2000,
                   "rate": 0.317
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.28683,
+                    0.327737
+                  ],
+                  "count": 614,
+                  "draws": 2000,
+                  "rate": 0.307
                 }
               },
               "family": "diffuse",
@@ -356,6 +366,15 @@
                   "count": 2000,
                   "draws": 2000,
                   "rate": 1.0
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.996392,
+                    0.999879
+                  ],
+                  "count": 1998,
+                  "draws": 2000,
+                  "rate": 0.999
                 }
               },
               "family": "diffuse",
@@ -428,6 +447,15 @@
                   "rate": 1.0
                 },
                 "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "simhash_calibrated": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -514,6 +542,15 @@
                   "count": 2000,
                   "draws": 2000,
                   "rate": 1.0
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
                 }
               },
               "documents": 1,
@@ -593,6 +630,15 @@
                   "count": 2000,
                   "draws": 2000,
                   "rate": 1.0
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
                 }
               },
               "documents": 10,
@@ -665,6 +711,15 @@
                   "rate": 1.0
                 },
                 "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "simhash_calibrated": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -752,6 +807,15 @@
                   "count": 2000,
                   "draws": 2000,
                   "rate": 1.0
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
                 }
               },
               "family": "sparse",
@@ -825,6 +889,15 @@
                   "rate": 1.0
                 },
                 "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "simhash_calibrated": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -912,6 +985,15 @@
                   "count": 2000,
                   "draws": 2000,
                   "rate": 1.0
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
                 }
               },
               "family": "sparse",
@@ -991,6 +1073,15 @@
                   "count": 1956,
                   "draws": 2000,
                   "rate": 0.978
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.94607,
+                    0.964564
+                  ],
+                  "count": 1912,
+                  "draws": 2000,
+                  "rate": 0.956
                 }
               },
               "documents": 1,
@@ -1064,6 +1155,15 @@
                   "rate": 1.0
                 },
                 "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "simhash_calibrated": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -1152,6 +1252,15 @@
                   "count": 1756,
                   "draws": 2000,
                   "rate": 0.878
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.86285,
+                    0.892032
+                  ],
+                  "count": 1756,
+                  "draws": 2000,
+                  "rate": 0.878
                 }
               },
               "documents": 1,
@@ -1232,6 +1341,15 @@
                   "count": 1919,
                   "draws": 2000,
                   "rate": 0.9595
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.949911,
+                    0.967709
+                  ],
+                  "count": 1919,
+                  "draws": 2000,
+                  "rate": 0.9595
                 }
               },
               "documents": 1,
@@ -1305,6 +1423,15 @@
                   "rate": 1.0
                 },
                 "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "simhash_calibrated": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -1432,6 +1559,15 @@
               "count": 5,
               "draws": 2000,
               "rate": 0.0025
+            },
+            "simhash_calibrated": {
+              "ci95": [
+                0.026497,
+                0.042906
+              ],
+              "count": 68,
+              "draws": 2000,
+              "rate": 0.034
             }
           },
           "20": {
@@ -1506,6 +1642,15 @@
               "count": 0,
               "draws": 2000,
               "rate": 0.0
+            },
+            "simhash_calibrated": {
+              "ci95": [
+                0.000309,
+                0.004377
+              ],
+              "count": 3,
+              "draws": 2000,
+              "rate": 0.0015
             }
           },
           "3": {
@@ -1580,6 +1725,15 @@
               "count": 197,
               "draws": 2000,
               "rate": 0.0985
+            },
+            "simhash_calibrated": {
+              "ci95": [
+                0.093315,
+                0.120851
+              ],
+              "count": 213,
+              "draws": 2000,
+              "rate": 0.1065
             }
           },
           "5": {
@@ -1654,6 +1808,15 @@
               "count": 72,
               "draws": 2000,
               "rate": 0.036
+            },
+            "simhash_calibrated": {
+              "ci95": [
+                0.066622,
+                0.090632
+              ],
+              "count": 156,
+              "draws": 2000,
+              "rate": 0.078
             }
           }
         },
@@ -1821,6 +1984,15 @@
                   "count": 2000,
                   "draws": 2000,
                   "rate": 1.0
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
                 }
               },
               "family": "diffuse",
@@ -1893,6 +2065,15 @@
                   "rate": 1.0
                 },
                 "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "simhash_calibrated": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -1979,6 +2160,15 @@
                   "count": 2000,
                   "draws": 2000,
                   "rate": 1.0
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
                 }
               },
               "family": "diffuse",
@@ -2051,6 +2241,15 @@
                   "rate": 1.0
                 },
                 "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "simhash_calibrated": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -2137,6 +2336,15 @@
                   "count": 2000,
                   "draws": 2000,
                   "rate": 1.0
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
                 }
               },
               "documents": 10,
@@ -2209,6 +2417,15 @@
                   "rate": 1.0
                 },
                 "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "simhash_calibrated": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -2296,6 +2513,15 @@
                   "count": 903,
                   "draws": 2000,
                   "rate": 0.4515
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.057357,
+                    0.07993
+                  ],
+                  "count": 136,
+                  "draws": 2000,
+                  "rate": 0.068
                 }
               },
               "family": "sparse",
@@ -2376,6 +2602,15 @@
                   "count": 2000,
                   "draws": 2000,
                   "rate": 1.0
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.974014,
+                    0.98652
+                  ],
+                  "count": 1962,
+                  "draws": 2000,
+                  "rate": 0.981
                 }
               },
               "family": "sparse",
@@ -2456,6 +2691,15 @@
                   "count": 1942,
                   "draws": 2000,
                   "rate": 0.971
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.186533,
+                    0.222339
+                  ],
+                  "count": 408,
+                  "draws": 2000,
+                  "rate": 0.204
                 }
               },
               "family": "sparse",
@@ -2535,6 +2779,15 @@
                   "count": 1958,
                   "draws": 2000,
                   "rate": 0.979
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.844537,
+                    0.875398
+                  ],
+                  "count": 1721,
+                  "draws": 2000,
+                  "rate": 0.8605
                 }
               },
               "documents": 1,
@@ -2608,6 +2861,15 @@
                   "rate": 1.0
                 },
                 "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "simhash_calibrated": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -2696,6 +2958,15 @@
                   "count": 1768,
                   "draws": 2000,
                   "rate": 0.884
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.868624,
+                    0.897241
+                  ],
+                  "count": 1767,
+                  "draws": 2000,
+                  "rate": 0.8835
                 }
               },
               "documents": 1,
@@ -2776,6 +3047,15 @@
                   "count": 1913,
                   "draws": 2000,
                   "rate": 0.9565
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.94607,
+                    0.964564
+                  ],
+                  "count": 1912,
+                  "draws": 2000,
+                  "rate": 0.956
                 }
               },
               "documents": 1,
@@ -2849,6 +3129,15 @@
                   "rate": 1.0
                 },
                 "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "simhash_calibrated": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -2937,6 +3226,15 @@
                   "count": 2000,
                   "draws": 2000,
                   "rate": 1.0
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
                 }
               },
               "family": "diffuse",
@@ -3009,6 +3307,15 @@
                   "rate": 1.0
                 },
                 "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "simhash_calibrated": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -3095,6 +3402,15 @@
                   "count": 2000,
                   "draws": 2000,
                   "rate": 1.0
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
                 }
               },
               "family": "diffuse",
@@ -3167,6 +3483,15 @@
                   "rate": 1.0
                 },
                 "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "simhash_calibrated": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -3253,6 +3578,15 @@
                   "count": 2000,
                   "draws": 2000,
                   "rate": 1.0
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
                 }
               },
               "documents": 10,
@@ -3325,6 +3659,15 @@
                   "rate": 1.0
                 },
                 "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "simhash_calibrated": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -3412,6 +3755,15 @@
                   "count": 734,
                   "draws": 2000,
                   "rate": 0.367
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.044961,
+                    0.06537
+                  ],
+                  "count": 109,
+                  "draws": 2000,
+                  "rate": 0.0545
                 }
               },
               "family": "sparse",
@@ -3492,6 +3844,15 @@
                   "count": 2000,
                   "draws": 2000,
                   "rate": 1.0
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.972864,
+                    0.985674
+                  ],
+                  "count": 1960,
+                  "draws": 2000,
+                  "rate": 0.98
                 }
               },
               "family": "sparse",
@@ -3572,6 +3933,15 @@
                   "count": 1899,
                   "draws": 2000,
                   "rate": 0.9495
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.173503,
+                    0.208409
+                  ],
+                  "count": 381,
+                  "draws": 2000,
+                  "rate": 0.1905
                 }
               },
               "family": "sparse",
@@ -3651,6 +4021,15 @@
                   "count": 1957,
                   "draws": 2000,
                   "rate": 0.9785
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.844537,
+                    0.875398
+                  ],
+                  "count": 1721,
+                  "draws": 2000,
+                  "rate": 0.8605
                 }
               },
               "documents": 1,
@@ -3724,6 +4103,15 @@
                   "rate": 1.0
                 },
                 "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "simhash_calibrated": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -3812,6 +4200,15 @@
                   "count": 1766,
                   "draws": 2000,
                   "rate": 0.883
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.865474,
+                    0.894401
+                  ],
+                  "count": 1761,
+                  "draws": 2000,
+                  "rate": 0.8805
                 }
               },
               "documents": 1,
@@ -3892,6 +4289,15 @@
                   "count": 1912,
                   "draws": 2000,
                   "rate": 0.956
+                },
+                "simhash_calibrated": {
+                  "ci95": [
+                    0.945522,
+                    0.964113
+                  ],
+                  "count": 1911,
+                  "draws": 2000,
+                  "rate": 0.9555
                 }
               },
               "documents": 1,
@@ -3965,6 +4371,15 @@
                   "rate": 1.0
                 },
                 "max_abs_calibrated": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "simhash_calibrated": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -4097,6 +4512,15 @@
               "count": 175,
               "draws": 2000,
               "rate": 0.0875
+            },
+            "simhash_calibrated": {
+              "ci95": [
+                0.055972,
+                0.078319
+              ],
+              "count": 133,
+              "draws": 2000,
+              "rate": 0.0665
             }
           },
           "20": {
@@ -4171,6 +4595,15 @@
               "count": 96,
               "draws": 2000,
               "rate": 0.048
+            },
+            "simhash_calibrated": {
+              "ci95": [
+                0.01348,
+                0.025986
+              ],
+              "count": 38,
+              "draws": 2000,
+              "rate": 0.019
             }
           },
           "3": {
@@ -4245,6 +4678,15 @@
               "count": 494,
               "draws": 2000,
               "rate": 0.247
+            },
+            "simhash_calibrated": {
+              "ci95": [
+                0.245764,
+                0.284927
+              ],
+              "count": 530,
+              "draws": 2000,
+              "rate": 0.265
             }
           },
           "39": {
@@ -4319,6 +4761,15 @@
               "count": 55,
               "draws": 2000,
               "rate": 0.0275
+            },
+            "simhash_calibrated": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
             }
           },
           "5": {
@@ -4393,6 +4844,15 @@
               "count": 332,
               "draws": 2000,
               "rate": 0.166
+            },
+            "simhash_calibrated": {
+              "ci95": [
+                0.142275,
+                0.174734
+              ],
+              "count": 316,
+              "draws": 2000,
+              "rate": 0.158
             }
           }
         },
@@ -4843,9 +5303,75 @@
     },
     "procedure": "each draw permutes the pool, holds out the first null, and measures Floor.measure(per_row=True) from the next N; the held-out null is judged for false alarms; each fault is applied to the held-out null and judged at the detection N. Calibrated float checks use the same N nulls",
     "question": "How often does the floor reject an unchanged rebuild, and how often does it catch a real fault, next to float checks on the same vectors?",
-    "reference": "ref_cpu_b32_o0"
+    "reference": "ref_cpu_b32_o0",
+    "simhash_precision": {
+      "device": "NVIDIA A10G",
+      "precisions": {
+        "bf16": {
+          "false_alarms": {
+            "ci95": [
+              0.998157,
+              1.0
+            ],
+            "count": 2000,
+            "draws": 2000,
+            "rate": 1.0
+          },
+          "rows_changed_vs_fp32": {
+            "max": 2229,
+            "mean": 2225.3214285714284
+          }
+        },
+        "fp16": {
+          "false_alarms": {
+            "ci95": [
+              0.998157,
+              1.0
+            ],
+            "count": 2000,
+            "draws": 2000,
+            "rate": 1.0
+          },
+          "rows_changed_vs_fp32": {
+            "max": 367,
+            "mean": 362.7142857142857
+          }
+        },
+        "fp64": {
+          "false_alarms": {
+            "ci95": [
+              0.0,
+              0.001843
+            ],
+            "count": 0,
+            "draws": 2000,
+            "rate": 0.0
+          },
+          "rows_changed_vs_fp32": {
+            "max": 1,
+            "mean": 0.35714285714285715
+          }
+        },
+        "tf32": {
+          "false_alarms": {
+            "ci95": [
+              0.998157,
+              1.0
+            ],
+            "count": 2000,
+            "draws": 2000,
+            "rate": 1.0
+          },
+          "rows_changed_vs_fp32": {
+            "max": 368,
+            "mean": 361.25
+          }
+        }
+      },
+      "rows": 5183
+    }
   },
   "schema": "semq-bench/floor-power/1",
-  "sdk_commit": "053cbc85e01f874784fd4bd8f1a1348ade6b3a32",
+  "sdk_commit": "d656b9cbc7c6f361a25406fb1f6e70dbf3542688",
   "working_tree_dirty": false
 }
