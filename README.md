@@ -26,9 +26,10 @@ unchanged when they do not cross quantization boundaries.
 
 A floor measured from unchanged rebuilds provides a baseline for evaluating
 candidate states. The default gate compares aggregate change statistics;
-the optional per-row check also rejects any changed row whose Hamming
-distance exceeds the floor's observed maximum. Passing means the candidate
-stayed within the measured limits; it does not establish semantic equivalence.
+the optional per-row check also fails the verdict when any changed row's
+Hamming distance exceeds the floor's observed maximum, and lists those rows.
+Passing means the candidate stayed within the measured limits; it does not
+establish semantic equivalence.
 
 Build with our Python, Rust, Go, and TypeScript/WASM bindings, or call the C core directly.
 
