@@ -11,21 +11,25 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript%2FWASM-binding-3178C6?logo=typescript&logoColor=white)](https://github.com/The-SEMQ-Group/semq/tree/main/bindings/ts)
 
 When you re-embed a corpus (new GPU, new batch size, a library bump, a
-model update), you need to know whether anything actually changed, and
-if so, _where_ it changed. SEMQ turns unit-norm `float32` vectors produced by your embedding or
-feature pipeline into compact symbolic rows kept under your ids, with an
-identity for the whole state derived from the rows themselves (a SHA-256).
-You can measure your pipeline's own rebuild noise (via Floor)
-and diff new builds against it row by row, so rebuild noise passes and real changes fail with
-identical results in every binding and on every architecture.
+model update), you need to know what changed and which rows are affected.
+SEMQ turns unit-norm `float32` vectors produced by your embedding or feature
+pipeline into compact symbolic rows kept under your ids. Each state has a
+SHA-256 identity derived from its configuration, ids, rows and manifest.
+Use `diff` to locate added, removed and changed symbolic rows, and `Floor`
+to compare rebuilds with noise measured from your own pipeline.
 
-A hash of the raw floats tells you whether the bytes changed, not whether the
-state did. A rebuild on another device or with another batch size never
-produces the same bytes, so a float hash fires on every rebuild and says
-nothing about where. SEMQ encodes each vector as a few quantized symbols, so
-rebuild noise below the bin width leaves the rows and their `state_id`
-unchanged; for the rows that do move, `diff` against a floor measured on your
-own null rebuilds tells noise from change, row by row.
+A rebuild on another device or with another batch size can alter the
+floating-point values, even when the corpus and encoder are unchanged.
+A hash of the raw floats detects byte changes but does not identify the
+affected rows. Small floating-point changes can leave the encoded rows
+unchanged when they do not cross quantization boundaries.
+
+A floor measured from unchanged rebuilds provides a baseline for evaluating
+candidate states. The default gate compares aggregate change statistics;
+the optional per-row check also fails the verdict when any changed row's
+Hamming distance exceeds the floor's observed maximum, and lists those rows.
+Passing means the candidate stayed within the measured limits; it does not
+establish semantic equivalence.
 
 Build with our Python, Rust, Go, and TypeScript/WASM bindings, or call the C core directly.
 
@@ -43,8 +47,11 @@ search. The input is unit-norm, finite `float32`.
 | A rebuild gate | `Floor` measured from null rebuilds (the unchanged corpus encoded again) and bound to its reference; `semq diff --floor` |
 | Deployment targets | Python, Rust, Go, and TypeScript/WebAssembly |
 
-The bytes and verdicts are pinned by the shared
-[conformance vectors](https://github.com/The-SEMQ-Group/semq/blob/main/tests/conformance/README.md).
+With identical `float32` inputs and encoding settings, the bindings produce
+the same encoded rows on supported platforms. Reproducing the full state
+also requires the same ids and manifest. Shared
+[conformance vectors](https://github.com/The-SEMQ-Group/semq/blob/main/tests/conformance/README.md)
+check bytes and gate verdicts across bindings and platforms in CI.
 
 ## Where it fits
 
@@ -112,7 +119,7 @@ from the command line.
 
 ## Documentation
 
-Read the [SDK documentation site](https://the-semq-group.github.io/semq/) or
+Read the [SDK documentation site](https://docs.thesemqgroup.ai/) or
 browse its [source landing page](https://github.com/The-SEMQ-Group/semq/blob/main/docs/index.md).
 
 | Task | Start here |

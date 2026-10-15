@@ -2,7 +2,7 @@ site_name: SEMQ SDK
 site_description: >-
   Deterministic symbolic states for float32 vectors, with content-addressed
   identities, diffs and rebuild gates, for Python, Rust, Go, and TypeScript/WebAssembly.
-site_url: https://the-semq-group.github.io/semq/
+site_url: https://docs.thesemqgroup.ai/
 site_author: The SEMQ Group Inc.
 copyright: "&copy; 2026 The SEMQ Group Inc. All rights reserved."
 

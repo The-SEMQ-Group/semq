@@ -83,7 +83,7 @@ semq = "semq.cli:main"
 Homepage      = "https://github.com/The-SEMQ-Group/semq"
 Source        = "https://github.com/The-SEMQ-Group/semq"
 Issues        = "https://github.com/The-SEMQ-Group/semq/issues"
-Documentation = "https://the-semq-group.github.io/semq/"
+Documentation = "https://docs.thesemqgroup.ai/"
 Changelog     = "https://github.com/The-SEMQ-Group/semq/blob/main/CHANGELOG.md"
 
 
