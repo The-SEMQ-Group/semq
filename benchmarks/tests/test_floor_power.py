@@ -48,12 +48,24 @@ def test_row_statistics_aggregate_to_the_whole_array_checks():
     assert replaced.summary() == stats
 
 
+def test_absolute_tolerance_covers_coordinates_near_zero():
+    ref = np.array([[1e-5, 0.5]], dtype=np.float32)
+    x = ref + np.float32(1e-6)
+    stats = floor_power.Rows(x, ref, floor_power.bf16_spacing(ref)).summary()
+    assert stats["bf16_exceeded"] and not stats["bf16_atol_exceeded"]
+
+
 def test_calibrated_checks_flag_only_values_above_every_null():
     nulls = [
         {"max_abs": 1.0, "cosine_max": 0.1},
         {"max_abs": 2.0, "cosine_max": 0.3},
     ]
-    base = {"allclose": True, "bf16_exceeded": False, "bytes_equal": True}
+    base = {
+        "allclose": True,
+        "bf16_exceeded": False,
+        "bf16_atol_exceeded": False,
+        "bytes_equal": True,
+    }
     tie = floor_power.float_flags({**base, "max_abs": 2.0, "cosine_max": 0.3}, nulls)
     above = floor_power.float_flags({**base, "max_abs": 2.5, "cosine_max": 0.2}, nulls)
     assert not tie["max_abs_calibrated"] and not tie["cosine_calibrated"]

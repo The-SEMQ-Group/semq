@@ -74,6 +74,8 @@ SPARSE = ((0.01, 1e-4), (0.1, 1e-4), (0.01, 1e-3))
 
 ALLCLOSE = {"rtol": 1e-5, "atol": 1e-8}
 BF16_MANTISSA_BITS = 7
+# The default absolute tolerance of torch.testing.assert_close for float32 and bfloat16.
+BF16_ATOL = 1e-5
 
 DETECTORS = {
     "floor_within": "SEMQ: Diff.within(floor)",
@@ -90,6 +92,10 @@ DETECTORS = {
     "bf16_fixed": (
         "any coordinate differs by more than one bfloat16 spacing of the "
         "reference value"
+    ),
+    "bf16_atol": (
+        "any coordinate differs by more than one bfloat16 spacing of the "
+        "reference value plus an absolute tolerance of 1e-05"
     ),
 }
 
@@ -318,10 +324,11 @@ def unit_rows(x: np.ndarray) -> np.ndarray:
 class Rows:
     """Per-row float statistics of a candidate against the reference."""
 
-    __slots__ = ("allclose", "bf16", "cosdev", "equal", "maxabs")
+    __slots__ = ("allclose", "bf16", "bf16_atol", "cosdev", "equal", "maxabs")
 
     allclose: np.ndarray
     bf16: np.ndarray
+    bf16_atol: np.ndarray
     cosdev: np.ndarray
     equal: np.ndarray
     maxabs: np.ndarray
@@ -333,6 +340,7 @@ class Rows:
         tol = ALLCLOSE["atol"] + ALLCLOSE["rtol"] * np.abs(ref.astype(np.float64))
         self.allclose = np.asarray((d <= tol).all(axis=1))
         self.bf16 = np.asarray((d > spacing).any(axis=1))
+        self.bf16_atol = np.asarray((d > spacing + BF16_ATOL).any(axis=1))
         self.equal = np.asarray((x == ref).all(axis=1))
 
     def replaced(self, rows: np.ndarray, new: Rows) -> Rows:
@@ -349,6 +357,7 @@ class Rows:
             "cosine_max": float(self.cosdev.max()),
             "allclose": bool(self.allclose.all()),
             "bf16_exceeded": bool(self.bf16.any()),
+            "bf16_atol_exceeded": bool(self.bf16_atol.any()),
             "bytes_equal": bool(self.equal.all()),
         }
 
@@ -361,6 +370,7 @@ def float_flags(cand: dict[str, Any], nulls: list[dict[str, Any]]) -> dict[str, 
         "fp32_hash": not cand["bytes_equal"],
         "allclose_default": not cand["allclose"],
         "bf16_fixed": cand["bf16_exceeded"],
+        "bf16_atol": cand["bf16_atol_exceeded"],
     }
 
 

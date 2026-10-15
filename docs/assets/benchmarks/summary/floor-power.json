@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-09T21:21:52Z",
+  "generated_utc": "2026-10-13T02:48:33Z",
   "hardware": {
     "arch": "x86_64",
     "cpu_threads": 4,
@@ -158,6 +158,7 @@
     "detection_n": 20,
     "detectors": {
       "allclose_default": "np.allclose fails (rtol=1e-05, atol=1e-08)",
+      "bf16_atol": "any coordinate differs by more than one bfloat16 spacing of the reference value plus an absolute tolerance of 1e-05",
       "bf16_fixed": "any coordinate differs by more than one bfloat16 spacing of the reference value",
       "cosine_calibrated": "largest per-row 1 - cosine above the largest seen on the floor's nulls",
       "floor_per_row": "SEMQ: Diff.evaluate(floor, per_row=True).passed",
@@ -213,6 +214,15 @@
                   "count": 2000,
                   "draws": 2000,
                   "rate": 1.0
+                },
+                "bf16_atol": {
+                  "ci95": [
+                    0.0,
+                    0.001843
+                  ],
+                  "count": 0,
+                  "draws": 2000,
+                  "rate": 0.0
                 },
                 "bf16_fixed": {
                   "ci95": [
@@ -284,6 +294,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.0,
+                    0.001843
+                  ],
+                  "count": 0,
+                  "draws": 2000,
+                  "rate": 0.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -354,6 +373,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.997217,
+                    0.999987
+                  ],
+                  "count": 1999,
+                  "draws": 2000,
+                  "rate": 0.9995
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -416,6 +444,15 @@
             "replace_1": {
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -494,6 +531,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -556,6 +602,15 @@
             "replace_2": {
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -635,6 +690,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.0,
+                    0.001843
+                  ],
+                  "count": 0,
+                  "draws": 2000,
+                  "rate": 0.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -705,6 +769,15 @@
                   "count": 2000,
                   "draws": 2000,
                   "rate": 1.0
+                },
+                "bf16_atol": {
+                  "ci95": [
+                    0.0,
+                    0.001843
+                  ],
+                  "count": 0,
+                  "draws": 2000,
+                  "rate": 0.0
                 },
                 "bf16_fixed": {
                   "ci95": [
@@ -777,6 +850,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.0,
+                    0.001843
+                  ],
+                  "count": 0,
+                  "draws": 2000,
+                  "rate": 0.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -847,6 +929,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.970578,
+                    0.98397
+                  ],
+                  "count": 1956,
+                  "draws": 2000,
+                  "rate": 0.978
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -910,6 +1001,15 @@
             "substitute_3": {
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -990,6 +1090,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.86285,
+                    0.892032
+                  ],
+                  "count": 1756,
+                  "draws": 2000,
+                  "rate": 0.878
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -1061,6 +1170,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.949911,
+                    0.967709
+                  ],
+                  "count": 1919,
+                  "draws": 2000,
+                  "rate": 0.9595
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -1124,6 +1242,15 @@
               "cut": 0.5,
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -1243,6 +1370,15 @@
               "draws": 2000,
               "rate": 1.0
             },
+            "bf16_atol": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
+            },
             "bf16_fixed": {
               "ci95": [
                 0.998157,
@@ -1307,6 +1443,15 @@
               "count": 2000,
               "draws": 2000,
               "rate": 1.0
+            },
+            "bf16_atol": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
             },
             "bf16_fixed": {
               "ci95": [
@@ -1373,6 +1518,15 @@
               "draws": 2000,
               "rate": 1.0
             },
+            "bf16_atol": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
+            },
             "bf16_fixed": {
               "ci95": [
                 0.998157,
@@ -1437,6 +1591,15 @@
               "count": 2000,
               "draws": 2000,
               "rate": 1.0
+            },
+            "bf16_atol": {
+              "ci95": [
+                0.0,
+                0.001843
+              ],
+              "count": 0,
+              "draws": 2000,
+              "rate": 0.0
             },
             "bf16_fixed": {
               "ci95": [
@@ -1596,6 +1759,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -1658,6 +1830,15 @@
             "diffuse_10": {
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -1736,6 +1917,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -1798,6 +1988,15 @@
             "replace_1": {
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -1876,6 +2075,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -1938,6 +2146,15 @@
             "replace_2": {
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -2017,6 +2234,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -2080,6 +2306,15 @@
               "coordinates": 0.01,
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -2159,6 +2394,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -2221,6 +2465,15 @@
             "substitute_1": {
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -2292,6 +2545,15 @@
             "substitute_3": {
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -2372,6 +2634,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -2443,6 +2714,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -2506,6 +2786,15 @@
               "cut": 0.5,
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -2586,6 +2875,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -2648,6 +2946,15 @@
             "diffuse_10": {
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -2726,6 +3033,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -2788,6 +3104,15 @@
             "replace_1": {
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -2866,6 +3191,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -2928,6 +3262,15 @@
             "replace_2": {
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -3007,6 +3350,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -3070,6 +3422,15 @@
               "coordinates": 0.01,
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -3149,6 +3510,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -3211,6 +3581,15 @@
             "substitute_1": {
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -3282,6 +3661,15 @@
             "substitute_3": {
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -3362,6 +3750,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -3433,6 +3830,15 @@
                   "draws": 2000,
                   "rate": 1.0
                 },
+                "bf16_atol": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
                 "bf16_fixed": {
                   "ci95": [
                     0.998157,
@@ -3496,6 +3902,15 @@
               "cut": 0.5,
               "detectors": {
                 "allclose_default": {
+                  "ci95": [
+                    0.998157,
+                    1.0
+                  ],
+                  "count": 2000,
+                  "draws": 2000,
+                  "rate": 1.0
+                },
+                "bf16_atol": {
                   "ci95": [
                     0.998157,
                     1.0
@@ -3620,6 +4035,15 @@
               "draws": 2000,
               "rate": 1.0
             },
+            "bf16_atol": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
             "bf16_fixed": {
               "ci95": [
                 0.998157,
@@ -3677,6 +4101,15 @@
           },
           "20": {
             "allclose_default": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "bf16_atol": {
               "ci95": [
                 0.998157,
                 1.0
@@ -3750,6 +4183,15 @@
               "draws": 2000,
               "rate": 1.0
             },
+            "bf16_atol": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
             "bf16_fixed": {
               "ci95": [
                 0.998157,
@@ -3815,6 +4257,15 @@
               "draws": 2000,
               "rate": 1.0
             },
+            "bf16_atol": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
             "bf16_fixed": {
               "ci95": [
                 0.998157,
@@ -3872,6 +4323,15 @@
           },
           "5": {
             "allclose_default": {
+              "ci95": [
+                0.998157,
+                1.0
+              ],
+              "count": 2000,
+              "draws": 2000,
+              "rate": 1.0
+            },
+            "bf16_atol": {
               "ci95": [
                 0.998157,
                 1.0
@@ -4386,6 +4846,6 @@
     "reference": "ref_cpu_b32_o0"
   },
   "schema": "semq-bench/floor-power/1",
-  "sdk_commit": "156ef507944882f26ed8a9ecceea0edf7fca5cdc",
+  "sdk_commit": "053cbc85e01f874784fd4bd8f1a1348ade6b3a32",
   "working_tree_dirty": false
 }

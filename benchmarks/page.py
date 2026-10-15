@@ -182,6 +182,7 @@ POWER_CHECKS = {
     "fp32_hash": "Hash of the FP32 bytes",
     "allclose_default": "`np.allclose`, default tolerances",
     "bf16_fixed": "Fixed tolerance of one bfloat16 spacing",
+    "bf16_atol": "One bfloat16 spacing plus 1e-5",
 }
 CALIBRATED = ("max_abs_calibrated", "cosine_calibrated")
 POWER_DETECTORS = (
@@ -618,11 +619,28 @@ def power_panel(data: dict[str, Any]) -> list[str]:
     far_few = real["false_alarms"][few]
     noise_rows = max(st["rows_changed"] for st in regime["states"])
     # The false-alarm sentence names two groups; fail loudly if the data disagrees.
-    if any(far[k]["rate"] != 0 for k in POWER_DETECTORS) or any(
+    if any(far[k]["rate"] != 0 for k in (*POWER_DETECTORS, "bf16_atol")) or any(
         far[k]["rate"] != 1 for k in ("fp32_hash", "allclose_default", "bf16_fixed")
     ):
         raise ValueError("floor-power false alarms no longer split into 0% and 100%")
     det = real["detection"][n]
+    numeric = [f for f in det.values() if f["family"] in ("diffuse", "sparse")]
+    caught = [
+        f
+        for f in sorted(numeric, key=fault_order)
+        if f["detectors"]["bf16_atol"]["rate"] > 0
+    ]
+    caught_text = " and ".join(
+        f"“{fault_label(f)}” "
+        f"({percent(100 * f['detectors']['bf16_atol']['rate'])} of draws)"
+        for f in caught
+    )
+    atol_numeric = (
+        f"Of these {len(numeric)} changes it detected only {caught_text}, and "
+        f"the other {len(numeric) - len(caught)} in no draw"
+        if caught
+        else f"It detected none of these {len(numeric)} changes in any draw"
+    )
     vfar, vbound = varying["false_alarms"], varying["false_alarm_bounds"]
     vdet = varying["detection"][n]
     varying_rows = sorted(s["rows_changed"] for s in varying["regime"]["states"])
@@ -644,8 +662,11 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         "one fault. Calibrated float checks take their threshold from the same N "
         "rebuilds. Intervals are 95% Clopper–Pearson.",
         "",
-        f"**False alarms.** With {n} rebuilds in the floor, the floor and both "
-        f"calibrated float checks raised none in {results['draws']:,} draws (95% "
+        f"**False alarms.** With {n} rebuilds in the floor, the floor, both "
+        "calibrated float checks and one bfloat16 spacing plus 1e-5 (a fixed "
+        "tolerance built for this comparison; 1e-5 is PyTorch's default `atol`) "
+        "raised none in "
+        f"{results['draws']:,} draws (95% "
         f"interval {rate_cells(far['floor_within'])[1]}). A hash of the floats, "
         "`np.allclose` and a fixed tolerance of one bfloat16 spacing rejected every "
         f"rebuild. With only {few} rebuilds in the floor, the floor raised "
@@ -676,7 +697,11 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         "**Numeric changes.** A perturbation can change floats without crossing a "
         "quantization boundary. SEMQ's symbols change only when a coordinate crosses "
         "that boundary; the calibrated float checks detect smaller movements in "
-        "these runs. Each row below names the injected change. Angular change is "
+        "these runs. One bfloat16 spacing plus 1e-5 is the uncalibrated "
+        "counterpart of the largest-difference check, which takes its tolerance "
+        f"from the rebuilds instead. {atol_numeric}: its absolute tolerance "
+        "sits above the rebuild noise, which keeps it free of false alarms, and "
+        "above the smaller changes too. Each row below names the injected change. Angular change is "
         "the median 1 − cosine between modified rows and those same rows before "
         "the injection. The scaled dimensions are the same in every document.",
         "",
@@ -697,6 +722,7 @@ def power_panel(data: dict[str, Any]) -> list[str]:
                 "Floor, per-row",
                 "Largest difference, calibrated",
                 "Cosine, calibrated",
+                "One bfloat16 spacing plus 1e-5",
             ],
             [
                 [
@@ -704,12 +730,12 @@ def power_panel(data: dict[str, Any]) -> list[str]:
                     f"{f['size_median_1_minus_cos']:.1e}",
                     *(
                         percent(100 * f["detectors"][d]["rate"])
-                        for d in POWER_DETECTORS
+                        for d in (*POWER_DETECTORS, "bf16_atol")
                     ),
                 ]
                 for f in sorted(det.values(), key=fault_order)
             ],
-            "-rrrrr",
+            "-rrrrrr",
             "Detection rates by fault",
         ),
         "",
