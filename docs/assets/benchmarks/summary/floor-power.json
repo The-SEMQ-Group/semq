@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-14T07:18:30Z",
+  "generated_utc": "2026-10-15T18:06:46Z",
   "hardware": {
     "arch": "x86_64",
     "cpu_threads": 4,
@@ -165,7 +165,7 @@
       "floor_within": "SEMQ: Diff.within(floor)",
       "fp32_hash": "SHA-256 of the float32 bytes differs",
       "max_abs_calibrated": "largest absolute coordinate difference above the largest seen on the floor's nulls",
-      "simhash_calibrated": "SimHash with 2 bits per dimension: more changed rows, or a larger row hamming, than seen on the floor's nulls"
+      "simhash_calibrated": "SimHash with 2 bits per dimension, FP32 on the CPU: more changed rows, or a larger row Hamming distance, than seen on the floor's nulls"
     },
     "draw_seeds": "SHA-256 of the JSON ['floor-power', pool, draw]; first 8 bytes, big-endian, seed np.random.default_rng",
     "draws": 2000,
@@ -281,12 +281,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.28683,
-                    0.327737
+                    0.32268,
+                    0.36478
                   ],
-                  "count": 614,
+                  "count": 687,
                   "draws": 2000,
-                  "rate": 0.307
+                  "rate": 0.3435
                 }
               },
               "family": "diffuse",
@@ -2516,12 +2516,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.057357,
-                    0.07993
+                    0.055051,
+                    0.077244
                   ],
-                  "count": 136,
+                  "count": 131,
                   "draws": 2000,
-                  "rate": 0.068
+                  "rate": 0.0655
                 }
               },
               "family": "sparse",
@@ -2694,12 +2694,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.186533,
-                    0.222339
+                    0.18605,
+                    0.221823
                   ],
-                  "count": 408,
+                  "count": 407,
                   "draws": 2000,
-                  "rate": 0.204
+                  "rate": 0.2035
                 }
               },
               "family": "sparse",
@@ -3758,12 +3758,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.044961,
-                    0.06537
+                    0.043138,
+                    0.0632
                   ],
-                  "count": 109,
+                  "count": 105,
                   "draws": 2000,
-                  "rate": 0.0545
+                  "rate": 0.0525
                 }
               },
               "family": "sparse",
@@ -4515,12 +4515,12 @@
             },
             "simhash_calibrated": {
               "ci95": [
-                0.055972,
-                0.078319
+                0.05828,
+                0.081003
               ],
-              "count": 133,
+              "count": 138,
               "draws": 2000,
-              "rate": 0.0665
+              "rate": 0.069
             }
           },
           "20": {
@@ -4681,12 +4681,12 @@
             },
             "simhash_calibrated": {
               "ci95": [
-                0.245764,
-                0.284927
+                0.248202,
+                0.287481
               ],
-              "count": 530,
+              "count": 535,
               "draws": 2000,
-              "rate": 0.265
+              "rate": 0.2675
             }
           },
           "39": {
@@ -4847,12 +4847,12 @@
             },
             "simhash_calibrated": {
               "ci95": [
-                0.142275,
-                0.174734
+                0.14419,
+                0.176813
               ],
-              "count": 316,
+              "count": 320,
               "draws": 2000,
-              "rate": 0.158
+              "rate": 0.16
             }
           }
         },
@@ -5305,9 +5305,44 @@
     "question": "How often does the floor reject an unchanged rebuild, and how often does it catch a real fault, next to float checks on the same vectors?",
     "reference": "ref_cpu_b32_o0",
     "simhash_precision": {
-      "device": "NVIDIA A10G",
-      "precisions": {
-        "bf16": {
+      "baseline": "FP32 on the CPU with NumPy",
+      "baseline_false_alarms": {
+        "ci95": [
+          1.3e-05,
+          0.002783
+        ],
+        "count": 1,
+        "draws": 2000,
+        "rate": 0.0005
+      },
+      "configs": {
+        "cuda_b4096": {
+          "false_alarms": {
+            "ci95": [
+              1.3e-05,
+              0.002783
+            ],
+            "count": 1,
+            "draws": 2000,
+            "rate": 0.0005
+          },
+          "per_million_rows": 48.68265602139255,
+          "rows_whose_bits_differ": 56
+        },
+        "cuda_b64": {
+          "false_alarms": {
+            "ci95": [
+              1.3e-05,
+              0.002783
+            ],
+            "count": 1,
+            "draws": 2000,
+            "rate": 0.0005
+          },
+          "per_million_rows": 37.38132515928356,
+          "rows_whose_bits_differ": 43
+        },
+        "cuda_tf32": {
           "false_alarms": {
             "ci95": [
               0.998157,
@@ -5317,61 +5352,30 @@
             "draws": 2000,
             "rate": 1.0
           },
-          "rows_changed_vs_fp32": {
-            "max": 2229,
-            "mean": 2225.3214285714284
-          }
+          "per_million_rows": 68793.80895708711,
+          "rows_whose_bits_differ": 79134
         },
-        "fp16": {
+        "torch_cpu": {
           "false_alarms": {
             "ci95": [
-              0.998157,
-              1.0
+              1.3e-05,
+              0.002783
             ],
-            "count": 2000,
+            "count": 1,
             "draws": 2000,
-            "rate": 1.0
+            "rate": 0.0005
           },
-          "rows_changed_vs_fp32": {
-            "max": 367,
-            "mean": 362.7142857142857
-          }
-        },
-        "fp64": {
-          "false_alarms": {
-            "ci95": [
-              0.0,
-              0.001843
-            ],
-            "count": 0,
-            "draws": 2000,
-            "rate": 0.0
-          },
-          "rows_changed_vs_fp32": {
-            "max": 1,
-            "mean": 0.35714285714285715
-          }
-        },
-        "tf32": {
-          "false_alarms": {
-            "ci95": [
-              0.998157,
-              1.0
-            ],
-            "count": 2000,
-            "draws": 2000,
-            "rate": 1.0
-          },
-          "rows_changed_vs_fp32": {
-            "max": 368,
-            "mean": 361.25
-          }
+          "per_million_rows": 2.607999429717458,
+          "rows_whose_bits_differ": 3
         }
       },
-      "rows": 5183
+      "device": "NVIDIA A10G",
+      "dimensions": 384,
+      "seeded_vectors": 1000000,
+      "vectors": 1150307
     }
   },
   "schema": "semq-bench/floor-power/1",
-  "sdk_commit": "d656b9cbc7c6f361a25406fb1f6e70dbf3542688",
+  "sdk_commit": "65a4098791b7dfa6675c0dec6febc89af3bb4684",
   "working_tree_dirty": false
 }
