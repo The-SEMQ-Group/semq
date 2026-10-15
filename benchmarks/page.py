@@ -180,7 +180,7 @@ POWER_CHECKS = {
     "floor_per_row": "SEMQ floor, per-row",
     "max_abs_calibrated": "Largest absolute difference, calibrated",
     "cosine_calibrated": "Lowest row cosine, calibrated",
-    "simhash_calibrated": "SimHash, 2 bits per dimension, calibrated",
+    "simhash_calibrated": "SimHash, 3 bits per dimension, calibrated",
     "fp32_hash": "Hash of the FP32 bytes",
     "allclose_default": "`np.allclose`, default tolerances",
     "bf16_fixed": "Fixed tolerance of one bfloat16 spacing",
@@ -694,6 +694,12 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         raise ValueError(
             "floor-power results have no SimHash precision study; run on a CUDA GPU"
         )
+    # The study's NumPy row is the main table's SimHash check on the same draws.
+    if (
+        precision["baseline_false_alarms"]["count"]
+        != far["simhash_calibrated"]["count"]
+    ):
+        raise ValueError("SimHash precision baseline no longer matches the main table")
     by_config = precision["configs"]
     fp32 = [by_config[c] for c in SIMHASH_CONFIG_LABELS if c != "cuda_tf32"]
     tf32 = by_config["cuda_tf32"]
@@ -764,7 +770,7 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         "counterpart of the largest-difference check, which takes its tolerance "
         f"from the rebuilds instead. {atol_numeric}: its absolute tolerance "
         "sits above the rebuild noise, which keeps it free of false alarms, and "
-        "above the smaller changes too. SimHash with 2 bits per dimension, the "
+        "above the smaller changes too. SimHash with 3 bits per dimension, the "
         "budget of this floor, is calibrated on the same rebuilds and raises an "
         "alarm when either its changed-row count or its largest row Hamming "
         "distance exceeds every null; the float checks use one statistic each. "

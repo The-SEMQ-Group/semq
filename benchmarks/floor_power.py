@@ -77,8 +77,8 @@ ALLCLOSE = {"rtol": 1e-5, "atol": 1e-8}
 BF16_MANTISSA_BITS = 7
 # The default absolute tolerance of torch.testing.assert_close for float32 and bfloat16.
 BF16_ATOL = 1e-5
-# SimHash with the floor's bit budget: quant4 stores 2 bits per dimension.
-SIMHASH_BITS_PER_DIM = 2
+# SimHash with the floor's bit budget: quant4 has 2 x 4 symbols, 3 bits per dimension.
+SIMHASH_BITS_PER_DIM = 3
 SIMHASH_SEED = 1234
 # Other ways to compute the same FP32 SimHash projection, compared with NumPy
 # on the CPU: the order of the sum of products depends on the library, the
@@ -106,7 +106,7 @@ DETECTORS = {
         "reference value"
     ),
     "simhash_calibrated": (
-        "SimHash with 2 bits per dimension, FP32 on the CPU: more changed rows, or a larger "
+        "SimHash with 3 bits per dimension, FP32 on the CPU: more changed rows, or a larger "
         "row Hamming distance, than seen on the floor's nulls"
     ),
     "bf16_atol": (
@@ -684,8 +684,9 @@ def simhash_precision(
 ) -> dict[str, Any] | None:
     """The same FP32 SimHash computed in SIMHASH_CONFIGS instead of NumPy on the
     CPU: rows whose bits change over the rebuilds and SIMHASH_VECTORS seeded
-    unit vectors, and how often a floor from DETECTION_N nulls hashed with
-    NumPy rejects a null hashed another way. None without CUDA."""
+    unit vectors, and, on the pool's draws, how often a floor from DETECTION_N
+    nulls hashed with NumPy rejects a null hashed another way. None without
+    CUDA."""
     try:
         import torch
     except ImportError:
@@ -716,12 +717,10 @@ def simhash_precision(
             torch.backends.cuda.matmul.allow_tf32 = previous
 
     rng = np.random.default_rng(SIMHASH_VECTOR_SEED)
-    seeded = rng.standard_normal((SIMHASH_VECTORS, ref.shape[1]))
+    seeded = rng.standard_normal((SIMHASH_VECTORS, ref.shape[1]), dtype=np.float32)
     seeded /= np.sqrt((seeded * seeded).sum(axis=1, keepdims=True))
     names = sorted(nulls)
-    vectors = np.concatenate(
-        [ref, *(nulls[k] for k in names), seeded.astype(np.float32)]
-    )
+    vectors = np.concatenate([ref, *(nulls[k] for k in names), seeded])
     del seeded
     differ = dict.fromkeys(SIMHASH_CONFIGS, 0)
     for i in range(0, len(vectors), SIMHASH_CHUNK):
@@ -742,7 +741,7 @@ def simhash_precision(
     base_stats = {k: stats(codes["numpy"][k]) for k in names}
     alarms = dict.fromkeys(("numpy", *SIMHASH_CONFIGS), 0)
     for i in range(draws):
-        perm = draw_rng("simhash-precision", i).permutation(len(names))
+        perm = draw_rng("real", i).permutation(len(names))
         order = [names[j] for j in perm]
         held, rest = order[0], order[1 : DETECTION_N + 1]
         max_rows = max(base_stats[k][0] for k in rest)

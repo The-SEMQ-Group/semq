@@ -128,6 +128,13 @@ def test_power_panel_renders_from_a_small_report():
     assert "It detected every fault as often as the per-row floor." in text
 
 
+def test_power_panel_needs_the_precision_baseline_to_match_the_main_table():
+    report = small_report()
+    report["results"]["simhash_precision"]["baseline_false_alarms"]["count"] = 1
+    with pytest.raises(ValueError, match="no longer matches"):
+        page.power_panel(report)
+
+
 def test_power_panel_needs_the_simhash_precision_study():
     report = small_report()
     report["results"]["simhash_precision"] = None
