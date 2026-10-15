@@ -22,6 +22,7 @@ synthetic pool that adds independent Gaussian noise to every rebuild.
 from __future__ import annotations
 
 import argparse
+import functools
 import hashlib
 import importlib.metadata
 import json
@@ -76,6 +77,17 @@ ALLCLOSE = {"rtol": 1e-5, "atol": 1e-8}
 BF16_MANTISSA_BITS = 7
 # The default absolute tolerance of torch.testing.assert_close for float32 and bfloat16.
 BF16_ATOL = 1e-5
+# SimHash with the floor's bit budget: quant4 has 2 x 4 symbols, 3 bits per dimension.
+SIMHASH_BITS_PER_DIM = 3
+SIMHASH_SEED = 1234
+# Other ways to compute the same FP32 SimHash projection, compared with NumPy
+# on the CPU: the order of the sum of products depends on the library, the
+# device and the batch size. TF32 also rounds the inputs of the products.
+SIMHASH_CONFIGS = ("torch_cpu", "cuda_b64", "cuda_b4096", "cuda_tf32")
+# Seeded unit vectors added to the rebuilds to measure rare bit changes.
+SIMHASH_VECTORS = 1_000_000
+SIMHASH_VECTOR_SEED = 20261014
+SIMHASH_CHUNK = 100_000
 
 DETECTORS = {
     "floor_within": "SEMQ: Diff.within(floor)",
@@ -92,6 +104,10 @@ DETECTORS = {
     "bf16_fixed": (
         "any coordinate differs by more than one bfloat16 spacing of the "
         "reference value"
+    ),
+    "simhash_calibrated": (
+        "SimHash with 3 bits per dimension, FP32 on the CPU: more changed rows, or a larger "
+        "row Hamming distance, than seen on the floor's nulls"
     ),
     "bf16_atol": (
         "any coordinate differs by more than one bfloat16 spacing of the "
@@ -267,6 +283,19 @@ def bf16_spacing(values: np.ndarray) -> np.ndarray:
     return np.asarray(2.0 ** (np.floor(np.log2(a)) - BF16_MANTISSA_BITS))
 
 
+@functools.cache
+def simhash_planes(dim: int) -> np.ndarray:
+    """Random hyperplanes of the SimHash projection, fixed by SIMHASH_SEED."""
+    rng = np.random.default_rng(SIMHASH_SEED)
+    planes = rng.standard_normal((dim, SIMHASH_BITS_PER_DIM * dim))
+    return planes.astype(np.float32)
+
+
+def simhash(x: np.ndarray) -> np.ndarray:
+    """SimHash bits computed in FP32 on the CPU with NumPy."""
+    return x.astype(np.float32) @ simhash_planes(x.shape[1]) > 0
+
+
 def binomial_cdf(k: int, n: int, p: float) -> float:
     """P(X <= k) for X ~ Binomial(n, p)."""
     if k < 0:
@@ -324,7 +353,15 @@ def unit_rows(x: np.ndarray) -> np.ndarray:
 class Rows:
     """Per-row float statistics of a candidate against the reference."""
 
-    __slots__ = ("allclose", "bf16", "bf16_atol", "cosdev", "equal", "maxabs")
+    __slots__ = (
+        "allclose",
+        "bf16",
+        "bf16_atol",
+        "cosdev",
+        "equal",
+        "maxabs",
+        "simhash",
+    )
 
     allclose: np.ndarray
     bf16: np.ndarray
@@ -332,6 +369,7 @@ class Rows:
     cosdev: np.ndarray
     equal: np.ndarray
     maxabs: np.ndarray
+    simhash: np.ndarray
 
     def __init__(self, x: np.ndarray, ref: np.ndarray, spacing: np.ndarray) -> None:
         d = np.abs(x.astype(np.float64) - ref.astype(np.float64))
@@ -342,6 +380,7 @@ class Rows:
         self.bf16 = np.asarray((d > spacing).any(axis=1))
         self.bf16_atol = np.asarray((d > spacing + BF16_ATOL).any(axis=1))
         self.equal = np.asarray((x == ref).all(axis=1))
+        self.simhash = (simhash(x) != simhash(ref)).sum(axis=1)
 
     def replaced(self, rows: np.ndarray, new: Rows) -> Rows:
         out = Rows.__new__(Rows)
@@ -359,6 +398,8 @@ class Rows:
             "bf16_exceeded": bool(self.bf16.any()),
             "bf16_atol_exceeded": bool(self.bf16_atol.any()),
             "bytes_equal": bool(self.equal.all()),
+            "simhash_rows": int((self.simhash > 0).sum()),
+            "simhash_max": int(self.simhash.max()),
         }
 
 
@@ -371,6 +412,9 @@ def float_flags(cand: dict[str, Any], nulls: list[dict[str, Any]]) -> dict[str, 
         "allclose_default": not cand["allclose"],
         "bf16_fixed": cand["bf16_exceeded"],
         "bf16_atol": cand["bf16_atol_exceeded"],
+        "simhash_calibrated": any(
+            cand[k] > max(n[k] for n in nulls) for k in ("simhash_rows", "simhash_max")
+        ),
     }
 
 
@@ -635,6 +679,94 @@ def evaluate_pool(
     }
 
 
+def simhash_precision(
+    nulls: dict[str, np.ndarray], ref: np.ndarray, draws: int
+) -> dict[str, Any] | None:
+    """The same FP32 SimHash computed in SIMHASH_CONFIGS instead of NumPy on the
+    CPU: rows whose bits change over the rebuilds and SIMHASH_VECTORS seeded
+    unit vectors, and, on the pool's draws, how often a floor from DETECTION_N
+    nulls hashed with NumPy rejects a null hashed another way. None without
+    CUDA."""
+    try:
+        import torch
+    except ImportError:
+        return None
+    if not torch.cuda.is_available():
+        return None
+    planes = torch.from_numpy(simhash_planes(ref.shape[1]))
+    on_gpu = planes.cuda()
+
+    def hashed(x: np.ndarray, config: str) -> np.ndarray:
+        if config == "numpy":
+            return simhash(x)
+        if config == "torch_cpu":
+            return (torch.from_numpy(x) @ planes > 0).numpy()
+        batch = 64 if config == "cuda_b64" else 4096
+        previous = torch.backends.cuda.matmul.allow_tf32
+        torch.backends.cuda.matmul.allow_tf32 = config == "cuda_tf32"
+        try:
+            return np.concatenate(
+                [
+                    (torch.from_numpy(x[i : i + batch]).cuda() @ on_gpu > 0)
+                    .cpu()
+                    .numpy()
+                    for i in range(0, len(x), batch)
+                ]
+            )
+        finally:
+            torch.backends.cuda.matmul.allow_tf32 = previous
+
+    rng = np.random.default_rng(SIMHASH_VECTOR_SEED)
+    seeded = rng.standard_normal((SIMHASH_VECTORS, ref.shape[1]), dtype=np.float32)
+    seeded /= np.sqrt((seeded * seeded).sum(axis=1, keepdims=True))
+    names = sorted(nulls)
+    vectors = np.concatenate([ref, *(nulls[k] for k in names), seeded])
+    del seeded
+    differ = dict.fromkeys(SIMHASH_CONFIGS, 0)
+    for i in range(0, len(vectors), SIMHASH_CHUNK):
+        x = np.ascontiguousarray(vectors[i : i + SIMHASH_CHUNK])
+        base = hashed(x, "numpy")
+        for c in SIMHASH_CONFIGS:
+            differ[c] += int((hashed(x, c) != base).any(axis=1).sum())
+
+    codes = {
+        c: {k: hashed(nulls[k], c) for k in names} for c in ("numpy", *SIMHASH_CONFIGS)
+    }
+    ref_code = hashed(ref, "numpy")
+
+    def stats(code: np.ndarray) -> tuple[int, int]:
+        h = (code != ref_code).sum(axis=1)
+        return int((h > 0).sum()), int(h.max())
+
+    base_stats = {k: stats(codes["numpy"][k]) for k in names}
+    alarms = dict.fromkeys(("numpy", *SIMHASH_CONFIGS), 0)
+    for i in range(draws):
+        perm = draw_rng("real", i).permutation(len(names))
+        order = [names[j] for j in perm]
+        held, rest = order[0], order[1 : DETECTION_N + 1]
+        max_rows = max(base_stats[k][0] for k in rest)
+        max_ham = max(base_stats[k][1] for k in rest)
+        for c in alarms:
+            rows, ham = stats(codes[c][held])
+            alarms[c] += rows > max_rows or ham > max_ham
+    return {
+        "device": torch.cuda.get_device_name(0),
+        "baseline": "FP32 on the CPU with NumPy",
+        "dimensions": int(ref.shape[1]),
+        "vectors": len(vectors),
+        "seeded_vectors": SIMHASH_VECTORS,
+        "baseline_false_alarms": rate(alarms["numpy"], draws),
+        "configs": {
+            c: {
+                "rows_whose_bits_differ": differ[c],
+                "per_million_rows": 1e6 * differ[c] / len(vectors),
+                "false_alarms": rate(alarms[c], draws),
+            }
+            for c in SIMHASH_CONFIGS
+        },
+    }
+
+
 def evaluate(cache: Path, draws: int) -> tuple[dict[str, Any], dict[str, Any]]:
     pool = load_pool(cache)
     meta, runs = pool["meta"], pool["runs"]
@@ -700,6 +832,9 @@ def evaluate(cache: Path, draws: int) -> tuple[dict[str, Any], dict[str, Any]]:
         },
         "detection_n": DETECTION_N,
         "pools": pools,
+        "simhash_precision": simhash_precision(
+            {k: v["rows"] for k, v in real.items()}, ref, draws
+        ),
         "limits": [
             "one corpus (SciFact, 5,183 documents) and one model (e5-small-v2)",
             "the varying pool is synthetic: real rebuilds here gave one SEMQ state per device",
