@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -200,6 +201,12 @@ POWER_DETECTORS = (
 )
 DEVICES = {"cpu": "CPU", "mps": "GPU", "cuda": "GPU"}
 FAULT_FAMILIES = ("replace", "truncate", "substitute", "diffuse", "sparse")
+
+
+def span(values: list[float], fmt: Callable[[float], str]) -> str:
+    """'low to high' of the values, or one value when they agree once formatted."""
+    low, high = fmt(min(values)), fmt(max(values))
+    return low if low == high else f"{low} to {high}"
 
 
 def simhash_comparison(det: dict[str, Any]) -> str:
@@ -690,6 +697,13 @@ def power_panel(data: dict[str, Any]) -> list[str]:
     by_config = precision["configs"]
     fp32 = [by_config[c] for c in SIMHASH_CONFIG_LABELS if c != "cuda_tf32"]
     tf32 = by_config["cuda_tf32"]
+    fp32_alarms = span(
+        [c["false_alarms"]["rate"] for c in fp32], lambda r: percent(100 * r)
+    )
+    fp32_rows = span([c["per_million_rows"] for c in fp32], lambda v: f"{v:,.0f}")
+    rebuild_rows = (precision["vectors"] - precision["seeded_vectors"]) // (
+        regime["nulls"] + 1
+    )
     vfar, vbound = varying["false_alarms"], varying["false_alarm_bounds"]
     vdet = varying["detection"][n]
     varying_rows = sorted(s["rows_changed"] for s in varying["regime"]["states"])
@@ -800,18 +814,19 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         f"{precision['dimensions']} products, and the order of that sum depends on "
         "the library, the device and the batch size. Over "
         f"{precision['vectors']:,} vectors, the "
-        f"{precision['vectors'] - precision['seeded_vectors']:,} of these rebuilds "
-        f"and {precision['seeded_vectors']:,} seeded unit vectors, computing the "
-        "same FP32 projection another way changed the bits of "
-        f"{min(c['per_million_rows'] for c in fp32):,.0f} to "
-        f"{max(c['per_million_rows'] for c in fp32):,.0f} rows per million, with "
-        f"no change to the floats; TF32 on the {precision['device']} changed "
-        f"{tf32['per_million_rows']:,.0f} per million. With a floor from {n} "
-        "rebuilds hashed with NumPy, a rebuild hashed another way in FP32 was "
-        f"rejected in {percent(100 * min(c['false_alarms']['rate'] for c in fp32))} "
-        f"to {percent(100 * max(c['false_alarms']['rate'] for c in fp32))} of "
-        f"{results['draws']:,} draws, and one hashed in TF32 in "
-        f"{percent(100 * tf32['false_alarms']['rate'])}. SEMQ quantizes each "
+        f"{precision['vectors'] - precision['seeded_vectors']:,} vectors of these "
+        f"rebuilds and {precision['seeded_vectors']:,} seeded unit vectors, "
+        "computing the same FP32 projection another way changed the bits of "
+        f"{fp32_rows} rows per million, with no change to the floats; TF32 on "
+        f"the {precision['device']} changed {tf32['per_million_rows']:,.0f} per "
+        f"million. With a floor from {n} rebuilds hashed with NumPy, an unchanged "
+        f"rebuild was rejected in "
+        f"{percent(100 * precision['baseline_false_alarms']['rate'])} of "
+        f"{results['draws']:,} draws when hashed with NumPy too, {fp32_alarms} "
+        "when hashed another way in FP32, and "
+        f"{percent(100 * tf32['false_alarms']['rate'])} when hashed in TF32. "
+        f"On these {rebuild_rows:,}-row rebuilds a few dozen rows per million is "
+        "a fraction of a row. SEMQ quantizes each "
         "coordinate on its own, with rules fixed by the specification: the "
         "conformance vectors check the same bytes in every binding and on every "
         "platform CI tests.",
@@ -825,11 +840,18 @@ def power_panel(data: dict[str, Any]) -> list[str]:
             ],
             [
                 [
-                    label,
-                    f"{by_config[c]['per_million_rows']:,.0f}",
-                    *rate_cells(by_config[c]["false_alarms"]),
-                ]
-                for c, label in SIMHASH_CONFIG_LABELS.items()
+                    "FP32 on the CPU, NumPy, as the floor",
+                    "0",
+                    *rate_cells(precision["baseline_false_alarms"]),
+                ],
+                *(
+                    [
+                        label,
+                        f"{by_config[c]['per_million_rows']:,.0f}",
+                        *rate_cells(by_config[c]["false_alarms"]),
+                    ]
+                    for c, label in SIMHASH_CONFIG_LABELS.items()
+                ),
             ],
             "-rrr",
             "SimHash computed another way than NumPy on the CPU",

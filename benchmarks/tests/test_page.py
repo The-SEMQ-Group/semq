@@ -94,8 +94,9 @@ def small_report():
             "simhash_precision": {
                 "device": "Test GPU",
                 "dimensions": 384,
-                "vectors": 1_000_100,
+                "vectors": 1_000_150,
                 "seeded_vectors": 1_000_000,
+                "baseline_false_alarms": r(0.0),
                 "configs": {
                     c: {
                         "rows_whose_bits_differ": 50,
@@ -121,7 +122,8 @@ def test_power_panel_renders_from_a_small_report():
     assert "the p99 ignores these 2 rows" in text
     assert "the per-row limit is 3 symbols" in text
     # SimHash bits move with how the projection is computed.
-    assert "changed the bits of 50 to 50 rows per million" in text
+    assert "changed the bits of 50 rows per million" in text
+    assert "| FP32 on the CPU, NumPy, as the floor | 0 | 0% | 0%–30.0% |" in text
     assert "| TF32 on the GPU, batches of 4,096 | 70,000 | 100% | 0%–30.0% |" in text
     assert "It detected every fault as often as the per-row floor." in text
 

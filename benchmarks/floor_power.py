@@ -740,14 +740,14 @@ def simhash_precision(
         return int((h > 0).sum()), int(h.max())
 
     base_stats = {k: stats(codes["numpy"][k]) for k in names}
-    alarms = dict.fromkeys(SIMHASH_CONFIGS, 0)
+    alarms = dict.fromkeys(("numpy", *SIMHASH_CONFIGS), 0)
     for i in range(draws):
         perm = draw_rng("simhash-precision", i).permutation(len(names))
         order = [names[j] for j in perm]
         held, rest = order[0], order[1 : DETECTION_N + 1]
         max_rows = max(base_stats[k][0] for k in rest)
         max_ham = max(base_stats[k][1] for k in rest)
-        for c in SIMHASH_CONFIGS:
+        for c in alarms:
             rows, ham = stats(codes[c][held])
             alarms[c] += rows > max_rows or ham > max_ham
     return {
@@ -756,6 +756,7 @@ def simhash_precision(
         "dimensions": int(ref.shape[1]),
         "vectors": len(vectors),
         "seeded_vectors": SIMHASH_VECTORS,
+        "baseline_false_alarms": rate(alarms["numpy"], draws),
         "configs": {
             c: {
                 "rows_whose_bits_differ": differ[c],
