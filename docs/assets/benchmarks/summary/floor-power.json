@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-15T18:06:46Z",
+  "generated_utc": "2026-10-15T22:33:11Z",
   "hardware": {
     "arch": "x86_64",
     "cpu_threads": 4,
@@ -165,7 +165,7 @@
       "floor_within": "SEMQ: Diff.within(floor)",
       "fp32_hash": "SHA-256 of the float32 bytes differs",
       "max_abs_calibrated": "largest absolute coordinate difference above the largest seen on the floor's nulls",
-      "simhash_calibrated": "SimHash with 2 bits per dimension, FP32 on the CPU: more changed rows, or a larger row Hamming distance, than seen on the floor's nulls"
+      "simhash_calibrated": "SimHash with 3 bits per dimension, FP32 on the CPU: more changed rows, or a larger row Hamming distance, than seen on the floor's nulls"
     },
     "draw_seeds": "SHA-256 of the JSON ['floor-power', pool, draw]; first 8 bytes, big-endian, seed np.random.default_rng",
     "draws": 2000,
@@ -281,12 +281,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.32268,
-                    0.36478
+                    0.392798,
+                    0.436453
                   ],
-                  "count": 687,
+                  "count": 829,
                   "draws": 2000,
-                  "rate": 0.3435
+                  "rate": 0.4145
                 }
               },
               "family": "diffuse",
@@ -369,12 +369,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.996392,
-                    0.999879
+                    0.998157,
+                    1.0
                   ],
-                  "count": 1998,
+                  "count": 2000,
                   "draws": 2000,
-                  "rate": 0.999
+                  "rate": 1.0
                 }
               },
               "family": "diffuse",
@@ -1076,12 +1076,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.94607,
-                    0.964564
+                    0.951563,
+                    0.969052
                   ],
-                  "count": 1912,
+                  "count": 1922,
                   "draws": 2000,
-                  "rate": 0.956
+                  "rate": 0.961
                 }
               },
               "documents": 1,
@@ -1562,12 +1562,12 @@
             },
             "simhash_calibrated": {
               "ci95": [
-                0.026497,
-                0.042906
+                0.0,
+                0.001843
               ],
-              "count": 68,
+              "count": 0,
               "draws": 2000,
-              "rate": 0.034
+              "rate": 0.0
             }
           },
           "20": {
@@ -1645,12 +1645,12 @@
             },
             "simhash_calibrated": {
               "ci95": [
-                0.000309,
-                0.004377
+                0.0,
+                0.001843
               ],
-              "count": 3,
+              "count": 0,
               "draws": 2000,
-              "rate": 0.0015
+              "rate": 0.0
             }
           },
           "3": {
@@ -1728,12 +1728,12 @@
             },
             "simhash_calibrated": {
               "ci95": [
-                0.093315,
-                0.120851
+                0.0,
+                0.001843
               ],
-              "count": 213,
+              "count": 0,
               "draws": 2000,
-              "rate": 0.1065
+              "rate": 0.0
             }
           },
           "5": {
@@ -1811,12 +1811,12 @@
             },
             "simhash_calibrated": {
               "ci95": [
-                0.066622,
-                0.090632
+                0.0,
+                0.001843
               ],
-              "count": 156,
+              "count": 0,
               "draws": 2000,
-              "rate": 0.078
+              "rate": 0.0
             }
           }
         },
@@ -2516,12 +2516,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.055051,
-                    0.077244
+                    0.056895,
+                    0.079393
                   ],
-                  "count": 131,
+                  "count": 135,
                   "draws": 2000,
-                  "rate": 0.0655
+                  "rate": 0.0675
                 }
               },
               "family": "sparse",
@@ -2605,12 +2605,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.974014,
-                    0.98652
+                    0.941698,
+                    0.96095
                   ],
-                  "count": 1962,
+                  "count": 1904,
                   "draws": 2000,
-                  "rate": 0.981
+                  "rate": 0.952
                 }
               },
               "family": "sparse",
@@ -2694,12 +2694,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.18605,
-                    0.221823
+                    0.100395,
+                    0.128748
                   ],
-                  "count": 407,
+                  "count": 228,
                   "draws": 2000,
-                  "rate": 0.2035
+                  "rate": 0.114
                 }
               },
               "family": "sparse",
@@ -2782,12 +2782,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.844537,
-                    0.875398
+                    0.940607,
+                    0.960043
                   ],
-                  "count": 1721,
+                  "count": 1902,
                   "draws": 2000,
-                  "rate": 0.8605
+                  "rate": 0.951
                 }
               },
               "documents": 1,
@@ -2961,12 +2961,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.868624,
-                    0.897241
+                    0.847148,
+                    0.877779
                   ],
-                  "count": 1767,
+                  "count": 1726,
                   "draws": 2000,
-                  "rate": 0.8835
+                  "rate": 0.863
                 }
               },
               "documents": 1,
@@ -3050,12 +3050,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.94607,
-                    0.964564
+                    0.948263,
+                    0.966363
                   ],
-                  "count": 1912,
+                  "count": 1916,
                   "draws": 2000,
-                  "rate": 0.956
+                  "rate": 0.958
                 }
               },
               "documents": 1,
@@ -3758,12 +3758,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.043138,
-                    0.0632
+                    0.009323,
+                    0.020171
                   ],
-                  "count": 105,
+                  "count": 28,
                   "draws": 2000,
-                  "rate": 0.0525
+                  "rate": 0.014
                 }
               },
               "family": "sparse",
@@ -3847,12 +3847,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.972864,
-                    0.985674
+                    0.913107,
+                    0.936628
                   ],
-                  "count": 1960,
+                  "count": 1851,
                   "draws": 2000,
-                  "rate": 0.98
+                  "rate": 0.9255
                 }
               },
               "family": "sparse",
@@ -3936,12 +3936,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.173503,
-                    0.208409
+                    0.016458,
+                    0.029992
                   ],
-                  "count": 381,
+                  "count": 45,
                   "draws": 2000,
-                  "rate": 0.1905
+                  "rate": 0.0225
                 }
               },
               "family": "sparse",
@@ -4024,12 +4024,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.844537,
-                    0.875398
+                    0.937887,
+                    0.957772
                   ],
-                  "count": 1721,
+                  "count": 1897,
                   "draws": 2000,
-                  "rate": 0.8605
+                  "rate": 0.9485
                 }
               },
               "documents": 1,
@@ -4203,12 +4203,12 @@
                 },
                 "simhash_calibrated": {
                   "ci95": [
-                    0.865474,
-                    0.894401
+                    0.833589,
+                    0.865377
                   ],
-                  "count": 1761,
+                  "count": 1700,
                   "draws": 2000,
-                  "rate": 0.8805
+                  "rate": 0.85
                 }
               },
               "documents": 1,
@@ -4515,12 +4515,12 @@
             },
             "simhash_calibrated": {
               "ci95": [
-                0.05828,
-                0.081003
+                0.104652,
+                0.133477
               ],
-              "count": 138,
+              "count": 237,
               "draws": 2000,
-              "rate": 0.069
+              "rate": 0.1185
             }
           },
           "20": {
@@ -4598,12 +4598,12 @@
             },
             "simhash_calibrated": {
               "ci95": [
-                0.01348,
-                0.025986
+                0.05459,
+                0.076706
               ],
-              "count": 38,
+              "count": 130,
               "draws": 2000,
-              "rate": 0.019
+              "rate": 0.065
             }
           },
           "3": {
@@ -4681,12 +4681,12 @@
             },
             "simhash_calibrated": {
               "ci95": [
-                0.248202,
-                0.287481
+                0.242839,
+                0.281861
               ],
-              "count": 535,
+              "count": 524,
               "draws": 2000,
-              "rate": 0.2675
+              "rate": 0.262
             }
           },
           "39": {
@@ -4764,12 +4764,12 @@
             },
             "simhash_calibrated": {
               "ci95": [
-                0.0,
-                0.001843
+                0.013902,
+                0.026562
               ],
-              "count": 0,
+              "count": 39,
               "draws": 2000,
-              "rate": 0.0
+              "rate": 0.0195
             }
           },
           "5": {
@@ -4847,12 +4847,12 @@
             },
             "simhash_calibrated": {
               "ci95": [
-                0.14419,
-                0.176813
+                0.173021,
+                0.207893
               ],
-              "count": 320,
+              "count": 380,
               "draws": 2000,
-              "rate": 0.16
+              "rate": 0.19
             }
           }
         },
@@ -5308,39 +5308,39 @@
       "baseline": "FP32 on the CPU with NumPy",
       "baseline_false_alarms": {
         "ci95": [
-          1.3e-05,
-          0.002783
+          0.0,
+          0.001843
         ],
-        "count": 1,
+        "count": 0,
         "draws": 2000,
-        "rate": 0.0005
+        "rate": 0.0
       },
       "configs": {
         "cuda_b4096": {
           "false_alarms": {
             "ci95": [
-              1.3e-05,
-              0.002783
+              0.0,
+              0.001843
             ],
-            "count": 1,
+            "count": 0,
             "draws": 2000,
-            "rate": 0.0005
+            "rate": 0.0
           },
-          "per_million_rows": 48.68265602139255,
-          "rows_whose_bits_differ": 56
+          "per_million_rows": 54.76798802406662,
+          "rows_whose_bits_differ": 63
         },
         "cuda_b64": {
           "false_alarms": {
             "ci95": [
-              1.3e-05,
-              0.002783
+              0.0,
+              0.001843
             ],
-            "count": 1,
+            "count": 0,
             "draws": 2000,
-            "rate": 0.0005
+            "rate": 0.0
           },
-          "per_million_rows": 37.38132515928356,
-          "rows_whose_bits_differ": 43
+          "per_million_rows": 54.76798802406662,
+          "rows_whose_bits_differ": 63
         },
         "cuda_tf32": {
           "false_alarms": {
@@ -5352,21 +5352,21 @@
             "draws": 2000,
             "rate": 1.0
           },
-          "per_million_rows": 68793.80895708711,
-          "rows_whose_bits_differ": 79134
+          "per_million_rows": 102051.88701798738,
+          "rows_whose_bits_differ": 117391
         },
         "torch_cpu": {
           "false_alarms": {
             "ci95": [
-              1.3e-05,
-              0.002783
+              0.0,
+              0.001843
             ],
-            "count": 1,
+            "count": 0,
             "draws": 2000,
-            "rate": 0.0005
+            "rate": 0.0
           },
-          "per_million_rows": 2.607999429717458,
-          "rows_whose_bits_differ": 3
+          "per_million_rows": 0.8693331432391527,
+          "rows_whose_bits_differ": 1
         }
       },
       "device": "NVIDIA A10G",
@@ -5376,6 +5376,6 @@
     }
   },
   "schema": "semq-bench/floor-power/1",
-  "sdk_commit": "65a4098791b7dfa6675c0dec6febc89af3bb4684",
+  "sdk_commit": "5f75896ff960fc3819323f0f11ff67360bf7b752",
   "working_tree_dirty": false
 }
