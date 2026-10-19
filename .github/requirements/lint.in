@@ -1,5 +1,5 @@
 # Python lint and type checks (test.yml).
-ruff==0.16.10
+ruff==0.17.0
 mypy
 # mypy reads the installed numpy and cffi types.
 numpy
