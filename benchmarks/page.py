@@ -689,6 +689,13 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         else f"It detected none of these {len(numeric)} changes in any draw"
     )
     simhash_vs_floor = simhash_comparison(det)
+    simhash_rate = percent(100 * far["simhash_calibrated"]["rate"])
+    floor_rate = percent(100 * far["floor_per_row"]["rate"])
+    simhash_alarms = (
+        f"{simhash_rate} false alarms, as did the floor"
+        if simhash_rate == floor_rate
+        else f"{simhash_rate} false alarms against the floor's {floor_rate}"
+    )
     precision = results["simhash_precision"]
     if precision is None:
         raise ValueError(
@@ -774,8 +781,7 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         "budget of this floor, is calibrated on the same rebuilds and raises an "
         "alarm when either its changed-row count or its largest row Hamming "
         "distance exceeds every null; the float checks use one statistic each. "
-        f"It raised {percent(100 * far['simhash_calibrated']['rate'])} false "
-        f"alarms against the floor's {percent(100 * far['floor_per_row']['rate'])}. "
+        f"It raised {simhash_alarms}. "
         f"{simhash_vs_floor} Each row below names the injected change. Angular change is "
         "the median 1 − cosine between modified rows and those same rows before "
         "the injection. The scaled dimensions are the same in every document.",
