@@ -116,6 +116,7 @@ Each of 2,000 draws holds out one rebuild, measures a floor from N of the others
     | SEMQ floor, per-row | 0% | 0%–0.18% |
     | Largest absolute difference, calibrated | 0% | 0%–0.18% |
     | Lowest row cosine, calibrated | 0% | 0%–0.18% |
+    | SimHash, 3 bits per dimension, calibrated | 0% | 0%–0.18% |
     | Hash of the FP32 bytes | 100% | 99.8%–100% |
     | `np.allclose`, default tolerances | 100% | 99.8%–100% |
     | Fixed tolerance of one bfloat16 spacing | 100% | 99.8%–100% |
@@ -124,7 +125,7 @@ Each of 2,000 draws holds out one rebuild, measures a floor from N of the others
 
 **Detection.** Each fault is injected into a held-out rebuild. On the tested content edits, SEMQ and the calibrated float checks had similar detection rates: one replaced document 100% for every check, one swapped word 96.8% for the floor and 97.8% for the cosine check. Some cuts remove only text beyond the model's 512-token window, leaving the model input unchanged.
 
-**Numeric changes.** A perturbation can change floats without crossing a quantization boundary. SEMQ's symbols change only when a coordinate crosses that boundary; the calibrated float checks detect smaller movements in these runs. One bfloat16 spacing plus 1e-5 is the uncalibrated counterpart of the largest-difference check, which takes its tolerance from the rebuilds instead. Of these 6 changes it detected only “Noise on every coordinate, 100× rebuild noise” (100% of draws), and the other 5 in no draw: its absolute tolerance sits above the rebuild noise, which keeps it free of false alarms, and above the smaller changes too. Each row below names the injected change. Angular change is the median 1 − cosine between modified rows and those same rows before the injection. The scaled dimensions are the same in every document.
+**Numeric changes.** A perturbation can change floats without crossing a quantization boundary. SEMQ's symbols change only when a coordinate crosses that boundary; the calibrated float checks detect smaller movements in these runs. One bfloat16 spacing plus 1e-5 is the uncalibrated counterpart of the largest-difference check, which takes its tolerance from the rebuilds instead. Of these 6 changes it detected only “Noise on every coordinate, 100× rebuild noise” (100% of draws), and the other 5 in no draw: its absolute tolerance sits above the rebuild noise, which keeps it free of false alarms, and above the smaller changes too. SimHash with 3 bits per dimension, the budget of this floor, is calibrated on the same rebuilds and raises an alarm when either its changed-row count or its largest row Hamming distance exceeds every null; the float checks use one statistic each. It raised 0% false alarms, as did the floor. Against the per-row floor it detected faults more often on “Noise on every coordinate, 1× rebuild noise” (41.4% vs 5.3%) and “Scale 1% of coordinates by 1 + 1e-4” (100% vs 67.5%); less often on “Swap 1 word in one document” (96.1% vs 96.8%, within each other's 95% interval); the other 11 tied. Each row below names the injected change. Angular change is the median 1 − cosine between modified rows and those same rows before the injection. The scaled dimensions are the same in every document.
 
 <p class="semq-chart-legend"><span class="is-floor">SEMQ within</span><span class="is-maxabs">largest difference, calibrated</span><span class="is-cosine">lowest cosine, calibrated</span></p>
 
@@ -262,22 +263,35 @@ Each of 2,000 draws holds out one rebuild, measures a floor from N of the others
 
 ??? info "Detection rates by fault"
 
-    | Fault | Angular change (1 − cosine) | Floor, `within` | Floor, per-row | Largest difference, calibrated | Cosine, calibrated | One bfloat16 spacing plus 1e-5 |
-    | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-    | Replace 1 document | 1.9e-01 | 100% | 100% | 100% | 100% | 100% |
-    | Replace 2 documents | 1.9e-01 | 100% | 100% | 100% | 100% | 100% |
-    | Replace 10 documents | 1.9e-01 | 100% | 100% | 100% | 100% | 100% |
-    | Cut the last 2% of words in one document | 1.4e-03 | 87.8% | 87.8% | 87.8% | 87.8% | 87.8% |
-    | Cut the last 10% of words in one document | 2.9e-03 | 96.0% | 96.0% | 96.0% | 96.0% | 96.0% |
-    | Cut the last 50% of words in one document | 1.5e-02 | 100% | 100% | 100% | 100% | 100% |
-    | Swap 1 word in one document | 7.6e-04 | 96.8% | 96.8% | 97.8% | 97.8% | 97.8% |
-    | Swap 3 words in one document | 3.3e-03 | 100% | 100% | 100% | 100% | 100% |
-    | Noise on every coordinate, 1× rebuild noise | 1.9e-13 | 5.3% | 5.3% | 31.7% | 52.6% | 0% |
-    | Noise on every coordinate, 10× rebuild noise | 1.9e-11 | 100% | 100% | 100% | 100% | 0% |
-    | Noise on every coordinate, 100× rebuild noise | 1.9e-09 | 100% | 100% | 100% | 100% | 100% |
-    | Scale 1% of coordinates by 1 + 1e-4 | 4.1e-11 | 67.5% | 67.5% | 100% | 100% | 0% |
-    | Scale 1% of coordinates by 1 + 1e-3 | 4.1e-09 | 100% | 100% | 100% | 100% | 0% |
-    | Scale 10% of coordinates by 1 + 1e-4 | 4.4e-10 | 100% | 100% | 100% | 100% | 0% |
+    | Fault | Angular change (1 − cosine) | Floor, `within` | Floor, per-row | Largest difference, calibrated | Cosine, calibrated | One bfloat16 spacing plus 1e-5 | SimHash, calibrated |
+    | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+    | Replace 1 document | 1.9e-01 | 100% | 100% | 100% | 100% | 100% | 100% |
+    | Replace 2 documents | 1.9e-01 | 100% | 100% | 100% | 100% | 100% | 100% |
+    | Replace 10 documents | 1.9e-01 | 100% | 100% | 100% | 100% | 100% | 100% |
+    | Cut the last 2% of words in one document | 1.4e-03 | 87.8% | 87.8% | 87.8% | 87.8% | 87.8% | 87.8% |
+    | Cut the last 10% of words in one document | 2.9e-03 | 96.0% | 96.0% | 96.0% | 96.0% | 96.0% | 96.0% |
+    | Cut the last 50% of words in one document | 1.5e-02 | 100% | 100% | 100% | 100% | 100% | 100% |
+    | Swap 1 word in one document | 7.6e-04 | 96.8% | 96.8% | 97.8% | 97.8% | 97.8% | 96.1% |
+    | Swap 3 words in one document | 3.3e-03 | 100% | 100% | 100% | 100% | 100% | 100% |
+    | Noise on every coordinate, 1× rebuild noise | 1.9e-13 | 5.3% | 5.3% | 31.7% | 52.6% | 0% | 41.4% |
+    | Noise on every coordinate, 10× rebuild noise | 1.9e-11 | 100% | 100% | 100% | 100% | 0% | 100% |
+    | Noise on every coordinate, 100× rebuild noise | 1.9e-09 | 100% | 100% | 100% | 100% | 100% | 100% |
+    | Scale 1% of coordinates by 1 + 1e-4 | 4.1e-11 | 67.5% | 67.5% | 100% | 100% | 0% | 100% |
+    | Scale 1% of coordinates by 1 + 1e-3 | 4.1e-09 | 100% | 100% | 100% | 100% | 0% | 100% |
+    | Scale 10% of coordinates by 1 + 1e-4 | 4.4e-10 | 100% | 100% | 100% | 100% | 0% | 100% |
+
+
+**Precision of the check.** SimHash here is computed in FP32 on the CPU with NumPy. Each bit is the sign of a sum of 384 products, and the order of that sum depends on the library and the device, and can depend on the batch size. Over 1,150,307 vectors, the 150,307 vectors of these rebuilds and 1,000,000 seeded unit vectors, computing the same FP32 projection another way changed the bits of 1 to 55 rows per million, with no change to the floats; batches of 64 and 4,096 on the GPU changed the same number of rows. TF32 on the NVIDIA A10G changed 102,052 per million. With a floor from 20 rebuilds hashed with NumPy, an unchanged rebuild was rejected in 0% of 2,000 draws when hashed with NumPy too, 0% when hashed another way in FP32, and 100% when hashed in TF32. On these 5,183-row rebuilds a few dozen rows per million is a fraction of a row. With the projection held at FP32, SimHash raised as many false alarms as the floor. TF32 is a change of precision, off by default for PyTorch matrix products. SEMQ quantizes each coordinate on its own, with rules fixed by the specification: the conformance vectors check the same bytes in every binding and on every platform CI tests. The specification fixes only that step: an embedding model run in TF32 changes the floats that both checks receive.
+
+??? info "SimHash computed another way than NumPy on the CPU"
+
+    | SimHash computed as | Rows whose bits differ, per million | False alarms | 95% interval |
+    | --- | ---: | ---: | ---: |
+    | FP32 on the CPU, NumPy, as the floor | 0 | 0% | 0%–0.18% |
+    | FP32 on the CPU, PyTorch | 1 | 0% | 0%–0.18% |
+    | FP32 on the GPU, batches of 64 | 55 | 0% | 0%–0.18% |
+    | FP32 on the GPU, batches of 4,096 | 55 | 0% | 0%–0.18% |
+    | TF32 on the GPU, batches of 4,096 | 102,052 | 100% | 99.8%–100% |
 
 
 ### When the rebuild noise varies (synthetic)
