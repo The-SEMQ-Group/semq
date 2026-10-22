@@ -216,8 +216,18 @@ def simhash_comparison(det: dict[str, Any]) -> str:
         return " and ".join(
             f"“{fault_label(f)}” "
             f"({percent(100 * f['detectors']['simhash_calibrated']['rate'])} vs "
-            f"{percent(100 * f['detectors']['floor_per_row']['rate'])})"
+            f"{percent(100 * f['detectors']['floor_per_row']['rate'])}{overlap(f)})"
             for f in faults
+        )
+
+    def overlap(f: dict[str, Any]) -> str:
+        (a_low, a_high), (b_low, b_high) = (
+            f["detectors"][d]["ci95"] for d in ("simhash_calibrated", "floor_per_row")
+        )
+        return (
+            ", within each other's 95% interval"
+            if a_low <= b_high and b_low <= a_high
+            else ""
         )
 
     faults = sorted(det.values(), key=fault_order)
@@ -714,6 +724,17 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         [c["false_alarms"]["rate"] for c in fp32], lambda r: percent(100 * r)
     )
     fp32_rows = span([c["per_million_rows"] for c in fp32], lambda v: f"{v:,.0f}")
+    batches = [
+        by_config[c]["rows_whose_bits_differ"] for c in ("cuda_b64", "cuda_b4096")
+    ]
+    batch_rows = (
+        "the same number of rows"
+        if batches[0] == batches[1]
+        else f"{batches[0]:,} and {batches[1]:,} rows"
+    )
+    fp32_matched = all(
+        c["false_alarms"]["rate"] == far["floor_per_row"]["rate"] for c in fp32
+    )
     rebuild_rows = (precision["vectors"] - precision["seeded_vectors"]) // (
         regime["nulls"] + 1
     )
@@ -824,12 +845,13 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         "**Precision of the check.** SimHash here is computed in FP32 on the CPU "
         "with NumPy. Each bit is the sign of a sum of "
         f"{precision['dimensions']} products, and the order of that sum depends on "
-        "the library, the device and the batch size. Over "
+        "the library and the device, and can depend on the batch size. Over "
         f"{precision['vectors']:,} vectors, the "
         f"{precision['vectors'] - precision['seeded_vectors']:,} vectors of these "
         f"rebuilds and {precision['seeded_vectors']:,} seeded unit vectors, "
         "computing the same FP32 projection another way changed the bits of "
-        f"{fp32_rows} rows per million, with no change to the floats; TF32 on "
+        f"{fp32_rows} rows per million, with no change to the floats; batches "
+        f"of 64 and 4,096 on the GPU changed {batch_rows}. TF32 on "
         f"the {precision['device']} changed {tf32['per_million_rows']:,.0f} per "
         f"million. With a floor from {n} rebuilds hashed with NumPy, an unchanged "
         f"rebuild was rejected in "
@@ -838,10 +860,19 @@ def power_panel(data: dict[str, Any]) -> list[str]:
         "when hashed another way in FP32, and "
         f"{percent(100 * tf32['false_alarms']['rate'])} when hashed in TF32. "
         f"On these {rebuild_rows:,}-row rebuilds a few dozen rows per million is "
-        "a fraction of a row. SEMQ quantizes each "
-        "coordinate on its own, with rules fixed by the specification: the "
-        "conformance vectors check the same bytes in every binding and on every "
-        "platform CI tests.",
+        "a fraction of a row. "
+        + (
+            "With the projection held at FP32, SimHash raised as many false alarms "
+            "as the floor. "
+            if fp32_matched
+            else ""
+        )
+        + "TF32 is a change of precision, off by default for PyTorch matrix "
+        "products. SEMQ quantizes each coordinate on its own, with rules fixed by "
+        "the specification: the conformance vectors check the same bytes in every "
+        "binding and on every platform CI tests. The specification fixes only "
+        "that step: an embedding model run in TF32 changes the floats that both "
+        "checks receive.",
         "",
         *table_view(
             [

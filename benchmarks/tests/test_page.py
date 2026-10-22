@@ -145,24 +145,30 @@ def test_power_panel_needs_the_simhash_precision_study():
 def test_simhash_comparison_names_faults_in_both_directions():
     specs = floor_power.fault_specs()
 
-    def fault(key, simhash, floor):
+    def fault(key, simhash, floor, width=0.01):
         return {
             **specs[key],
             "detectors": {
-                "simhash_calibrated": {"rate": simhash},
-                "floor_per_row": {"rate": floor},
+                "simhash_calibrated": {
+                    "rate": simhash,
+                    "ci95": [simhash - width, simhash + width],
+                },
+                "floor_per_row": {
+                    "rate": floor,
+                    "ci95": [floor - width, floor + width],
+                },
             },
         }
 
     text = page.simhash_comparison(
         {
             "replace_1": fault("replace_1", 1.0, 0.5),
-            "replace_2": fault("replace_2", 0.9, 1.0),
+            "replace_2": fault("replace_2", 0.9, 1.0, width=0.06),
             "replace_10": fault("replace_10", 1.0, 1.0),
         }
     )
     assert "more often on" in text and "(100% vs 50.0%)" in text
-    assert "less often on" in text and "(90.0% vs 100%)" in text
+    assert "(90.0% vs 100%, within each other's 95% interval)" in text
     assert text.endswith("the other 1 tied.")
 
 
