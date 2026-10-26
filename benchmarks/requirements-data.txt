@@ -2,6 +2,6 @@
 sentence-transformers==6.1.0
 huggingface-hub==1.33.0
 pyarrow==26.0.0
-transformers==5.19.0
+transformers==5.20.1
 torch==2.14.1
 numpy==2.5.4
