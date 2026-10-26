@@ -1,2 +1,2 @@
 # Static analysis of the C core (test.yml).
-clang-tidy==22.1.8
+clang-tidy==23.1.3
