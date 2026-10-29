@@ -46,6 +46,12 @@ gate, produce each null state by independently rebuilding the unchanged corpus
 with the same encoder and production settings. Synthetic perturbations do not
 establish the rebuild noise floor.
 
+Vary only what a production rebuild may vary. The
+[rebuild benchmarks](../benchmarks/rebuild.md) vary the device (CPU or GPU),
+the batch size and the input order, and keep the model revision, dtype,
+maximum length and pooling fixed. A null that changes one of those widens the
+floor by that change, and the gate can then pass it.
+
 ## 2. Measure the floor
 
 ```sh
@@ -149,7 +155,52 @@ below that, without changing the exit code.
 
 The benchmarks [measure both checks](../benchmarks/rebuild.md#false-alarms-and-detection-power)
 on SciFact rebuilds: false alarms against the bounds above, and how often
-each check catches a changed document.
+each check catches a changed document. The false alarms of `within` by the
+number of nulls, over 2,000 draws each, with 95% Clopper–Pearson intervals:
+
+| Nulls `N` | Bound `2/(N+1)` | Real rebuilds | Synthetic varying noise |
+| ---: | ---: | ---: | ---: |
+| 3 | 50% | 8.7% (7.5–10.0%) | 27.1% (25.2–29.1%) |
+| 5 | 33% | 2.8% (2.1–3.6%) | 18.4% (16.7–20.1%) |
+| 10 | 18% | 0% (0–0.18%) | 10.1% (8.8–11.5%) |
+| 20 | 9.5% | 0% (0–0.18%) | 5.5% (4.5–6.5%) |
+
+The real pool is 28 rebuilds of one corpus that changed only the device, the
+batch size and the input order; the synthetic pool adds noise so that every
+null changes hundreds of rows. The draws resample one pool, so the intervals
+describe that pool, not every future rebuild. A count of zero is not a rate
+of zero: with 2,000 draws its interval still reaches 0.18%.
+
+For a CI gate, measure the floor from at least 20 null rebuilds. With 3, the
+gate failed 8.7% of unchanged real rebuilds; with 10 and with 20, none. With
+20 the bound is 9.5% for any exchangeable rebuilds, whatever the noise, and
+both pools stayed at or below 5.5%.
+
+## Read a diff
+
+A row's hamming distance is between `0` and the config's `units_per_row`:
+`dim` for quant and orbit, `dim / 2` for phase. Counts compare only within one
+configuration; divide by `units_per_row` to compare across configurations.
+
+The p99 is a nearest-rank percentile: with `m` changed rows it is the `k`-th
+smallest hamming, `k = m - floor(m / 100)`. Below 100 changed rows `k = m`, so
+the p99 is the largest hamming of any changed row. The floor's `hamming` is
+the largest per-null p99 and its `max_hamming` the largest hamming of any
+null row, so `hamming <= max_hamming`. A candidate with fewer than 100 changed
+rows that passes `within` therefore also passes the per-row check; per-row
+adds information only from 100 changed rows up. The definitions are in the
+[core contracts](../reference/contracts.md#floor), and
+[`test_floor_checks.py`](https://github.com/The-SEMQ-Group/semq/blob/main/tests/property/test_floor_checks.py)
+checks both directions.
+
+Read the changed-row count and the hamming together. In the
+[rebuild benchmark](../benchmarks/rebuild.md) (quant with 4 bins, 384
+dimensions, 5,183 rows), null rebuilds changed at most 2 rows by 1 symbol.
+Half precision changed 2,653 rows with a p99 of 4: many rows, few symbols
+each. CLS pooling and 128-token truncation changed 100% and 98% of rows with
+p99s of 247 and 183. In the synthetic pool, 2 replaced documents moved 260 and
+267 symbols while 241 noisy rows moved 1 or 2. These come from one corpus and
+one model: they show the patterns to look for, not thresholds.
 
 ## What the verdict means
 
