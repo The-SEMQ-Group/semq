@@ -46,6 +46,12 @@ gate, produce each null state by independently rebuilding the unchanged corpus
 with the same encoder and production settings. Synthetic perturbations do not
 establish the rebuild noise floor.
 
+Vary only what a production rebuild may vary. The
+[rebuild benchmarks](../benchmarks/rebuild.md) vary the device (CPU or GPU),
+the batch size and the input order, and keep the model revision, dtype,
+maximum length and pooling fixed. A null that changes one of those widens the
+floor by that change, and the gate can then pass it.
+
 ## 2. Measure the floor
 
 ```sh
@@ -149,7 +155,31 @@ below that, without changing the exit code.
 
 The benchmarks [measure both checks](../benchmarks/rebuild.md#false-alarms-and-detection-power)
 on SciFact rebuilds: false alarms against the bounds above, and how often
-each check catches a changed document.
+each check catches a changed document. On real rebuilds, a floor from 3 nulls
+rejected 8.7% of unchanged rebuilds (95% interval 7.5%–10.0%) against a bound
+of 50% for `within`; a floor from 20 nulls rejected none in 2,000 draws.
+
+## Read a diff
+
+A row's hamming distance is between `0` and the config's `units_per_row`:
+`dim` for quant and orbit, `dim / 2` for phase. Counts compare only within one
+configuration; divide by `units_per_row` to compare across configurations.
+
+The p99 is a nearest-rank percentile: with `m` changed rows it is the `k`-th
+smallest hamming, `k = m - floor(m / 100)`. Below 100 changed rows `k = m`, so
+the p99 is the largest hamming of any changed row. Because the floor's
+`hamming` never exceeds its `max_hamming`, a candidate with fewer than 100
+changed rows that passes `within` also passes the per-row check; per-row adds
+information only from 100 changed rows up.
+
+Read the changed-row count and the hamming together. In the
+[rebuild benchmark](../benchmarks/rebuild.md) (quant with 4 bins, 384
+dimensions, 5,183 rows), null rebuilds changed at most 2 rows by 1 symbol.
+Half precision changed 2,653 rows with a p99 of 4: many rows, few symbols
+each. CLS pooling and 128-token truncation changed 100% and 98% of rows with
+p99s of 247 and 183. In the synthetic pool, 2 replaced documents moved 260 and
+267 symbols while 241 noisy rows moved 1 or 2. These come from one corpus and
+one model: they show the patterns to look for, not thresholds.
 
 ## What the verdict means
 

@@ -28,8 +28,9 @@ normalize the truncated vector again before encoding.
 | phase | `sectors` | `2..256`; `dim` must be even, and divisible by 4 when `sectors <= 16` (nibble packing) |
 | orbit | `scale` | `1..2^30`; default `50` |
 
-quant with `4` bins per sign needs 3 bits per coordinate; `8` needs 4; `16`
-needs 5; `32` needs 6; `64` needs 7. Bit width changes at thresholds, so
+quant with `2` bins per sign needs 2 bits per coordinate; `4` needs 3; `8`
+needs 4; `16` needs 5; `32` needs 6; `64` needs 7. Bit width changes at
+thresholds, so
 measure before assuming a storage tradeoff. The quant range is fixed by the
 dimension: for unit-norm rows it clips only a tail of coordinates; the
 fraction clipped is a property of your encoder, not a constant.
@@ -76,7 +77,39 @@ encoder identity in the manifest so a rebuild can be judged.
 Change one setting at a time and re-encode for each candidate. Compare
 quality and storage on held-out data with the
 [benchmark protocol](benchmark-protocol.md). Record the selected configuration
-and SDK revision with deployed states.
+and SDK revision with deployed states. The
+[benchmark summary](../benchmarks/index.md#choose-a-configuration) lists bits,
+bytes, search quality and throughput for the five configurations measured.
+
+## 6. Account for the rebuild gate
+
+The configuration also sets what a [rebuild gate](gate-a-rebuild.md) can see.
+A unit's symbol changes only when its value crosses a boundary of the rule.
+More quant bins put more boundaries in the same range, `2 / sqrt(dim)`, so a
+small movement is more likely to change a symbol, whether it comes from
+rebuild noise or from a real change.
+
+The rebuild benchmark gates each configuration on the same runs: 5,183
+SciFact rows, `e5-small-v2` at 384 dimensions, a floor from three null
+rebuilds. Every configuration passed the held-out null rebuild and failed the
+four pipeline changes. Under the switch to half precision, more bins changed
+more rows; the nulls changed at most a few rows in every configuration.
+
+| Config | Rows changed by the noisiest null | Rows changed by half precision | p99 hamming, half precision |
+| --- | ---: | ---: | ---: |
+| quant, 2 bins | 2 | 1,508 | 3 |
+| quant, 4 bins | 2 | 2,653 | 4 |
+| quant, 8 bins | 3 | 3,961 | 5 |
+| phase, 16 sectors | 2 | 2,322 | 3 |
+| orbit, scale 50 | 7 | 3,207 | 4 |
+
+One corpus, one model and three nulls do not establish a trend. The
+[false-alarm and detection rates](../benchmarks/rebuild.md#false-alarms-and-detection-power)
+were measured with quant and 4 bins only; for another configuration, measure
+its floor from your own null rebuilds.
+
+Source: [`rebuild.json`](../assets/benchmarks/summary/rebuild.json), key
+`semq`.
 
 ## Next steps
 
