@@ -1,7 +1,7 @@
 # Optional preparation dependencies; evaluation does not import model runtimes.
-sentence-transformers==6.1.0
+sentence-transformers==6.2.0
 huggingface-hub==1.33.0
 pyarrow==26.0.0
-transformers==5.19.0
-torch==2.14.1
+transformers==5.22.1
+torch==2.15.0
 numpy==2.5.4
