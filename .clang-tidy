@@ -38,3 +38,6 @@ FormatStyle: file
 CheckOptions:
   - key:   readability-braces-around-statements.ShortStatementLines
     value: '2'
+  # Shift counts and bit positions written as literals, as in `x << 24`.
+  - key:   bugprone-signed-bitwise.IgnorePositiveIntegerLiterals
+    value: 'true'

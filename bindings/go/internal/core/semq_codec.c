@@ -114,7 +114,7 @@ static semq_status_t self_test(semq_backend_kind_t kind, uint32_t op, semq_error
             const uint8_t* want = kat->expected + (size_t)r * kat->bytes_per_vector;
             int differs = s != SEMQ_OK || memcmp(got, want, kat->bytes_per_vector) != 0;
 #ifdef SEMQ_TEST_ALLOCATOR
-            differs |= corrupt_self_test != 0u;
+            if (corrupt_self_test != 0u) differs = 1;
 #endif
             if (differs) {
                 return semqi_fail(err, SEMQ_ERR_INTERNAL, SEMQ_NONE, SEMQ_NONE,
