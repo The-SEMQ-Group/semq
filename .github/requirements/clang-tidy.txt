@@ -13,4 +13,4 @@ clang-tidy==23.1.4 \
     --hash=sha256:900276dcb577ed8cb411958efc64feb1ba7334e3c9e70ea5d2e6b5c29aa5335f \
     --hash=sha256:c25f8689d48e6f7909f12a17f6019e572970836e1a6570f8a1f70d84008e5db7 \
     --hash=sha256:f428092411271394559c70f7bed218e20409bbd2ee16d0c4cc93f7c6361a595a
-    # via -r clang-tidy.in
+    # via -r .github/requirements/clang-tidy.in
