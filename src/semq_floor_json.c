@@ -341,6 +341,11 @@ static int choice(reader_t* r, const char* const* allowed, int n, int* out, cons
     return fail(r, message);
 }
 
+/* The bit of key index k (never negative) in a set of keys seen. */
+static unsigned bit(int k) {
+    return 1u << (unsigned)k;
+}
+
 enum { C_OPERATOR, C_DIM, C_SCALE, C_SECTORS, C_BINS, C_RULE_REVISION, C_KEYS };
 static const char* const CONFIG_KEYS[C_KEYS] = { "operator", "dim", "scale", "sectors", "bins", "rule_revision" };
 
@@ -360,8 +365,8 @@ static int config(reader_t* r, semq_config_t* out) {
             if (k < 0) {
                 if (!skip(r, 2)) return 0;
             } else {
-                if (seen & (1u << k)) return fail(r, "floor.config has a duplicate key");
-                seen |= 1u << k;
+                if (seen & bit(k)) return fail(r, "floor.config has a duplicate key");
+                seen |= bit(k);
                 if (k == C_OPERATOR) {
                     if (!choice(r, operators, 3, &op, "floor.config.operator must be \"orbit\", \"phase\" or \"quant\"")) return 0;
                 } else if (!count(r, &v[k], "floor.config fields must be integers in [0, 2^32)")) {
@@ -375,10 +380,10 @@ static int config(reader_t* r, semq_config_t* out) {
     }
     if (op < 0) return fail(r, "floor.config is missing operator");
     const int parameter = op == SEMQ_ORBIT ? C_SCALE : op == SEMQ_PHASE ? C_SECTORS : C_BINS;
-    if (!(seen & (1u << C_DIM)) || !(seen & (1u << parameter)) || !(seen & (1u << C_RULE_REVISION))) {
+    if (!(seen & bit(C_DIM)) || !(seen & bit(parameter)) || !(seen & bit(C_RULE_REVISION))) {
         return fail(r, "floor.config is missing dim, its operator's parameter or rule_revision");
     }
-    if (seen & ((1u << C_SCALE) | (1u << C_SECTORS) | (1u << C_BINS)) & ~(1u << parameter)) {
+    if (seen & (bit(C_SCALE) | bit(C_SECTORS) | bit(C_BINS)) & ~bit(parameter)) {
         return fail(r, "floor.config has a parameter of another operator");
     }
     out->op  = (uint32_t)op;
@@ -403,7 +408,7 @@ static const char* const COUNT_ERRORS[K_KEYS] = {
     "floor.max_hamming must be an integer in [0, 2^64)",
     "floor.distinct_nulls must be an integer in [0, 2^64)",
 };
-#define OPTIONAL_KEYS ((1u << K_MAX_HAMMING) | (1u << K_DISTINCT_NULLS))
+#define OPTIONAL_KEYS (bit(K_MAX_HAMMING) | bit(K_DISTINCT_NULLS))
 
 SEMQ_API semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_floor_t** out, semq_error_t* err) {
     if (out == NULL) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "output is NULL");
@@ -427,11 +432,11 @@ SEMQ_API semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_fl
             int k;
             ok = key(&r, KEYS, K_KEYS, &k);
             if (!ok) break;
-            if (k >= 0 && (seen & (1u << k))) {
+            if (k >= 0 && (seen & bit(k))) {
                 ok = fail(&r, "floor has a duplicate key");
                 break;
             }
-            if (k >= 0) seen |= 1u << k;
+            if (k >= 0) seen |= bit(k);
             switch (k) {
             case K_VERSION: ok = choice(&r, versions, 1, &version, "floor.version must be \"semq-floor/1\""); break;
             case K_CONFIG: ok = config(&r, &cfg); break;
@@ -451,7 +456,7 @@ SEMQ_API semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_fl
                         ok = fail(&r, "floor.reference_id must be 64 hex characters");
                         break;
                     }
-                    rid[i / 2u] = (uint8_t)(i % 2u == 0u ? d << 4 : rid[i / 2u] | d);
+                    rid[i / 2u] = (uint8_t)(i % 2u == 0u ? (unsigned)d << 4 : rid[i / 2u] | (unsigned)d);
                 }
                 break;
             }
@@ -470,9 +475,9 @@ SEMQ_API semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_fl
         ws(&r);
         if (r.p != r.end) ok = fail(&r, "floor is not valid JSON: data after the object");
     }
-    if (ok && (seen | OPTIONAL_KEYS) != (1u << K_KEYS) - 1u) {
+    if (ok && (seen | OPTIONAL_KEYS) != bit(K_KEYS) - 1u) {
         for (int k = 0; k < K_MAX_HAMMING; k++) {
-            if (!(seen & (1u << k))) {
+            if (!(seen & bit(k))) {
                 static const char* const missing[K_MAX_HAMMING] = {
                     "floor is missing version", "floor is missing config", "floor is missing id_kind",
                     "floor is missing reference_id", "floor is missing nulls", "floor is missing changed_rows",
@@ -483,10 +488,10 @@ SEMQ_API semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_fl
         }
     }
     /* SEMQ_NONE marks an absent optional key, so the value itself is reserved. */
-    if (ok && (seen & (1u << K_MAX_HAMMING)) && counts[K_MAX_HAMMING] == SEMQ_NONE) {
+    if (ok && (seen & bit(K_MAX_HAMMING)) && counts[K_MAX_HAMMING] == SEMQ_NONE) {
         ok = fail(&r, "floor.max_hamming is 18446744073709551615, which is reserved (SEMQ_NONE)");
     }
-    if (ok && (seen & (1u << K_DISTINCT_NULLS)) && counts[K_DISTINCT_NULLS] == SEMQ_NONE) {
+    if (ok && (seen & bit(K_DISTINCT_NULLS)) && counts[K_DISTINCT_NULLS] == SEMQ_NONE) {
         ok = fail(&r, "floor.distinct_nulls is 18446744073709551615, which is reserved (SEMQ_NONE)");
     }
     if (!ok) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, r.error);
@@ -495,6 +500,6 @@ SEMQ_API semq_status_t semq_floor_load(const uint8_t* buf, uint64_t len, semq_fl
     if (s != SEMQ_OK) return s;
     return semqi_floor_create(&cfg, kind == 0 ? SEMQ_ID_U64 : SEMQ_ID_UTF8, rid, counts[K_NULLS],
                               counts[K_CHANGED_ROWS], counts[K_TOTAL_ROWS], counts[K_HAMMING],
-                              (seen & (1u << K_MAX_HAMMING)) ? counts[K_MAX_HAMMING] : SEMQ_NONE,
-                              (seen & (1u << K_DISTINCT_NULLS)) ? counts[K_DISTINCT_NULLS] : SEMQ_NONE, out, err);
+                              (seen & bit(K_MAX_HAMMING)) ? counts[K_MAX_HAMMING] : SEMQ_NONE,
+                              (seen & bit(K_DISTINCT_NULLS)) ? counts[K_DISTINCT_NULLS] : SEMQ_NONE, out, err);
 }

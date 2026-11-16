@@ -169,7 +169,7 @@ static semq_status_t phase_reconstruct(
         } else {
             const uint32_t byte_idx = p / 2u;
             const uint32_t nibble   = p & 1u;
-            sector = (uint8_t)((codes[byte_idx] >> (4u * nibble)) & 0x0Fu);
+            sector = (uint8_t)(((uint32_t)codes[byte_idx] >> (4u * nibble)) & 0x0Fu);
         }
         semq_phase_representative(n_bins, sector, output + (size_t)p * 2u);
     }

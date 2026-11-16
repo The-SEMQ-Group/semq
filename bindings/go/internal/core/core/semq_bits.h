@@ -42,7 +42,7 @@ static inline uint32_t semq_unpack_bits(const uint8_t* in, uint64_t* bit_pos,
     for (uint32_t i = 0u; i < bits; i++) {
         uint64_t byte_idx    = (pos + i) >> 3u;
         uint32_t bit_in_byte = (uint32_t)((pos + i) & 7u);
-        uint32_t bit = (uint32_t)((in[byte_idx] >> bit_in_byte) & 1u);
+        uint32_t bit = ((uint32_t)in[byte_idx] >> bit_in_byte) & 1u;
         out |= (bit << i);
     }
     *bit_pos = pos + bits;

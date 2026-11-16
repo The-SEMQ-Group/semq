@@ -81,7 +81,8 @@ static uint64_t read_xcr0(void) {
     return (uint64_t)_xgetbv(0);
 #else
     unsigned int lo, hi;
-    __asm__ volatile("xgetbv" : "=a"(lo), "=d"(hi) : "c"(0));
+    /* The _xgetbv intrinsic needs -mxsave on GCC and Clang; one instruction is simpler. */
+    __asm__ volatile("xgetbv" : "=a"(lo), "=d"(hi) : "c"(0)); /* NOLINT(portability-no-assembler) */
     return ((uint64_t)hi << 32) | lo;
 #endif
 }
