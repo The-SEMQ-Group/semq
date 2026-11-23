@@ -95,6 +95,18 @@
       "bits": 4
     },
     {
+      "id": "quant2_centred",
+      "name": "semq_quant_centred",
+      "bits": 2,
+      "row_norms": true
+    },
+    {
+      "id": "quant4_centred",
+      "name": "semq_quant_centred",
+      "bits": 4,
+      "row_norms": true
+    },
+    {
       "id": "quant_default",
       "name": "semq_quant"
     },

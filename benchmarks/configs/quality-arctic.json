@@ -106,9 +106,21 @@
       "bits": 3
     },
     {
+      "id": "semq_quant2_centred",
+      "name": "semq_quant_centred",
+      "bits": 2,
+      "row_norms": true
+    },
+    {
       "id": "semq_quant8",
       "name": "semq_quant",
       "bits": 4
+    },
+    {
+      "id": "semq_quant8_centred",
+      "name": "semq_quant_centred",
+      "bits": 4,
+      "row_norms": true
     },
     {
       "id": "semq_phase16",

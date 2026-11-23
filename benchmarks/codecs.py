@@ -205,6 +205,61 @@ class SemqQuant:
         return Encoded(codes, model, reconstruction)
 
 
+class SemqQuantCentred:
+    """SEMQ QUANT after subtracting the fit-set mean and renormalising each row.
+
+    Embedding models often share a large common component across rows, which
+    the fixed QUANT range then spends its bins on. The mean is a model
+    parameter stored once; with ``row_norms`` each row also keeps its centred
+    norm as float16, counted in the code bytes, so reconstruction restores the
+    row's scale and not only its direction.
+    """
+
+    def __init__(self, bits: int | None = None, row_norms: bool = False):
+        if bits is not None and (type(bits) is not int or not 2 <= bits <= 7):
+            raise ValueError("SEMQ QUANT bits must be in [2, 7]")
+        if type(row_norms) is not bool:
+            raise ValueError("row_norms must be a boolean")
+        self.bins = 4 if bits is None else 2 ** (bits - 1)
+        self.row_norms = row_norms
+
+    @staticmethod
+    def centre(values: np.ndarray, mean: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        centred = values.astype(np.float64) - mean.astype(np.float64)
+        norms = np.linalg.norm(centred, axis=1)
+        if not (norms > 0).all():
+            raise ValueError("a row equals the fit mean; it has no direction")
+        return (centred / norms[:, None]).astype(np.float32), norms
+
+    def encode(self, fit: np.ndarray, corpus: np.ndarray) -> Encoded:
+        from semq import CodecConfig
+
+        mean = fit.astype(np.float64).mean(axis=0).astype(np.float32)
+        unit, norms = self.centre(corpus, mean)
+        config = CodecConfig.quant(corpus.shape[1], self.bins)
+        _, _, rows, representatives = _semq_encode(config, unit)
+        direction = representatives.astype(np.float64)
+        direction /= np.linalg.norm(direction, axis=1)[:, None]
+        model = {
+            "dim": np.array(config.dim, dtype=np.uint32),
+            "bins": np.array(config.bins, dtype=np.uint32),
+            "max_magnitude": np.array(config.max_magnitude, dtype=np.float32),
+            "mean": mean,
+        }
+        if self.row_norms:
+            stored = norms.astype(np.float16)
+            scale = stored.astype(np.float64)[:, None]
+            codes = np.concatenate([rows, stored.view(np.uint8).reshape(-1, 2)], axis=1)
+        else:
+            model["scale"] = np.array(norms.mean(), dtype=np.float32)
+            scale = np.full((len(norms), 1), model["scale"], dtype=np.float64)
+            codes = rows
+        reconstruction = (direction * scale + mean.astype(np.float64)).astype(
+            np.float32
+        )
+        return Encoded(codes, model, reconstruction)
+
+
 class SemqPhase:
     def __init__(self, sectors: int):
         if type(sectors) is not int or not 2 <= sectors <= 256:
@@ -312,6 +367,10 @@ REGISTRY = {
     "semq_quant": CodecSpec(
         lambda s: SemqQuant(s.get("bits")),
         optional=frozenset({"bits"}),
+    ),
+    "semq_quant_centred": CodecSpec(
+        lambda s: SemqQuantCentred(s.get("bits"), s.get("row_norms", False)),
+        optional=frozenset({"bits", "row_norms"}),
     ),
     "semq_phase": CodecSpec(
         lambda s: SemqPhase(s["sectors"]),
