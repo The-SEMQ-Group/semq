@@ -71,6 +71,69 @@ def test_native_quant_adapter_matches_direct_binding(bits):
     assert result.model["max_magnitude"] == np.float32(config.max_magnitude)
 
 
+@pytest.mark.parametrize("bits", [2, 4])
+def test_centred_quant_codes_match_direct_binding_on_centred_rows(bits):
+    from semq import Codec, CodecConfig
+
+    rng = np.random.default_rng(3)
+    mean = np.full(8, 0.3, dtype=np.float32)
+    fit = (mean + 0.05 * rng.standard_normal((64, 8))).astype(np.float32)
+    fit /= np.linalg.norm(fit, axis=1, keepdims=True)
+    corpus = fit[:5]
+    result = codecs.SemqQuantCentred(bits).encode(fit, corpus)
+    centred = corpus.astype(np.float64) - fit.astype(np.float64).mean(axis=0)
+    unit = (centred / np.linalg.norm(centred, axis=1)[:, None]).astype(np.float32)
+    codec = Codec(CodecConfig.quant(8, 2 ** (bits - 1)))
+    encoding = codec.encode(ids=list(range(5)), vectors=unit)
+    np.testing.assert_array_equal(result.codes, encoding.rows)
+    assert result.model["mean"].dtype == np.float32 and result.model["mean"].shape == (
+        8,
+    )
+    assert result.model_bytes == 12 + 8 * 4 + 4  # dim, bins, range, mean, scale
+
+
+def test_centred_quant_restores_scale_and_mean_in_reconstruction():
+    rng = np.random.default_rng(5)
+    mean = np.array([0.5, 0.5, 0.0, 0.0], dtype=np.float32)
+    fit = (mean + 0.1 * rng.standard_normal((256, 4))).astype(np.float32)
+    corpus = fit[:3]
+    plain = codecs.SemqQuantCentred(2).encode(fit, corpus)
+    with_norms = codecs.SemqQuantCentred(2, row_norms=True).encode(fit, corpus)
+    centred = corpus.astype(np.float64) - fit.astype(np.float64).mean(axis=0)
+    norms = np.linalg.norm(centred, axis=1)
+    # direction-only: every reconstruction sits at the mean row norm from the mean
+    np.testing.assert_allclose(
+        np.linalg.norm(plain.reconstruction - plain.model["mean"], axis=1),
+        np.full(3, plain.model["scale"]),
+        rtol=1e-5,
+    )
+    # per-row norms: each reconstruction keeps its own centred norm, at float16 precision
+    np.testing.assert_allclose(
+        np.linalg.norm(with_norms.reconstruction - with_norms.model["mean"], axis=1),
+        norms.astype(np.float16).astype(np.float64),
+        rtol=1e-5,
+    )
+    assert with_norms.codes.nbytes == plain.codes.nbytes + 2 * 3
+    assert "scale" not in with_norms.model
+
+
+def test_centred_quant_rejects_a_row_without_direction():
+    fit = np.array([[1.0, 0.0], [1.0, 0.0]], dtype=np.float32)
+    with pytest.raises(ValueError, match="no direction"):
+        codecs.SemqQuantCentred(2).encode(fit, fit[:1])
+
+
+def test_centred_quant_is_in_the_registry_with_its_options():
+    spec = {"name": "semq_quant_centred", "bits": 3, "row_norms": True}
+    codec = codecs.build(spec)
+    assert isinstance(codec, codecs.SemqQuantCentred)
+    assert codec.bins == 4 and codec.row_norms is True
+    with pytest.raises(ValueError, match="unknown parameters"):
+        codecs.build({"name": "semq_quant_centred", "sectors": 4})
+    with pytest.raises(ValueError, match="boolean"):
+        codecs.build({"name": "semq_quant_centred", "row_norms": 1})
+
+
 def test_faiss_artifact_is_sufficient_to_reconstruct():
     faiss = pytest.importorskip("faiss")
     rng = np.random.default_rng(7)

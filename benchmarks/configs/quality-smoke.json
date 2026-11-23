@@ -40,6 +40,12 @@
       "bits": 2
     },
     {
+      "id": "quant2_centred",
+      "name": "semq_quant_centred",
+      "bits": 2,
+      "row_norms": true
+    },
+    {
       "id": "phase16",
       "name": "semq_phase",
       "sectors": 16
