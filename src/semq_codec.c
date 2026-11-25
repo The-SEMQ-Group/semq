@@ -167,15 +167,18 @@ SEMQ_API const char* semq_codec_backend(const semq_codec_t* codec) {
 /*  Input contract                                                            */
 /* -------------------------------------------------------------------------- */
 
+static float canonical_coordinate(float x) {
+    /* NaN survives to the finiteness check. */
+    return (fabsf(x) < FLT_MIN) ? 0.0f : x;
+}
+
 /* Copy one row into `scratch`, replacing every subnormal and both zeros by
  * +0.0, then check finiteness and the unit norm. `row` is the input row
  * index reported in errors. */
 static semq_status_t admit_row(const float* src, uint32_t dim, float* scratch, uint64_t row,
                                semq_error_t* err) {
     for (uint32_t i = 0u; i < dim; i++) {
-        const float x = src[i];
-        /* fabsf(NaN) < FLT_MIN is false, so NaN survives to the next check. */
-        scratch[i] = (fabsf(x) < FLT_MIN) ? 0.0f : x;
+        scratch[i] = canonical_coordinate(src[i]);
     }
     for (uint32_t i = 0u; i < dim; i++) {
         if (!isfinite(scratch[i])) {
@@ -195,6 +198,52 @@ static semq_status_t admit_row(const float* src, uint32_t dim, float* scratch, u
     return SEMQ_OK;
 }
 
+static semq_status_t centre_row(const float* src, const float* mean, uint32_t dim,
+                                 float* scratch, uint64_t row, semq_error_t* err) {
+    double sum = 0.0;
+    for (uint32_t i = 0u; i < dim; i++) {
+        const float x = canonical_coordinate(src[i]);
+        if (!isfinite(x)) {
+            return SEMQI_INVALID(err, row, i, "vector has a NaN or infinite coordinate");
+        }
+        const double delta = (double)x - (double)canonical_coordinate(mean[i]);
+        sum += delta * delta;
+    }
+    if (sum == 0.0) {
+        return SEMQI_INVALID(err, row, SEMQ_NONE, "vector equals the mean; residual has zero norm");
+    }
+    const double norm = sqrt(sum);
+    for (uint32_t i = 0u; i < dim; i++) {
+        const double delta = (double)canonical_coordinate(src[i]) - (double)canonical_coordinate(mean[i]);
+        scratch[i] = canonical_coordinate((float)(delta / norm));
+    }
+    return SEMQ_OK;
+}
+
+static semq_status_t hash_mean(const float* mean, uint32_t dim, uint8_t* hex, semq_error_t* err) {
+    static const uint8_t digits[] = "0123456789abcdef";
+    semq_sha256_ctx_t hash;
+    semq_sha256_init(&hash);
+    for (uint32_t i = 0u; i < dim; i++) {
+        const float x = canonical_coordinate(mean[i]);
+        if (!isfinite(x)) {
+            return SEMQI_INVALID(err, SEMQ_NONE, i, "mean has a NaN or infinite coordinate");
+        }
+        uint32_t bits;
+        uint8_t bytes[4];
+        memcpy(&bits, &x, sizeof(bits));
+        semqi_wr32(bytes, bits);
+        semq_sha256_update(&hash, bytes, sizeof(bytes));
+    }
+    uint8_t digest[SEMQ_DIGEST_BYTES];
+    semq_sha256_final(&hash, digest);
+    for (size_t i = 0u; i < sizeof(digest); i++) {
+        hex[2u * i] = digits[digest[i] >> 4u];
+        hex[2u * i + 1u] = digits[digest[i] & 0x0fu];
+    }
+    return SEMQ_OK;
+}
+
 static semq_status_t kernel_encode(const semq_codec_t* c, const float* row, uint8_t* out) {
     switch (c->config.op) {
         case SEMQ_ORBIT: {
@@ -210,10 +259,9 @@ static semq_status_t kernel_encode(const semq_codec_t* c, const float* row, uint
     }
 }
 
-SEMQ_API semq_status_t semq_codec_encode(const semq_codec_t* codec, const semq_ids_t* ids,
-                                         const float* vectors, const semq_pair_t* manifest,
-                                         uint32_t n_pairs, semq_encoding_t** out,
-                                         semq_error_t* err) {
+static semq_status_t encode(const semq_codec_t* codec, const semq_ids_t* ids,
+                             const float* vectors, const float* mean, const semq_pair_t* manifest,
+                             uint32_t n_pairs, semq_encoding_t** out, semq_error_t* err) {
     if (out == NULL) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "output is NULL");
     *out = NULL;
     if (codec == NULL) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "codec is NULL");
@@ -248,7 +296,9 @@ SEMQ_API semq_status_t semq_codec_encode(const semq_codec_t* codec, const semq_i
 
     for (uint64_t i = 0u; i < ids->n; i++) {
         const uint64_t src_row = perm[i];
-        s = admit_row(vectors + (size_t)src_row * dim, dim, scratch, src_row, err);
+        const float* row = vectors + (size_t)src_row * dim;
+        s = mean == NULL ? admit_row(row, dim, scratch, src_row, err)
+                         : centre_row(row, mean, dim, scratch, src_row, err);
         if (s != SEMQ_OK) goto fail;
         s = kernel_encode(codec, scratch, rows + (size_t)i * codec->bpv);
         if (s != SEMQ_OK) {
@@ -283,6 +333,43 @@ fail:
     semqi_free(perm);
     semqi_free(rows);
     semqi_free(scratch);
+    return s;
+}
+
+SEMQ_API semq_status_t semq_codec_encode(const semq_codec_t* codec, const semq_ids_t* ids,
+                                         const float* vectors, const semq_pair_t* manifest,
+                                         uint32_t n_pairs, semq_encoding_t** out,
+                                         semq_error_t* err) {
+    return encode(codec, ids, vectors, NULL, manifest, n_pairs, out, err);
+}
+
+SEMQ_API semq_status_t semq_codec_encode_centred(const semq_codec_t* codec, const semq_ids_t* ids,
+                                                 const float* vectors, const float* mean,
+                                                 const semq_pair_t* manifest, uint32_t n_pairs,
+                                                 semq_encoding_t** out, semq_error_t* err) {
+    if (out == NULL) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "output is NULL");
+    *out = NULL;
+    if (codec == NULL || codec->config.op != SEMQ_QUANT) {
+        return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "centred encoding requires a QUANT codec");
+    }
+    if (mean == NULL) return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "mean is NULL");
+    if (n_pairs >= SEMQ_MANIFEST_MAX_PAIRS) {
+        return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "centred encoding needs one manifest pair for the mean");
+    }
+    if (n_pairs > 0u && manifest == NULL) {
+        return SEMQI_INVALID(err, SEMQ_NONE, SEMQ_NONE, "manifest pairs are NULL");
+    }
+    uint8_t hex[2u * SEMQ_DIGEST_BYTES];
+    semq_status_t s = hash_mean(mean, codec->config.dim, hex, err);
+    if (s != SEMQ_OK) return s;
+    static const uint8_t key[] = "semq.quant.centre.v1";
+    semq_pair_t* pairs = (semq_pair_t*)semqi_alloc((uint64_t)(n_pairs + 1u) * sizeof(*pairs));
+    if (pairs == NULL) return SEMQI_NOMEM(err);
+    if (n_pairs > 0u) memcpy(pairs, manifest, (size_t)n_pairs * sizeof(*pairs));
+    /* Manifest validation rejects a caller-supplied duplicate of this key. */
+    pairs[n_pairs] = (semq_pair_t){key, sizeof(key) - 1u, hex, sizeof(hex)};
+    s = encode(codec, ids, vectors, mean, pairs, n_pairs + 1u, out, err);
+    semqi_free(pairs);
     return s;
 }
 

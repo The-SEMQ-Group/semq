@@ -9,6 +9,14 @@ surface.
 
 ## [Unreleased]
 
+### Added
+
+- Opt-in [centred QUANT](docs/guides/choosing-a-config.md#centre-rows-before-quant)
+  subtracts a supplied mean and normalizes each residual before fixed QUANT.
+  The encoding records the mean's fingerprint in the manifest. Available in C
+  as `semq_codec_encode_centred`, Python and Rust as `encode_centred`, Go as
+  `EncodeCentred`, and TypeScript as `encodeCentred`.
+
 ## [1.1.0] - 2026-10-12
 
 ### Added

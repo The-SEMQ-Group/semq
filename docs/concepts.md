@@ -22,8 +22,7 @@ validates its own representations (dtypes, integer ranges, string encoding),
 maps errors and does I/O; every rule that determines bytes or verdicts runs
 in the core. TypeScript runs the core as WebAssembly.
 
-SEMQ consumes vectors you already have. It does not generate embeddings, does
-not normalize them, and does not search. Keep the mapping from ids to your
+SEMQ consumes vectors you already have. Keep the mapping from ids to your
 application records in your application.
 
 ## CodecConfig and Codec
@@ -44,12 +43,16 @@ returns an `Encoding`. `decode` returns a float32 representative per row;
 
 ## The input contract
 
-Every row must be float32, finite, and unit-norm within `2^-10` of one in
-the sum of squares. Subnormal coordinates are canonicalized to zero before
+Standard encoding requires float32, finite rows with a sum of squares within
+`2^-10` of one. Subnormal coordinates are canonicalized to zero before
 anything else, so the result does not depend on the flush-to-zero state of
 the process. Rows that violate the contract raise `InvalidInput` with the row
 index. Encoding requires the round-to-nearest floating-point mode and raises
 `Unsupported` otherwise.
+
+[Centred QUANT](guides/choosing-a-config.md#centre-rows-before-quant) accepts
+finite float32 rows and a fixed mean. It normalizes each nonzero residual
+before applying QUANT.
 
 ## Encoding: a state with an identity
 

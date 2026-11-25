@@ -291,6 +291,17 @@ extern "C" {
         out: *mut *mut semq_encoding_t,
         err: *mut semq_error_t,
     ) -> semq_status_t;
+    /// QUANT encode after subtracting a fixed `dim`-coordinate mean and normalizing.
+    pub fn semq_codec_encode_centred(
+        codec: *const semq_codec_t,
+        ids: *const semq_ids_t,
+        vectors: *const f32,
+        mean: *const f32,
+        manifest: *const semq_pair_t,
+        n_pairs: u32,
+        out: *mut *mut semq_encoding_t,
+        err: *mut semq_error_t,
+    ) -> semq_status_t;
     /// Representatives, `n x dim` float32, row `i` for `ids[i]`.
     pub fn semq_codec_decode(
         codec: *const semq_codec_t,

@@ -42,6 +42,16 @@ export interface CoreExports {
     out: number,
     err: number,
   ) => number;
+  codecEncodeCentred: (
+    codec: number,
+    ids: number,
+    vectors: number,
+    mean: number,
+    manifest: number,
+    nPairs: number,
+    out: number,
+    err: number,
+  ) => number;
   codecDecode: (codec: number, enc: number, out: number, err: number) => number;
   codecUnpack: (codec: number, enc: number, out: number, err: number) => number;
   // Encoding
@@ -198,6 +208,7 @@ export function bindCore(w: SemqWasm): CoreExports {
     codecConfig: num("semq_codec_config"),
     codecBackend: str("semq_codec_backend"),
     codecEncode: num("semq_codec_encode"),
+    codecEncodeCentred: num("semq_codec_encode_centred"),
     codecDecode: num("semq_codec_decode"),
     codecUnpack: num("semq_codec_unpack"),
     encodingCreate: num("semq_encoding_create"),

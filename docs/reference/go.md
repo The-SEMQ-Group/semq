@@ -31,6 +31,7 @@ For a complete program, use the [quickstart](../quickstart.md).
 | `OperatorOrbit`, `OperatorPhase`, `OperatorQuant` | The operator values `0`, `1`, `2` |
 | `IDKind`: `IDU64`, `IDUTF8` | The id kinds `0` and `1`; the values are pinned in files |
 | `NewQuantCodec(dim, bins uint32)`, `NewPhaseCodec(dim, sectors uint32)`, `NewOrbitCodec(dim, scale uint32)`, `NewCodec(cfg CodecConfig) (*Codec, error)` | `Config()`, `Backend()`, `Encode(ids IDs, vectors []float32, manifest map[string]string) (*Encoding, error)`, `Decode(e) ([]float32, error)`, `Unpack(e) ([]byte, error)`, `Close()` |
+| `(*Codec) EncodeCentred(ids IDs, vectors, mean []float32, manifest map[string]string) (*Encoding, error)` | [Centred QUANT](../guides/choosing-a-config.md#centre-rows-before-quant) with a fixed `dim`-coordinate mean |
 | `NewEncoding(ids IDs, rows []byte, cfg CodecConfig, manifest map[string]string) (*Encoding, error)` | The low-level constructor from canonical rows |
 | `Load(b []byte)`, `Read(r io.Reader)` | Parse a file image |
 | `(*Encoding) WriteTo(w io.Writer) (int64, error)`, `Bytes() []byte` | Write the file image |

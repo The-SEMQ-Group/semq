@@ -69,6 +69,34 @@ class Codec:
         ``id_kind`` is inferred from the first id and required when ``n = 0``.
         Row errors carry the input row index.
         """
+        return self._encode(vectors, ids, manifest, id_kind, None)
+
+    def encode_centred(
+        self,
+        vectors: NDArray[np.float32] | None,
+        *,
+        mean: NDArray[np.float32],
+        ids: IdsInput,
+        manifest: dict[str, str] | None = None,
+        id_kind: str | None = None,
+    ) -> Encoding:
+        """Subtract a fixed float32 mean of shape ``[dim]``, normalize each row and apply QUANT.
+
+        Reuse the same mean across batches. Zero residuals raise InvalidInput.
+        The manifest records the mean's fingerprint. Decode stays in centred space.
+        """
+        if not isinstance(mean, np.ndarray) or mean.dtype != np.float32 or mean.shape != (self._config.dim,):
+            raise InvalidInput(f"mean must be a numpy float32 array of shape ({self._config.dim},)")
+        return self._encode(vectors, ids, manifest, id_kind, np.ascontiguousarray(mean))
+
+    def _encode(
+        self,
+        vectors: NDArray[np.float32] | None,
+        ids: IdsInput,
+        manifest: dict[str, str] | None,
+        id_kind: str | None,
+        mean: NDArray[np.float32] | None,
+    ) -> Encoding:
         c_ids, keep = _convert.ids_to_c(ids, id_kind)
         n = int(c_ids.n)
         if vectors is None:
@@ -83,7 +111,13 @@ class Codec:
         out = ffi.new("semq_encoding_t**")
         err = _ffi.new_error()
         vec_ptr = ffi.from_buffer("float[]", arr) if n else ffi.NULL
-        status = _ffi.lib().semq_codec_encode(self._c, c_ids, vec_ptr, pairs, n_pairs, out, err)
+        lib = _ffi.lib()
+        if mean is None:
+            status = lib.semq_codec_encode(self._c, c_ids, vec_ptr, pairs, n_pairs, out, err)
+        else:
+            mean_ptr = ffi.from_buffer("float[]", mean)
+            status = lib.semq_codec_encode_centred(self._c, c_ids, vec_ptr, mean_ptr, pairs, n_pairs, out, err)
+            del mean_ptr
         del keep, keep_m, vec_ptr
         _ffi.check(status, err, "encode")
         return Encoding._from_handle(out[0])

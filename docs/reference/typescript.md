@@ -17,7 +17,8 @@ the [TypeDoc reference](typescript-api/index.html) lists every package member.
   synchronous and throws `Native` when made before the runtime is loaded.
 - `u64` ids are `bigint` (`1n`); `utf8` ids are `string`. A `number` id, a
   bigint outside `[0, 2^64)` and a string with a lone surrogate throw
-  `InvalidInput`. `vectors` is a `Float32Array` of `n * dim` unit-norm values.
+  `InvalidInput`. `vectors` is a row-major `Float32Array` of `n * dim` values.
+  Standard `encode` expects unit-norm rows.
 - Accessors return copies. `Encoding`, `Diff`, `Floor` and `Codec` own native
   memory: call `dispose()` when done; a finalizer frees what is left.
 - Out of memory throws `RangeError`.
@@ -30,6 +31,7 @@ the [TypeDoc reference](typescript-api/index.html) lists every package member.
 | `config.toBytes()`, `operator`, `dim`, `bins \| sectors \| scale`, `ruleRevision`, `bytesPerVector`, `unitsPerRow`, `maxMagnitude`, `equals(other)`, `asDict()` | Accessors; a getter of the wrong operator throws `InvalidInput` |
 | `Operator.Orbit`, `Operator.Phase`, `Operator.Quant` | The operator values `0`, `1`, `2` |
 | `await Codec.quant(dim, bins)`, `await Codec.phase(dim, sectors)`, `await Codec.orbit(dim, scale?)`, `await Codec.create(config)` | `config`, `backend`, `encode({ ids, vectors, manifest?, idKind? })`, `decode(e)`, `unpack(e)`, `dispose()` |
+| `codec.encodeCentred({ ids, vectors, manifest?, idKind? }, mean)` | [Centred QUANT](../guides/choosing-a-config.md#centre-rows-before-quant) with a fixed `Float32Array` mean of length `dim` |
 | `new Encoding({ ids, rows, config, manifest?, idKind? })`, `Encoding.fromBytes(u8)` | Constructors from canonical rows or a file image |
 | `encoding.toBytes()`, `config`, `idKind`, `length`, `ids`, `rows`, `row(i)`, `get(id)`, `manifest`, `contentDigest`, `stateId`, `equals(other)`, `concat(...others)`, `diff(candidate)`, `[Symbol.iterator]`, `dispose()` | Access and verbs; `equals` compares `stateId` |
 | `diff.referenceId`, `candidateId`, `idKind`, `config`, `added`, `removed`, `changed`, `nUnchanged`, `manifestChanges`, `units(id)`, `within(floor)`, `evaluate(floor, { perRow })`, `asDict()`, `dispose()` | `asDict()` returns the [report schema](contracts.md#report-schema); `within` and `evaluate` throw `Incompatible` when the floor was measured against another config, id kind or reference; `evaluate` returns a `Verdict` (`passed`, `reasons`, `rows`), and `perRow` needs a floor with per-row data |

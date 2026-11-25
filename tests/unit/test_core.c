@@ -540,9 +540,16 @@ static void test_encode_requires_round_to_nearest(void) {
     const int saved = fegetround();
     TEST_ASSERT_EQUAL_INT(0, fesetround(FE_DOWNWARD));
     semq_encoding_t* e = encode_u64(codec, &id, 1u, v, &err);
+    const uint32_t status = err.status;
+    const semq_ids_t ids = { SEMQ_ID_U64, 1u, &id, NULL, NULL };
+    const float mean[4] = { 0.5f, 0.5f, 0.0f, 0.0f };
+    semq_encoding_t* centred = NULL;
+    const semq_status_t centred_status = semq_codec_encode_centred(codec, &ids, v, mean, NULL, 0u, &centred, &err);
     fesetround(saved);
     TEST_ASSERT_NULL(e);
-    TEST_ASSERT_EQUAL_UINT32(SEMQ_ERR_UNSUPPORTED, err.status);
+    TEST_ASSERT_NULL(centred);
+    TEST_ASSERT_EQUAL_UINT32(SEMQ_ERR_UNSUPPORTED, status);
+    TEST_ASSERT_EQUAL_UINT32(SEMQ_ERR_UNSUPPORTED, centred_status);
     semq_codec_free(codec);
 }
 

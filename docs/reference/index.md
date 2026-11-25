@@ -36,6 +36,7 @@ Each language has a **Core API** page and an **Errors** page.
 | Config | `CodecConfig.quant(dim, bins)` | `CodecConfig::quant(dim, bins)?` | `semq.Quant(dim, bins)` | `CodecConfig.quant(dim, bins)` |
 | Codec | `Codec.quant(dim, bins)` or `Codec(config)` | `Codec::quant(dim, bins)?` or `Codec::new(&config)?` | `semq.NewQuantCodec(dim, bins)` or `semq.NewCodec(config)` | `await Codec.quant(dim, bins)` or `await Codec.create(config)` |
 | Encode | `codec.encode(vectors, ids=, manifest=)` | `codec.encode(ids, &vectors, manifest)?` | `codec.Encode(ids, vectors, manifest)` | `codec.encode({ ids, vectors, manifest })` |
+| Centred QUANT | `codec.encode_centred(vectors, ids=ids, mean=mean)` | `codec.encode_centred(ids, &vectors, &mean, manifest)?` | `codec.EncodeCentred(ids, vectors, mean, manifest)` | `codec.encodeCentred({ ids, vectors }, mean)` |
 | Decode / unpack | `codec.decode(e)`, `codec.unpack(e)` | `codec.decode(&e)?`, `codec.unpack(&e)?` | `codec.Decode(e)`, `codec.Unpack(e)` | `codec.decode(e)`, `codec.unpack(e)` |
 | Save / load | `e.save(path)`, `Encoding.load(path)` | `e.to_bytes()`, `Encoding::from_bytes(&b)?` | `e.WriteTo(w)`, `semq.Load(b)` | `e.toBytes()`, `Encoding.fromBytes(u8)` |
 | Concat / diff | `a.concat(b, c)`, `a.diff(b)` | `a.concat(&[&b, &c])?`, `a.diff(&b)?` | `a.Concat(b, c)`, `a.Diff(b)` | `a.concat(b, c)`, `a.diff(b)` |

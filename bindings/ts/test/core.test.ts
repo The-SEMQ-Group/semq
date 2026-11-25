@@ -56,6 +56,19 @@ describe("core", () => {
     await load();
   });
 
+  it("centres and normalizes rows before QUANT", async () => {
+    const codec = await Codec.quant(4, 4);
+    const ids = [9n, 2n];
+    const vectors = new Float32Array([1, 4, 0, 0, 1, 0, -2, 0]);
+    const got = codec.encodeCentred({ ids, vectors }, new Float32Array([1, 0, 0, 0]));
+    const want = codec.encode({ ids, vectors: new Float32Array([0, 1, 0, 0, 0, 0, -1, 0]) });
+    expect(got.contentDigest).toEqual(want.contentDigest);
+    expect(got.manifest["semq.quant.centre.v1"]).toBe("ccaf6f183579497e8bfcd71045c04286fd3c2e60f3641e3eea164b761a4494b7");
+    got.dispose();
+    want.dispose();
+    codec.dispose();
+  });
+
   const quant44 = (): CodecConfig => CodecConfig.quant(4, 4);
   const empty = (config = quant44()): Encoding =>
     new Encoding({ ids: [], rows: new Uint8Array(0), config, idKind: "u64" });
