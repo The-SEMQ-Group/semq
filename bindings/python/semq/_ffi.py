@@ -98,6 +98,10 @@ const char*   semq_codec_backend(const semq_codec_t* codec);
 semq_status_t semq_codec_encode(const semq_codec_t* codec, const semq_ids_t* ids, const float* vectors,
                                 const semq_pair_t* manifest, uint32_t n_pairs, semq_encoding_t** out,
                                 semq_error_t* err);
+semq_status_t semq_codec_encode_centred(const semq_codec_t* codec, const semq_ids_t* ids,
+                                       const float* vectors, const float* mean,
+                                       const semq_pair_t* manifest, uint32_t n_pairs,
+                                       semq_encoding_t** out, semq_error_t* err);
 semq_status_t semq_codec_decode(const semq_codec_t* codec, const semq_encoding_t* enc, float* out,
                                 semq_error_t* err);
 semq_status_t semq_codec_unpack(const semq_codec_t* codec, const semq_encoding_t* enc, uint8_t* out,

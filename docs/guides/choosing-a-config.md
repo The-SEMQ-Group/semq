@@ -9,9 +9,10 @@ evaluation sample. Install a binding before running the example below.
 
 ## 1. Start from the data
 
-Every operator admits unit-norm float32 rows only; normalize in your own
-pipeline first. If you truncate a Matryoshka embedding to a smaller dimension,
-normalize the truncated vector again before encoding.
+Standard encoding takes unit-norm float32 rows. If you truncate a
+Matryoshka embedding to a smaller dimension, normalize the truncated vector
+again before encoding. For QUANT, you can also [centre rows](#centre-rows-before-quant)
+around a fixed mean and let the codec normalize the residuals.
 
 | You need | Config | What a symbol keeps |
 | --- | --- | --- |
@@ -70,6 +71,38 @@ A `.semq` file carries its config, so a loaded state knows its rule. When
 two states must be compared they must share the config and the id kind;
 `diff` and `concat` reject anything else. Record the config alongside the
 encoder identity in the manifest so a rebuild can be judged.
+
+### Centre rows before QUANT
+
+When embeddings share a large common component, subtracting a fixed mean
+before QUANT can leave more of its fixed range for differences between rows.
+Fit the mean once on a representative set prepared like your input vectors,
+round it to float32, and reuse it for every batch and rebuild.
+
+```python
+import numpy as np
+from semq import Codec
+
+fit = np.array([[0.8, 0.6, 0, 0], [0.8, -0.6, 0, 0]], dtype=np.float32)
+mean = fit.mean(axis=0, dtype=np.float64).astype(np.float32)
+vectors = np.array([[0.8, 0, 0.6, 0]], dtype=np.float32)
+codec = Codec.quant(dim=4, bins=2)
+state = codec.encode_centred(vectors, ids=["a"], mean=mean)
+assert state.rows.shape == (1, codec.config.bytes_per_vector)
+```
+
+The core subtracts the mean and computes the L2 norm in float64, then
+quantizes the normalized residual as float32. A non-finite coordinate or a
+row with zero residual produces `InvalidInput`.
+
+Keep the mean with your model configuration. The encoding stores its
+SHA-256 fingerprint under `semq.quant.centre.v1` in the manifest. Concatenation
+requires matching manifests, and a diff reports changes to the fingerprint.
+Use the same mean for states you intend to compare. Decode returns QUANT
+representatives in centred space. Reconstruction in the original space
+requires the mean and a scale for the normalized residual.
+
+See the [API reference](../reference/index.md) for the other bindings.
 
 ## 5. Evaluate before changing defaults
 

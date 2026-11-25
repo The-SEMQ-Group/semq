@@ -16,6 +16,7 @@ static void exercise(uint32_t kind) {
     const uint64_t uids[] = { 1u, 2u }, offs[] = { 0u, 1u, 2u };
     const uint8_t text[] = { 'a', 'b' }, rows[] = { 0u, 0u, 1u, 0u }, changed[] = { 2u, 0u, 1u, 0u };
     const float vectors[] = { 1, 0, 0, 0, 0, 1, 0, 0 };
+    const float mean[] = { 0.5f, 0.5f, 0, 0 };
     const semq_ids_t ids = { kind, 2u, uids, offs, text };
     const semq_pair_t man = { (const uint8_t*)"note", 4u, (const uint8_t*)"value", 5u };
     semq_codec_t* codec = NULL;
@@ -41,7 +42,7 @@ static void exercise(uint32_t kind) {
 
     /* Every allocation of every allocating public path is failed in turn.
      * The first non-failing ordinal terminates each sweep. */
-    for (int operation = 0; operation < 10; operation++) {
+    for (int operation = 0; operation < 11; operation++) {
         uint64_t ordinal;
         for (ordinal = 1u; ordinal < 100u; ordinal++) {
             semq_codec_t* c = NULL; semq_encoding_t* e = NULL;
@@ -59,6 +60,7 @@ static void exercise(uint32_t kind) {
                 case 6: status = semq_floor_measure(nulls, 1u, &f, &err); break;
                 case 7: status = semq_diff_within(diff, floor, &within, &err); break;
                 case 8: status = semq_codec_decode(codec, a, representatives, &err); break;
+                case 9: status = semq_codec_encode_centred(codec, &ids, vectors, mean, &man, 1u, &e, &err); break;
                 default:
                     status = kind == SEMQ_ID_U64
                         ? semq_diff_units_u64(diff, 1u, NULL, NULL, NULL, 0u, &count, &err)

@@ -77,6 +77,22 @@ export class Codec {
     manifest?: Record<string, string>;
     idKind?: "u64" | "utf8";
   }): Encoding {
+    return this.encodeImpl(input);
+  }
+
+  /**
+   * Subtract the fixed dim-coordinate mean, normalize each row and apply QUANT.
+   * Zero residuals are invalid. The manifest records the mean's fingerprint.
+   * Decode returns representatives in centred space.
+   */
+  encodeCentred(input: Parameters<Codec["encode"]>[0], mean: Float32Array): Encoding {
+    if (!isFloat32Array(mean) || mean.length !== this.cfg.dim) {
+      throw new InvalidInput(`mean must be a Float32Array of ${this.cfg.dim} values`);
+    }
+    return this.encodeImpl(input, mean);
+  }
+
+  private encodeImpl(input: Parameters<Codec["encode"]>[0], mean?: Float32Array): Encoding {
     const h = this.handle;
     const r = this.r;
     if (input === null || typeof input !== "object") {
@@ -93,7 +109,12 @@ export class Codec {
       const vec = a.f32(vectors);
       const man = writeManifest(a, input.manifest);
       const out = a.alloc(4);
-      call(r, "encode", (err) => r.core.codecEncode(h, ids.ptr, vec, man.ptr, man.n, out, err));
+      if (mean === undefined) {
+        call(r, "encode", (err) => r.core.codecEncode(h, ids.ptr, vec, man.ptr, man.n, out, err));
+      } else {
+        const meanPtr = a.f32(mean);
+        call(r, "encode", (err) => r.core.codecEncodeCentred(h, ids.ptr, vec, meanPtr, man.ptr, man.n, out, err));
+      }
       return Encoding.fromHandle(r, r.w.getU32(out));
     });
   }

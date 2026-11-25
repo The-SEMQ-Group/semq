@@ -13,6 +13,24 @@ use semq::{
     IdKind, Ids, Manifest, Operator, Reason, Which,
 };
 
+#[test]
+fn encode_centred() {
+    let codec = Codec::quant(4, 4).unwrap();
+    let ids = Ids::u64(&[9, 2]);
+    let vectors = [1.0, 4.0, 0.0, 0.0, 1.0, 0.0, -2.0, 0.0];
+    let got = codec
+        .encode_centred(ids, &vectors, &[1.0, 0.0, 0.0, 0.0], None)
+        .unwrap();
+    let want = codec
+        .encode(ids, &[0.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0, 0.0], None)
+        .unwrap();
+    assert_eq!(got.content_digest(), want.content_digest());
+    assert_eq!(
+        got.manifest()["semq.quant.centre.v1"],
+        "ccaf6f183579497e8bfcd71045c04286fd3c2e60f3641e3eea164b761a4494b7"
+    );
+}
+
 // --------------------------------------------------------------------------
 // Helpers
 // --------------------------------------------------------------------------

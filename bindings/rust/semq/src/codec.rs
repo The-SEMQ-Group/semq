@@ -104,7 +104,36 @@ impl Codec {
         vectors: &[f32],
         manifest: Option<&Manifest>,
     ) -> Result<Encoding> {
-        let ids = ids.into();
+        self.encode_impl(ids.into(), vectors, manifest, None)
+    }
+
+    /// Subtract the fixed `dim`-coordinate mean, normalize each row and apply QUANT.
+    /// Zero residuals are invalid. The manifest records the mean's fingerprint.
+    /// Decode returns representatives in centred space.
+    pub fn encode_centred<'a>(
+        &self,
+        ids: impl Into<Ids<'a>>,
+        vectors: &[f32],
+        mean: &[f32],
+        manifest: Option<&Manifest>,
+    ) -> Result<Encoding> {
+        if mean.len() != self.config.dim() as usize {
+            return Err(Error::invalid(format!(
+                "mean has {} values, expected {}",
+                mean.len(),
+                self.config.dim()
+            )));
+        }
+        self.encode_impl(ids.into(), vectors, manifest, Some(mean))
+    }
+
+    fn encode_impl(
+        &self,
+        ids: Ids<'_>,
+        vectors: &[f32],
+        manifest: Option<&Manifest>,
+        mean: Option<&[f32]>,
+    ) -> Result<Encoding> {
         let dim = self.config.dim() as usize;
         let n = ids.len();
         if vectors.len() % dim != 0 {
@@ -122,17 +151,29 @@ impl Codec {
         let mut out: *mut sys::semq_encoding_t = ptr::null_mut();
         let mut err = new_error();
         // SAFETY: `vectors` holds `n × dim` floats and the ids and manifest
-        // views borrow data that outlives the call.
+        // views borrow data that outlives the call. A supplied mean holds dim floats.
         let status = unsafe {
-            sys::semq_codec_encode(
-                self.ptr.as_ptr(),
-                c_ids.as_raw(),
-                ptr_or_null(vectors),
-                pairs.as_ptr(),
-                pairs.len(),
-                &mut out,
-                &mut err,
-            )
+            match mean {
+                Some(mean) => sys::semq_codec_encode_centred(
+                    self.ptr.as_ptr(),
+                    c_ids.as_raw(),
+                    ptr_or_null(vectors),
+                    mean.as_ptr(),
+                    pairs.as_ptr(),
+                    pairs.len(),
+                    &mut out,
+                    &mut err,
+                ),
+                None => sys::semq_codec_encode(
+                    self.ptr.as_ptr(),
+                    c_ids.as_raw(),
+                    ptr_or_null(vectors),
+                    pairs.as_ptr(),
+                    pairs.len(),
+                    &mut out,
+                    &mut err,
+                ),
+            }
         };
         check(status, &err, "encode")?;
         Encoding::from_raw(out, "encode")

@@ -69,6 +69,17 @@ func (c *Codec) Backend() string { return c.backend }
 // index in InvalidInputError.Row and the coordinate in Field. The ids may be
 // in any order; the Encoding holds them sorted.
 func (c *Codec) Encode(ids IDs, vectors []float32, manifest map[string]string) (*Encoding, error) {
+	return c.encode(ids, vectors, nil, manifest, false)
+}
+
+// EncodeCentred subtracts the fixed dim-coordinate mean, normalizes each row
+// and applies QUANT. Zero residuals are invalid. The manifest records the
+// mean's fingerprint. Decode returns representatives in centred space.
+func (c *Codec) EncodeCentred(ids IDs, vectors, mean []float32, manifest map[string]string) (*Encoding, error) {
+	return c.encode(ids, vectors, mean, manifest, true)
+}
+
+func (c *Codec) encode(ids IDs, vectors, mean []float32, manifest map[string]string, centred bool) (*Encoding, error) {
 	h, err := c.handle()
 	if err != nil {
 		return nil, err
@@ -79,6 +90,9 @@ func (c *Codec) Encode(ids IDs, vectors []float32, manifest map[string]string) (
 	}
 	defer cids.release()
 	n, dim := cids.n(), uint64(c.cfg.dim)
+	if centred && uint64(len(mean)) != dim {
+		return nil, &InvalidInputError{Message: fmt.Sprintf("mean has %d values, expected %d", len(mean), dim)}
+	}
 	if n > math.MaxUint64/dim || uint64(len(vectors)) != n*dim {
 		return nil, &InvalidInputError{Message: fmt.Sprintf(
 			"%d ids need %d float32 values (dim %d), got %d", n, n*dim, dim, len(vectors))}
@@ -95,8 +109,13 @@ func (c *Codec) Encode(ids IDs, vectors []float32, manifest map[string]string) (
 	var (
 		out *C.semq_encoding_t
 		e   C.semq_error_t
+		s   C.semq_status_t
 	)
-	s := C.semq_codec_encode(h, &cids.s, vp, man.ptr(), man.n(), &out, &e)
+	if centred {
+		s = C.semq_codec_encode_centred(h, &cids.s, vp, (*C.float)(unsafe.Pointer(&mean[0])), man.ptr(), man.n(), &out, &e)
+	} else {
+		s = C.semq_codec_encode(h, &cids.s, vp, man.ptr(), man.n(), &out, &e)
+	}
 	runtime.KeepAlive(c)
 	if err := check(s, &e, "encode"); err != nil {
 		return nil, err

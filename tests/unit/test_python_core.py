@@ -7,6 +7,7 @@ Codec, Encoding, Diff, Floor, BuildInfo and the six errors."""
 from __future__ import annotations
 
 import gc
+import hashlib
 import io
 import json
 
@@ -105,6 +106,61 @@ def test_quant_diff_hamming_counts_changed_symbols(bins: int, dim: int) -> None:
     assert dict(diff.changed) == expected
     for id, hamming in diff.changed:
         assert len(diff.units(id)) == hamming
+
+
+@pytest.mark.parametrize("bins", [2, 8, 64])
+def test_centred_quant_matches_explicit_normalization_and_batches(bins: int) -> None:
+    rng = np.random.default_rng(42)
+    fit = rng.normal(loc=5, scale=0.5, size=(32, 17)).astype(np.float32)
+    mean = fit.mean(axis=0, dtype=np.float64).astype(np.float32)
+    vectors = rng.normal(loc=5, scale=0.5, size=(5, 17)).astype(np.float32)
+    ids = [9, 2, 6, 3, 1]
+    residuals = vectors.astype(np.float64) - mean
+    unit = (residuals / np.linalg.norm(residuals, axis=1, keepdims=True)).astype(np.float32)
+    codec = Codec.quant(17, bins)
+    expected = codec.encode(unit, ids=ids)
+    actual = codec.encode_centred(vectors, ids=ids, mean=mean, manifest=MANIFEST)
+    fingerprint = hashlib.sha256(mean.astype("<f4").tobytes()).hexdigest()
+
+    assert actual.content_digest == expected.content_digest
+    assert actual.manifest == {**MANIFEST, "semq.quant.centre.v1": fingerprint}
+    np.testing.assert_array_equal(codec.decode(actual), codec.decode(expected))
+
+    left = codec.encode_centred(vectors[:2], ids=ids[:2], mean=mean, manifest=MANIFEST)
+    right = codec.encode_centred(vectors[2:], ids=ids[2:], mean=mean, manifest=MANIFEST)
+    empty = codec.encode_centred(None, ids=[], id_kind="u64", mean=mean, manifest=MANIFEST)
+    assert empty.concat(left, right).state_id == actual.state_id
+    stream = io.BytesIO()
+    actual.save(stream)
+    assert Encoding.load(stream.getvalue()).manifest == actual.manifest
+
+
+def test_centred_quant_mean_identity_and_errors(codec: Codec) -> None:
+    key = "semq.quant.centre.v1"
+    mean = np.array([1, 0, 0, 0], dtype=np.float32)
+    vectors = np.array([[1, 4, 0, 0]], dtype=np.float32)
+    state = codec.encode_centred(vectors, ids=[9], mean=mean)
+    other_mean = np.array([1, 1, 0, 0], dtype=np.float32)
+    other_state = codec.encode_centred(vectors, ids=[9], mean=other_mean)
+    assert state.content_digest == other_state.content_digest
+    assert state.state_id != other_state.state_id
+    assert key in state.diff(other_state).manifest_changes
+    with pytest.raises(InvalidInput, match="manifest"):
+        state.concat(codec.encode_centred(vectors, ids=[2], mean=other_mean))
+    with pytest.raises(InvalidInput, match="duplicate manifest key"):
+        codec.encode_centred(vectors, ids=[9], mean=mean, manifest={key: "caller"})
+    for invalid_mean in [mean[:2], mean[None, :], mean.astype(np.float64)]:
+        with pytest.raises(InvalidInput, match="mean must be"):
+            codec.encode_centred(vectors, ids=[9], mean=invalid_mean)
+    with pytest.raises(InvalidInput, match="requires a QUANT codec"):
+        Codec.phase(4, 4).encode_centred(vectors, ids=[9], mean=mean)
+    with pytest.raises(InvalidInput, match="zero norm") as caught:
+        codec.encode_centred(np.vstack([vectors, mean]), ids=[9, 2], mean=mean)
+    assert caught.value.row == 1
+    mean[2] = np.inf
+    with pytest.raises(InvalidInput, match="infinite coordinate") as caught:
+        codec.encode_centred(vectors, ids=[9], mean=mean)
+    assert caught.value.row is None and caught.value.field == 2
 
 
 # ---------------------------------------------------------------------------

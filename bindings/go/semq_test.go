@@ -15,6 +15,33 @@ import (
 	"testing"
 )
 
+func TestEncodeCentred(t *testing.T) {
+	codec, err := NewQuantCodec(4, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer codec.Close()
+	ids := U64IDs(9, 2)
+	mean := []float32{1, 0, 0, 0}
+	vectors := []float32{1, 4, 0, 0, 1, 0, -2, 0}
+	got, err := codec.EncodeCentred(ids, vectors, mean, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer got.Close()
+	want, err := codec.Encode(ids, []float32{0, 1, 0, 0, 0, 0, -1, 0}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer want.Close()
+	if got.ContentDigest() != want.ContentDigest() {
+		t.Fatal("centred encoding differs from normalized residuals")
+	}
+	if got.Manifest()["semq.quant.centre.v1"] != "ccaf6f183579497e8bfcd71045c04286fd3c2e60f3641e3eea164b761a4494b7" {
+		t.Fatal("wrong mean fingerprint")
+	}
+}
+
 // ---- helpers ---------------------------------------------------------------
 
 func quant44(t *testing.T) CodecConfig {

@@ -34,7 +34,9 @@ establish semantic equivalence.
 Build with our Python, Rust, Go, and TypeScript/WASM bindings, or call the C core directly.
 
 SEMQ does not generate embeddings, train a model, normalize vectors, or
-search. The input is unit-norm, finite `float32`.
+search. Standard encoding takes finite, unit-norm `float32` rows. For QUANT,
+you can also supply a fixed mean and encode the normalized residuals with
+[centred QUANT](https://github.com/The-SEMQ-Group/semq/blob/main/docs/guides/choosing-a-config.md#centre-rows-before-quant).
 
 ## What the SDK provides
 

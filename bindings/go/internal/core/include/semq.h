@@ -246,6 +246,22 @@ SEMQ_API semq_status_t semq_codec_encode(const semq_codec_t* codec, const semq_i
                                          uint32_t n_pairs, semq_encoding_t** out,
                                          semq_error_t* err);
 
+/**
+ * Encode with a QUANT codec after subtracting a fixed mean and normalizing
+ * each residual to unit length. Vectors have the same layout as in
+ * ::semq_codec_encode and may have any norm. `mean` must hold `cfg.dim`
+ * finite float32 coordinates. Inputs canonicalize subnormals and signed
+ * zeros to +0 before subtraction. Residuals with zero norm are rejected.
+ * The manifest gains the reserved key `semq.quant.centre.v1` with the
+ * lowercase SHA-256 of the canonical little-endian float32 mean bytes.
+ * Decode returns representatives in centred space. Keep the mean separately
+ * if needed for future encodes or reconstruction.
+ */
+SEMQ_API semq_status_t semq_codec_encode_centred(const semq_codec_t* codec, const semq_ids_t* ids,
+                                                 const float* vectors, const float* mean,
+                                                 const semq_pair_t* manifest, uint32_t n_pairs,
+                                                 semq_encoding_t** out, semq_error_t* err);
+
 /** Representatives, `n × dim` float32, row `i` for `ids[i]`. Not normalized. */
 SEMQ_API semq_status_t semq_codec_decode(const semq_codec_t* codec, const semq_encoding_t* enc,
                                          float* out, semq_error_t* err);

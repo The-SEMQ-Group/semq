@@ -16,6 +16,8 @@ program.
   `vectors` must be a float32 array of shape `[n, dim]` (float64 is rejected,
   a non-contiguous view is copied); `ids` a sequence of ints (`u64`) or strs
   (`utf8`); `id_kind` is required when `n = 0`.
+- `Codec.encode_centred` accepts the same vectors and ids with a float32 mean
+  of shape `[dim]`. See [centred QUANT](../guides/choosing-a-config.md#centre-rows-before-quant).
 - `Encoding.rows` and `get(id)` are read-only zero-copy views that keep the
   native memory alive; `ids` is a read-only uint64 view for `u64` and a tuple
   of str for `utf8`. Iteration yields `(id, row)` in canonical order.
